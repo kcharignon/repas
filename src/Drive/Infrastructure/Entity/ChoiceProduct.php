@@ -16,9 +16,12 @@ use Doctrine\ORM\Mapping as ORM;
  * dans ce produit ? » (20 tranches) : elle ne concerne que le couple (préférence, produit) de cette ligne, jamais la fiche commune
  * du produit, et part avec la ligne (donc avec la préférence et avec le compte).
  *
- * `label`, `price_cents` et `price_seen_at` sont de même ce que CE compte a lui-même observé du produit (libellé lu, prix lu et sa date) :
- * nullables, effacés avec la ligne (aucune colonne utilisateur de plus). La fiche commune `drive_product` ne sert que de repli quand la
- * ligne n'a pas de valeur à elle (`COALESCE`).
+ * `label` est de même ce que CE compte a lui-même lu du produit : nullable, effacé avec la ligne (aucune colonne utilisateur de plus). La
+ * fiche commune `drive_product` ne sert que de repli quand la ligne n'a pas de libellé à elle (`COALESCE`).
+ *
+ * `price_cents` et `price_seen_at` sont OBSOLÈTES (DRV-770, amendement du 2026-11-05 de l'ADR 0032) : le prix est un fait commun du magasin,
+ * il vit sur `drive_product` seule. Plus rien ne les lit ni ne les écrit ; elles restent en base pour qu'un retour arrière du code ne
+ * échoue pas, et sont supprimées par DRV-771.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'drive_choice_product')]
@@ -55,8 +58,8 @@ class ChoiceProduct
     public ?string $label = null;
 
     /**
-     * Le prix (en centimes) tel que CE compte l'a observé, avec la date de la lecture : les deux colonnes vont ensemble. Seulement pour un
-     * produit accepté. `null` : la lecture retombe sur le prix de la fiche commune.
+     * OBSOLÈTE (DRV-770, suppression : DRV-771) : le prix vit sur la fiche commune. Ancien prix du compte, avec la date de la lecture.
+     * Plus lue ni écrite.
      */
     #[ORM\Column(name: 'price_cents', type: Types::INTEGER, nullable: true)]
     public ?int $priceCents = null;

@@ -313,7 +313,7 @@ class ChoicePostgreSQLLoaderTest extends DatabaseTestCase
         ]);
         $this->choices->saveAll([
             new ChoiceBuilder()->withUserId('alice')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withRejected([$this->id('2')])
-                ->withObservation($this->id('1'), 'Farine T55 – offre du jour', 159)->withObservation($this->id('2'), 'Farine complète – ancien libellé')->build(),
+                ->withObservation($this->id('1'), 'Farine T55 – offre du jour')->withObservation($this->id('2'), 'Farine complète – ancien libellé')->build(),
             new ChoiceBuilder()->withUserId('bob')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withRejected([$this->id('2')])
                 ->withObservation($this->id('1'), 'Farine T55 – lot de 2')->build(),
             new ChoiceBuilder()->withUserId('chloe')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withRejected([$this->id('2')])->build(),
@@ -342,7 +342,7 @@ class ChoicePostgreSQLLoaderTest extends DatabaseTestCase
             new ProductBuilder()->withRetailerProductId('3')->withLabel('Produit')->build(),
         ]);
         $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('3')])->withRejected([$this->id('1'), $this->id('2')])
-            ->withObservation($this->id('1'), 'Z compte')->withObservation($this->id('2'), 'C compte')->withObservation($this->id('3'), 'Produit du compte', 149)->build());
+            ->withObservation($this->id('1'), 'Z compte')->withObservation($this->id('2'), 'C compte')->withObservation($this->id('3'), 'Produit du compte')->build());
 
         // When
         $result = $this->loader()->list('user-1', Retailer::LECLERC);

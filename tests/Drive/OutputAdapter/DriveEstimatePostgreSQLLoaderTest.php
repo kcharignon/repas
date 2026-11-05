@@ -328,16 +328,17 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(4, $counter->count());
     }
 
-    public function testTwoAccountsThatAcceptTheSameProductEachEstimateWithTheirOwnLabelAndPrice(): void
+    public function testTwoAccountsThatAcceptTheSameProductEstimateWithTheirOwnLabelAndTheSharedPrice(): void
     {
-        // Given : la fiche commune dit 1,49 € ; Alice a lu 1,59 € le 12 octobre, Bob 1,29 € le 18 ; Chloé n'a rien de propre à sa ligne
+        // Given : la fiche commune dit 1,49 € le 1er octobre (la dernière observation d'un compte qui accepte le produit) ; Alice et Bob ont chacun
+        // leur libellé, Chloé n'a rien de propre à sa ligne
         foreach (['alice', 'bob', 'chloe'] as $userId) {
             $this->settings->save(new DriveSettingsBuilder()->withUserId($userId)->build());
         }
         $this->products->save(new ProductBuilder()->withRetailerProductId('1')->withLabel('Farine T55 1 kg')->withContent(new ProductContent(1, ContentUnit::KG))->withPrice(149, seenAt: new DateTimeImmutable('2026-10-01 08:00:00'))->build());
         $this->choices->saveAll([
-            new ChoiceBuilder()->withUserId('alice')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withObservation($this->id('1'), 'Farine T55 – offre', 159, new DateTimeImmutable('2026-10-12 09:30:00'))->build(),
-            new ChoiceBuilder()->withUserId('bob')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withObservation($this->id('1'), 'Farine T55 – lot', 129, new DateTimeImmutable('2026-10-18 10:00:00'))->build(),
+            new ChoiceBuilder()->withUserId('alice')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withObservation($this->id('1'), 'Farine T55 – offre')->build(),
+            new ChoiceBuilder()->withUserId('bob')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withObservation($this->id('1'), 'Farine T55 – lot')->build(),
             new ChoiceBuilder()->withUserId('chloe')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->build(),
         ]);
         $lines = [new ShoppingListLineForDrive('farine', 'Farine', 2, 'kilo', 'kilo', 'kg', 'WEIGHT', 1000.0)];
@@ -347,16 +348,17 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         $bob = $this->loader($this->list('bob', $lines))->get('bob', 'list-1', Retailer::default());
         $chloe = $this->loader($this->list('chloe', $lines))->get('chloe', 'list-1', Retailer::default());
 
-        // Then : chacun son libellé, son prix et sa date ; Chloé, sans valeur à elle, retombe sur la fiche commune
-        $this->assertSame(['Farine T55 – offre', 159, 318, new DateTimeImmutable('2026-10-12 09:30:00')->format(DATE_ATOM)], $this->lineOf($alice));
-        $this->assertSame(['Farine T55 – lot', 129, 258, new DateTimeImmutable('2026-10-18 10:00:00')->format(DATE_ATOM)], $this->lineOf($bob));
-        $this->assertSame(['Farine T55 1 kg', 149, 298, new DateTimeImmutable('2026-10-01 08:00:00')->format(DATE_ATOM)], $this->lineOf($chloe));
-        $this->assertSame([318, 258, 298], [$alice->estimatedTotalCents, $bob->estimatedTotalCents, $chloe->estimatedTotalCents]);
+        // Then : chacun son libellé, le même prix et la même date pour tous (celui de la fiche, DRV-770)
+        $date = new DateTimeImmutable('2026-10-01 08:00:00')->format(DATE_ATOM);
+        $this->assertSame(['Farine T55 – offre', 149, 298, $date], $this->lineOf($alice));
+        $this->assertSame(['Farine T55 – lot', 149, 298, $date], $this->lineOf($bob));
+        $this->assertSame(['Farine T55 1 kg', 149, 298, $date], $this->lineOf($chloe));
+        $this->assertSame([298, 298, 298], [$alice->estimatedTotalCents, $bob->estimatedTotalCents, $chloe->estimatedTotalCents]);
     }
 
-    public function testThePriceAndItsDateAlwaysComeFromTheSameSide(): void
+    public function testThePriceAndItsDateAlwaysComeFromTheCommonSheet(): void
     {
-        // Given : la ligne n'a qu'un libellé à elle, la fiche commune a un prix daté ; une autre ligne a un prix à elle, la fiche aucun
+        // Given : deux fiches, l'une avec un prix daté, l'autre sans ; l'obsolète prix d'une ligne de compte (colonnes gardées jusqu'à DRV-771) n'est jamais lu
         $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
         $this->products->saveAll([
             new ProductBuilder()->withRetailerProductId('1')->withLabel('Farine')->withPrice(149, seenAt: new DateTimeImmutable('2026-10-01 08:00:00'))->build(),
@@ -364,8 +366,10 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         ]);
         $this->choices->saveAll([
             new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withObservation($this->id('1'), 'Farine du compte')->build(),
-            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sucre')->withAccepted([$this->id('2')])->withObservation($this->id('2'), null, 99, new DateTimeImmutable('2026-10-20 08:00:00'))->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sucre')->withAccepted([$this->id('2')])->build(),
         ]);
+        $this->entityManager->getConnection()->executeStatement('UPDATE drive_choice_product SET price_cents = 99, price_seen_at = ? WHERE product_id = ?', ['2026-10-20 08:00:00', $this->id('2')]);
+        $this->entityManager->getConnection()->executeStatement('UPDATE drive_choice_product SET price_cents = 1, price_seen_at = ? WHERE product_id = ?', ['2026-10-25 08:00:00', $this->id('1')]);
         $list = $this->list('user-1', [
             new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
             new ShoppingListLineForDrive('sucre', 'Sucre', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
@@ -374,24 +378,25 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         // When
         $estimate = $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
-        // Then : farine = libellé du compte, prix et date de la fiche ; sucre = libellé de la fiche, prix et date du compte
+        // Then : farine = libellé du compte, prix et date de la fiche ; sucre = libellé de la fiche, aucun prix (celui de la ligne est ignoré)
         $this->assertSame(['Farine du compte', 149, 149, new DateTimeImmutable('2026-10-01 08:00:00')->format(DATE_ATOM)], $this->lineOf($estimate, 0));
-        $this->assertSame(['Sucre', 99, 99, new DateTimeImmutable('2026-10-20 08:00:00')->format(DATE_ATOM)], $this->lineOf($estimate, 1));
+        $this->assertSame(['Sucre', null, null, null], $this->lineOf($estimate, 1));
+        $this->assertSame(['ESTIMATED', 'NO_PRICE'], array_column($estimate->lines, 'status'));
     }
 
-    public function testALineWithOwnValuesIsEstimatedEvenWhenTheCommonSheetHasNoPrice(): void
+    public function testAProductWhoseCommonSheetHasNoPriceIsNotEstimatedEvenWithALabelOfItsOwn(): void
     {
         // Given : la fiche commune n'a jamais eu de prix
         $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
         $this->products->save(new ProductBuilder()->withRetailerProductId('1')->build());
-        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withObservation($this->id('1'), 'Farine', 149)->build());
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withObservation($this->id('1'), 'Farine')->build());
         $list = $this->list('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0)]);
 
         // When
         $estimate = $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
         // Then
-        $this->assertSame(['ESTIMATED', 149], [$estimate->lines[0]->status, $estimate->estimatedTotalCents]);
+        $this->assertSame(['NO_PRICE', 0], [$estimate->lines[0]->status, $estimate->estimatedTotalCents]);
     }
 
     /**

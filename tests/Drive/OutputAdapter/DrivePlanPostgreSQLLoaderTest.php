@@ -628,7 +628,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         // Given
         $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
         $this->products->save(new ProductBuilder()->withRetailerProductId('1')->build());
-        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withObservation($this->id('1'), 'Farine du compte', 149)->build());
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withObservation($this->id('1'), 'Farine du compte')->build());
         $list = $this->sentList('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0)]);
         $counter = static::getContainer()->get(QueryCounter::class);
         $counter->reset();

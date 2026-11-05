@@ -124,9 +124,9 @@ class DriveEstimateApiFlowTest extends DatabaseTestCase
         $this->assertSame([403, ['error' => ['message' => 'SHOPPING_LIST_FORBIDDEN']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
     }
 
-    public function testTwoAccountsThatAcceptTheSameProductEstimateWithTheirOwnLabelAndPrice(): void
+    public function testTwoAccountsThatAcceptTheSameProductEstimateWithTheirOwnLabelAndTheSharedLatestPrice(): void
     {
-        // Given : Alice et Bob acceptent le même produit du magasin, chacun avec le libellé et le prix qu'il a lus ; Chloé l'accepte sans prix lu
+        // Given : Alice, Bob puis Chloé acceptent le même produit du magasin, chacun avec le libellé qu'il a lu ; le prix est celui du dernier à l'avoir lu (Bob), Chloé n'en lit pas
         $alice = $this->userWithAMilkList('lait-alice');
         $bob = $this->userWithAMilkList('lait-bob');
         $chloe = $this->userWithAMilkList('lait-chloe');
@@ -143,10 +143,10 @@ class DriveEstimateApiFlowTest extends DatabaseTestCase
             return [$line['productLabel'], $line['unitPriceCents']];
         };
 
-        // Then : chacun son libellé et son prix ; Chloé, sans prix à elle, retombe sur celui de la fiche commune (le premier prix vu)
-        $this->assertSame(['Lait demi-écrémé 1 l – offre', 159], $lineOf($alice));
+        // Then : chacun son libellé, le même prix pour tous : la dernière observation d'un compte qui accepte le produit (DRV-770)
+        $this->assertSame(['Lait demi-écrémé 1 l – offre', 129], $lineOf($alice));
         $this->assertSame(['Lait demi-écrémé 1 l – lot de 6', 129], $lineOf($bob));
-        $this->assertSame(['Lait demi-écrémé 1 l', 159], $lineOf($chloe));
+        $this->assertSame(['Lait demi-écrémé 1 l', 129], $lineOf($chloe));
 
         // When : Alice relit un autre prix
         $this->request('PUT', '/api/v1/drive/choices', $alice['user'], json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
@@ -154,9 +154,9 @@ class DriveEstimateApiFlowTest extends DatabaseTestCase
         ]], JSON_THROW_ON_ERROR));
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
 
-        // Then : l'estimation de Bob n'a pas bougé ; celle d'Alice a le nouveau prix, et Chloé, qui n'a pas de prix à elle, suit la fiche commune (son repli)
+        // Then : le prix relu par Alice est celui de tous les comptes du magasin ; chacun garde son libellé
         $this->assertSame(['Lait demi-écrémé 1 l – offre', 179], $lineOf($alice));
-        $this->assertSame(['Lait demi-écrémé 1 l – lot de 6', 129], $lineOf($bob));
+        $this->assertSame(['Lait demi-écrémé 1 l – lot de 6', 179], $lineOf($bob));
         $this->assertSame(['Lait demi-écrémé 1 l', 179], $lineOf($chloe));
     }
 
