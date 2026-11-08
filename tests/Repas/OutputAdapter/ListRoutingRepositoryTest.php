@@ -235,11 +235,12 @@ class ListRoutingRepositoryTest extends DatabaseTestCase
 
         // Then : la partie dit son parent, sa destination et l'unité d'achat de la ligne qu'elle alimente (celle du parent) ; le parent ne dit rien de plus
         $this->assertSame(2, $counter->count());
-        $this->assertSame(
+        // L'ordre des clés est celui de la base (aucun ORDER BY : la lecture est une table de correspondance), donc `assertEquals`, jamais `assertSame`
+        $this->assertEquals(
             [$yolk->getSlug() => ['market', $egg->getDefaultPurchaseUnit()->getSlug(), $egg->getSlug()], $egg->getSlug() => ['market', $egg->getDefaultPurchaseUnit()->getSlug(), null]],
             array_map(static fn($placement): array => [$placement->listTypeId, $placement->purchaseUnitSlug, $placement->partOf], $placements),
         );
-        $this->assertSame([$yolk->getSlug() => 'market', $egg->getSlug() => 'market'], $destinations);
+        $this->assertEquals([$yolk->getSlug() => 'market', $egg->getSlug() => 'market'], $destinations);
     }
 
     public function testAPartFollowsTheDepartmentTypeOfItsParent(): void
