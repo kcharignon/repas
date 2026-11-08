@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Effort recommandé pour l'agent** : **xhigh** (il écrit les quantités des listes de courses de tous les comptes ; erreur silencieuse possible ; budgets SQL en cliquet)
 - **Dépend de** : COMP-001. **RÈGLE D'ORDRE : ce ticket est livré en production AVANT, ou DANS LA MÊME RELEASE que COMP-002** (ADR 0040 décision 32) : une recette dont les composants ne s'aplatissent pas planifierait sans les ingrédients de ses recettes utilisées, sans aucune erreur. Il peut être fait et fusionné **avant** COMP-002 : ses tests posent les composants avec `RecipeBuilder::withComponent` / les dépôts, sans passer par la route. **Un agent à la fois.**
-- **Statut** : fait (2026-11-08, PR PRNUMBER)
+- **Statut** : fait (2026-11-08, PR 462)
 - **Lire d'abord** : [ADR 0040](../../adr/0040-recettes-utilisees-dans-d-autres-recettes.md) décisions 11 à 18 ; [ADR 0036](../../adr/0036-types-de-liste-de-courses.md) décisions 5 et 9 (repas éclatés, `placed_ingredients`) ; [ADR 0038](../../adr/0038-sous-ingredients.md) décisions 9 et 10 (`PartAwareLines`, parties) ; [ADR 0029](../../adr/0029-commande-vocale-alexa.md) décision 13 ; `docs/listes/roadmap.md` ; `CLAUDE.md` (puces « Types de liste », « Sous-ingrédients », « Planifier un repas ») ; skill `repas-dev` § 4 (la ligne « Quantité d'une ligne de liste »).
 
 ## But
