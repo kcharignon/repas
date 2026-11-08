@@ -39,6 +39,7 @@ final class ShoppingList implements ModelInterface
      * @param Tab<Meal> $meals
      * @param Tab<ShoppingListIngredient> $ingredients
      * @param Tab<Row> $rows
+     * @param array<string, PartShare> $partShares le registre des parties de la liste (ADR 0038 décision 6), par slug de partie
      */
     private function __construct(
         private string            $id,
@@ -52,6 +53,7 @@ final class ShoppingList implements ModelInterface
         private int               $version = 1,
         private ?DateTimeImmutable $sentAt = null,
         private ?string           $listTypeId = null,
+        private array             $partShares = [],
     ) {
     }
 
@@ -150,6 +152,8 @@ final class ShoppingList implements ModelInterface
             version: $datas['version'] ?? 1,
             sentAt: $datas['sent_at'] ?? null,
             listTypeId: $datas['list_type_id'] ?? null,
+            // Le registre est du JSON gardé en base, lu comme une entrée non fiable (ADR 0038 décision 6) : jamais une exception
+            partShares: PartShare::registryFrom($datas['part_shares'] ?? null),
         );
     }
 
@@ -353,6 +357,180 @@ final class ShoppingList implements ModelInterface
             if ($this->rows[$rowKey]->getQuantity() <= self::FLOAT_DUST) {
                 unset($this->rows[$rowKey]);
             }
+            // Un parent qui perd sa ligne perd ses parties ; une ligne plus petite que ses parties les réduit (ADR 0038 décision 7)
+            $this->reconcileParts($ingredientSlug);
+        }
+    }
+
+    /**
+     * Le registre des parties de la liste (ADR 0038 décision 6), par slug de partie : ce que la liste a reçu de chaque partie, dans l'unité d'achat de
+     * la partie, et ce que cela vaut en unité d'achat du parent. Vide pour tout compte qui n'a jamais découpé un ingrédient.
+     *
+     * @return array<string, PartShare>
+     */
+    public function getPartShares(): array
+    {
+        return $this->partShares;
+    }
+
+    /**
+     * Ce que la liste a gardé de cette partie, `null` si elle n'en a rien (un ingrédient ordinaire, ou une partie jamais posée dans cette liste).
+     */
+    public function partShareOf(string $partSlug): ?PartShare
+    {
+        return $this->partShares[$partSlug] ?? null;
+    }
+
+    /**
+     * Les entrées du registre dont la ligne de ce parent porte le total, par slug de partie.
+     *
+     * @return array<string, PartShare>
+     */
+    public function partsOf(string $parentSlug): array
+    {
+        return array_filter($this->partShares, static fn(PartShare $share): bool => $share->parentSlug === $parentSlug);
+    }
+
+    /**
+     * Pose `$quantity` d'une partie dans la liste (ADR 0038 décision 8). La partie n'est jamais une ligne : sa quantité et son équivalent vont au
+     * registre, et la ligne du parent reçoit la DIFFÉRENCE entre l'ancien et le nouveau plus grand équivalent des parties du parent. L'invariant
+     * de l'agrégat est donc « ligne du parent = quantité directe + plus grand équivalent de ses parties » : 3 œufs + 2 jaunes = 5, + 2 blancs = 5
+     * encore (le blanc complète le jaune), + 1 jaune de plus = 6.
+     *
+     * Une partie déjà dans le registre garde SON parent d'origine, même si l'ingrédient a changé de parent depuis : le nouvel équivalent est alors
+     * proportionnel à celui que la liste a déjà (jamais une entrée dont les équivalents seraient dans deux unités).
+     *
+     * @param float $quantity   dans l'unité d'achat de la partie
+     * @param float $equivalent ce que `$quantity` vaut dans l'unité d'achat du parent (`PartEquivalence`)
+     *
+     * @throws ShoppingListException la liste est envoyée au drive, ou une quantité n'est pas un nombre fini strictement positif
+     */
+    public function addPart(string $partSlug, string $parentSlug, string $parentPurchaseUnitSlug, float $quantity, float $equivalent): void
+    {
+        $this->assertEditable();
+        if (!is_finite($quantity) || !is_finite($equivalent) || $quantity <= 0 || $equivalent <= 0) {
+            throw ShoppingListException::invalidQuantity();
+        }
+
+        $existing = $this->partShares[$partSlug] ?? null;
+        if ($existing !== null && $existing->parentSlug !== $parentSlug) {
+            $parentSlug = $existing->parentSlug;
+            $equivalent = $quantity * $existing->equivalent / $existing->quantity;
+        }
+
+        $before = $this->largestEquivalent($parentSlug);
+        $total = new PartShare($parentSlug, ($existing->quantity ?? 0.0) + $quantity, ($existing->equivalent ?? 0.0) + $equivalent);
+        if (!is_finite($total->quantity) || !is_finite($total->equivalent)) {
+            throw ShoppingListException::invalidQuantity();
+        }
+        $this->partShares[$partSlug] = $total;
+
+        $difference = $this->largestEquivalent($parentSlug) - $before;
+        if ($difference > 0) {
+            $this->addRow($parentSlug, $parentPurchaseUnitSlug, $difference);
+        }
+    }
+
+    /**
+     * Retire `$quantity` d'une partie (ADR 0038 décision 8), l'inverse d'`addPart`, PROPORTIONNELLEMENT à ce que la liste a gardé : retirer 1 sur 4
+     * jaunes retire un quart de leur équivalent, quel que soit le ratio du jour. L'entrée disparaît quand il n'en reste rien (au-dessous de
+     * `FLOAT_DUST`, ou quand on retire autant ou plus qu'elle n'a : jamais de quantité nulle ou négative dans le registre) ; la ligne du parent perd
+     * la différence entre l'ancien et le nouveau plus grand équivalent, et disparaît quand il ne reste rien.
+     *
+     * @return ?PartShare ce que ce retrait a ôté du registre (le parent, la quantité et l'équivalent retirés), `null` si la liste n'a rien gardé de cette
+     *                    partie (rien n'est modifié : l'appelant retire alors une ligne ordinaire)
+     *
+     * @throws ShoppingListException la liste est envoyée au drive, ou la quantité n'est pas un nombre fini strictement positif
+     */
+    public function subtractPart(string $partSlug, float $quantity): ?PartShare
+    {
+        $this->assertEditable();
+
+        $share = $this->partShares[$partSlug] ?? null;
+        if ($share === null) {
+            return null;
+        }
+        if (!is_finite($quantity) || $quantity <= 0) {
+            throw ShoppingListException::invalidQuantity();
+        }
+
+        $before = $this->largestEquivalent($share->parentSlug);
+        $remaining = $share->quantity - $quantity;
+        $left = $remaining <= self::FLOAT_DUST ? null : new PartShare($share->parentSlug, $remaining, $share->equivalent * $remaining / $share->quantity);
+        if ($left === null || $left->equivalent <= self::FLOAT_DUST) {
+            unset($this->partShares[$partSlug]);
+            $removed = $share;
+        } else {
+            $this->partShares[$partSlug] = $left;
+            $removed = new PartShare($share->parentSlug, $quantity, $share->equivalent - $left->equivalent);
+        }
+
+        $difference = $before - $this->largestEquivalent($share->parentSlug);
+        if ($difference > 0) {
+            $this->subtractRow($share->parentSlug, $difference);
+        }
+
+        return $removed;
+    }
+
+    /**
+     * Retire la part d'une LIGNE DE RECETTE (le retrait d'un repas, moins de personnes) : sur le registre quand la liste y a gardé cette partie
+     * (ADR 0038 décision 9 : un retrait se décide sur ce que la liste contient, jamais sur ce que l'ingrédient est aujourd'hui), sinon sur la
+     * ligne ordinaire. Un compte sans partie ne passe jamais par le registre.
+     */
+    public function subtractLine(string $ingredientSlug, float $quantity): void
+    {
+        if ($this->subtractPart($ingredientSlug, $quantity) === null) {
+            $this->subtractRow($ingredientSlug, $quantity);
+        }
+    }
+
+    /**
+     * Le plus grand équivalent, dans l'unité d'achat du parent, des parties que la liste a gardées de ce parent (0 sans partie).
+     */
+    private function largestEquivalent(string $parentSlug): float
+    {
+        $largest = 0.0;
+        foreach ($this->partShares as $share) {
+            if ($share->parentSlug === $parentSlug && $share->equivalent > $largest) {
+                $largest = $share->equivalent;
+            }
+        }
+
+        return $largest;
+    }
+
+    /**
+     * Tient l'invariant après une baisse de la ligne du parent (la ligne a perdu de la quantité à la main, à la voix ou en retirant un repas) : plus
+     * de ligne, plus de partie ; une ligne devenue plus petite que le plus grand équivalent de ses parties les réduit toutes dans la même
+     * proportion (le total qui reste est la vérité, jamais une quantité directe négative). Sans partie, rien ne se passe.
+     */
+    private function reconcileParts(string $parentSlug): void
+    {
+        if ($this->partShares === []) {
+            return;
+        }
+        $shares = $this->partsOf($parentSlug);
+        if ($shares === []) {
+            return;
+        }
+
+        $row = $this->findRow($parentSlug);
+        if ($row === null) {
+            foreach (array_keys($shares) as $partSlug) {
+                unset($this->partShares[$partSlug]);
+            }
+
+            return;
+        }
+
+        $largest = $this->largestEquivalent($parentSlug);
+        if ($row->getQuantity() >= $largest - self::FLOAT_DUST) {
+            return;
+        }
+        $factor = $row->getQuantity() / $largest;
+        foreach ($shares as $partSlug => $share) {
+            $this->partShares[$partSlug] = new PartShare($share->parentSlug, $share->quantity * $factor, $share->equivalent * $factor);
         }
     }
 
@@ -384,11 +562,14 @@ final class ShoppingList implements ModelInterface
                     unset($this->ingredients[$key]);
                 }
             }
+            // La ligne disparaît avec tout ce qu'elle contenait, parties comprises (ADR 0038 décision 11)
+            $this->reconcileParts($ingredientSlug);
 
             return 0.0;
         }
 
         $row->subtractQuantity($quantity);
+        $this->reconcileParts($ingredientSlug);
 
         $manualKey = $this->ingredients->findKey(fn(ShoppingListIngredient $manual) => $manual->hasIngredient($ingredientSlug) && $manual->getUnitSlug() === $row->getUnitSlug());
         if ($manualKey !== null) {

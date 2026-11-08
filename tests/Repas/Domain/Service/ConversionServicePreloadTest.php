@@ -82,6 +82,22 @@ class ConversionServicePreloadTest extends TestCase
         $this->assertSame(1, $this->repository->batchReads);
     }
 
+    public function testTheParentsOfPartsAreReadInOneGoAndOnlyWhenTheirUnitsDiffer(): void
+    {
+        // Given : l'œuf (même unité de cuisine et d'achat) et le beurre (gramme -> plaquette), les parents de deux parties (ADR 0038)
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $butter = new IngredientBuilder()->isButter()->build();
+
+        // When
+        $this->service->preloadIngredients([$egg, $butter]);
+        $this->service->preloadIngredients([$egg, $butter]);
+
+        // Then : une seule lecture pour le beurre, aucune pour l'œuf, rien de plus la deuxième fois
+        $this->assertSame([1, 0], [$this->repository->batchReads, $this->repository->singleReads]);
+        $this->assertEqualsWithDelta(0.5, $this->service->convertTo($butter, 125, $butter->getDefaultCookingUnit(), $butter->getDefaultPurchaseUnit()), 1e-9);
+        $this->assertSame([1, 0], [$this->repository->batchReads, $this->repository->singleReads]);
+    }
+
     public function testPreloadingChangesNoResult(): void
     {
         // Given : le même service, sans lecture groupée
