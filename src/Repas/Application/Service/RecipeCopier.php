@@ -7,6 +7,7 @@ use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientMatchCandidates;
+use Repas\Repas\Domain\Interface\IngredientPartLinkRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Model\Conversion;
@@ -36,6 +37,8 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  * 3. à défaut, un ingrédient du copieur, du MÊME rayon, de même nom (`IngredientNameMatcher`, seuil 0,97, garde-fous) ;
  * 4. sinon une COPIE de l'ingrédient pour le copieur (ingrédient, unités, rayon, image, conversions propres ; les conversions communes
  *    restent partagées) : `IngredientSlugPolicy` lui trouve un slug libre, JAMAIS celui d'un ingrédient existant.
+ * 5. après les copies, la LIAISON des sous-ingrédients (ADR 0038 décision 20) : une partie copiée est reliée au parent que le copieur a déjà,
+ *    par provenance (`IngredientPartLinkRepository::linkCopies`) ; jamais un parent copié « pour compléter », jamais un slug étranger.
  *
  * Un ingrédient retenu en 2 ou 3 doit pouvoir convertir l'unité de chaque ligne dans son unité d'achat (`ConversionService`), sinon la
  * planification de la recette échouerait : il n'y a alors pas de lien et la copie est faite. Au moindre doute, on crée une copie : un
@@ -56,6 +59,7 @@ readonly class RecipeCopier
         private IngredientNameMatcher $nameMatcher,
         private IngredientSlugPolicy $slugPolicy,
         private ConversionService $conversionService,
+        private IngredientPartLinkRepository $partLinks,
         private UuidGenerator $uuidGenerator,
         private EventDispatcherInterface $eventDispatcher,
     ) {
@@ -104,10 +108,20 @@ readonly class RecipeCopier
         $retained = $this->retainWithoutCreating($copierId, $sources, $unitsUsed);
 
         // 4 : une copie pour chacun des autres, dans l'ordre de la recette ; une copie retient son origine : ce n'est pas une création
+        $copiedAPart = false;
         foreach ($sources as $slug => $source) {
             if (!isset($retained[$slug])) {
                 $retained[$slug] = $this->copyIngredient($copierId, $source);
+                $copiedAPart = $copiedAPart || $source->isPart();
             }
+        }
+
+        // 5 : le découpage de l'auteur voyage avec les copies (ADR 0038 décisions 5 et 20). Une copie ne recopie jamais `parent_slug` : la partie
+        // copiée est reliée au parent que le copieur a DÉJÀ (ou qu'il vient de recevoir), par provenance, sans jamais écraser un lien à lui. Une
+        // seule instruction, seulement quand une copie vient d'une partie de l'auteur : sans découpage dans la recette, la copie ne coûte
+        // aucune requête de plus.
+        if ($copiedAPart) {
+            $this->partLinks->linkCopies($copierId);
         }
 
         $recipe = Recipe::copyFromOriginal(
