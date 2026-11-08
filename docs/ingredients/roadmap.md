@@ -73,7 +73,7 @@ Une partie (« Jaune d'œuf ») est un ingrédient du compte relié à un parent
 - [x] [SUB-001](tickets/SUB-001-modele-et-decoupage.md) (PR #445) back · L · **xhigh** · Modèle (`parent_slug`, `parent_ratio`), découpage `PUT|DELETE /ingredients/{slug}/parent`, lectures · dépend de : MAR-003
 - [x] [SUB-002](tickets/SUB-002-copie-aux-comptes.md) (PR #450) back · M · **xhigh** · Le découpage voyage : amorçage, copie de recette, rattrapage `seed --complete` · dépend de : 001
 - [x] [SUB-003](tickets/SUB-003-calcul-dans-la-liste.md) (PR #446) back · L · **xhigh** · Le total du parent dans la liste (`part_shares`, `addPart|subtractPart`, handlers, détail), drive prouvé · dépend de : 001
-- [x] [SUB-004](tickets/SUB-004-fusion-suppression-et-registre.md) (PR à venir) back · M · **xhigh** · Fusion, suppression, couverture du schéma · dépend de : 001, 003
+- [x] [SUB-004](tickets/SUB-004-fusion-suppression-et-registre.md) (PR #452) back · M · **xhigh** · Fusion, suppression, couverture du schéma · dépend de : 001, 003
 - [ ] [SUB-005](tickets/SUB-005-voix.md) back · M · **high** · Alexa : ajouter, retirer, demander une partie · dépend de : 003
 - [ ] [SUB-006](tickets/SUB-006-donnees-de-reference-et-exploitation.md) back (documents) + opérations de l'humain · S · **xhigh** · Jaune et blanc d'œuf du catalogue, rattrapage des comptes, recette · dépend de : 001 à 004 en production
 - [ ] [SUB-007](tickets/SUB-007-front-decouper-un-ingredient.md) **front** · L · **high** · Découper un ingrédient, « 5 œufs » et ce qu'ils contiennent (maquette du designer d'abord) · dépend de : 001 et 003 en production

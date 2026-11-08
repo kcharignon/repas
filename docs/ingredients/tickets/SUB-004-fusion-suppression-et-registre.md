@@ -5,7 +5,7 @@
 - **Taille** : M
 - **Effort recommandé pour l'agent** : **xhigh** (fusion en masse, données de l'utilisateur, tests de couverture du schéma)
 - **Dépend de** : SUB-001 et SUB-003 fusionnés (le registre `part_shares` existe)
-- **Statut** : fait (2026-11-08)
+- **Statut** : fait (2026-11-08, PR #452)
 - **Lire d'abord** : [ADR 0038](../../adr/0038-sous-ingredients.md) décisions 25 à 27 ; [`fusion.md`](../fusion.md) ; `IngredientMergePlanner`, `MergeBlock`, `IngredientMergePostgreSQLRepository`, `RemoveIngredientHandler`, `IngredientReferencesAreAllRepointedTest` ; `CLAUDE.md` (puces « Fusion », « Doublons possibles »).
 
 ## À livrer
