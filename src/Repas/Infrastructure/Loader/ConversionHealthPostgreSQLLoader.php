@@ -10,6 +10,7 @@ use Repas\Repas\Application\Query\GetConversionHealth\ConversionHealthAccountDTO
 use Repas\Repas\Application\Query\GetConversionHealth\ConversionHealthDTO;
 use Repas\Repas\Application\Query\GetConversionHealth\ReferenceConversionDTO;
 use Repas\Repas\Application\Query\GetConversionHealth\RepeatedUniversalConversionDTO;
+use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ReferenceUniversalConversions;
 use Repas\Repas\Infrastructure\Conversion\IngredientConversionGraphs;
 
@@ -63,7 +64,8 @@ final readonly class ConversionHealthPostgreSQLLoader implements ConversionHealt
             if (isset($accounts[$ingredient['creator'] ?? ''])) {
                 ++$accounts[$ingredient['creator']]['ingredients'];
                 $accounts[$ingredient['creator']]['ingredientsNotConvertible'] += $convertible ? 0 : 1;
-            } elseif (!$convertible) {
+            } elseif (!$convertible && $ingredient['creator'] !== Recipe::MARMITON_OWNER_ID) {
+                // Les ingrédients du propriétaire réservé des recettes Marmiton (ADR 0037) ne sont à aucun compte et n'ont pas à l'être : ce n'est pas une anomalie
                 ++$unattachedIngredients;
             }
         }
@@ -85,7 +87,8 @@ final readonly class ConversionHealthPostgreSQLLoader implements ConversionHealt
             if (isset($accounts[$row['author']])) {
                 $accounts[$row['author']]['rows'] += $count;
                 $accounts[$row['author']]['rowsNotConvertible'] += $notConvertible;
-            } else {
+            } elseif ($row['author'] !== Recipe::MARMITON_OWNER_ID) {
+                // Idem : une ligne de la recette Marmiton neutre qui ne se convertit pas est « à régler » par qui la copie, pas une anomalie du serveur
                 $unattachedRows += $notConvertible;
             }
         }

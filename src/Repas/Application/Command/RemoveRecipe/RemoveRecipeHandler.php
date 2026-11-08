@@ -28,6 +28,8 @@ readonly class RemoveRecipeHandler
     public function __invoke(RemoveRecipeCommand $command): void
     {
         $recipe = $this->recipeRepository->findOneById($command->recipeId);
+        // La recette Marmiton neutre ne se supprime pas, par personne (ADR 0037 décision 5) : le droit est refusé en amont, la garde le répète
+        $recipe->assertNotFrozen();
         $recipe->assertVersion($command->expectedVersion);
 
         if ($this->shoppingListRepository->isRecipePlanned($recipe->getId())) {
