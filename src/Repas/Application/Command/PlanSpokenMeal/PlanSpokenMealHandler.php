@@ -82,7 +82,7 @@ readonly class PlanSpokenMealHandler
         try {
             $result = $this->plannedMealHandler->plan($recipe, new PlannedMealCommand($command->ownerId, $command->recipeId, $servings, newMainListId: $command->newShoppingListId));
         } catch (IngredientException $exception) {
-            throw $exception->isMissingConversion() ? MealPlanningException::missingConversion($recipe->getName(), $exception->conversionIngredientName()) : $exception;
+            throw $exception->isMissingConversion() ? MealPlanningException::missingConversion($recipe->getName(), $exception->conversionIngredientName(), $exception->conversionRecipeName()) : $exception;
         }
 
         // Une liste envoyée au drive existait avant la liste principale neuve : la liste envoyée n'a pas bougé, Alexa le dit

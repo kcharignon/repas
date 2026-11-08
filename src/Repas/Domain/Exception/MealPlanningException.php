@@ -22,16 +22,19 @@ final class MealPlanningException extends DomainException
         public readonly string $reason,
         public readonly ?string $recipeName,
         public readonly ?string $ingredientName = null,
+        public readonly ?string $componentName = null,
     ) {
         parent::__construct($reason, 422);
     }
 
     /**
      * @param ?string $ingredientName l'ingrédient (de l'utilisateur) dont l'unité ne se convertit pas ; `null` quand on ne le sait pas
+     * @param ?string $componentName  la recette UTILISÉE par la recette (ADR 0040 décision 16) d'où vient la ligne qui ne se convertit pas, pour dire
+     *                                laquelle ouvrir ; `null` quand la ligne est de la recette elle-même
      */
-    public static function missingConversion(string $recipeName, ?string $ingredientName = null): self
+    public static function missingConversion(string $recipeName, ?string $ingredientName = null, ?string $componentName = null): self
     {
-        return new self(self::MISSING_CONVERSION, $recipeName, $ingredientName);
+        return new self(self::MISSING_CONVERSION, $recipeName, $ingredientName, $componentName);
     }
 
     public static function recipeGone(): self

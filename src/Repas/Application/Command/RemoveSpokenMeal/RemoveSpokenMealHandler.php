@@ -82,7 +82,7 @@ readonly class RemoveSpokenMealHandler
             $remaining = $meal->getServing() - $command->servings;
             ($this->updateServingMealHandler)(new UpdateServingMealCommand($meal->getId(), $remaining));
         } catch (IngredientException $exception) {
-            throw $exception->isMissingConversion() ? MealPlanningException::missingConversion($recipe->getName(), $exception->conversionIngredientName()) : $exception;
+            throw $exception->isMissingConversion() ? MealPlanningException::missingConversion($recipe->getName(), $exception->conversionIngredientName(), $exception->conversionRecipeName()) : $exception;
         }
 
         return MealRemovalResult::lowered($recipe->getName(), $remaining);

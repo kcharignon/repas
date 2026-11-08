@@ -22,6 +22,7 @@ final class SpokenMealFailure extends DomainException
         public readonly string $reason,
         public readonly ?string $recipeName,
         public readonly ?string $ingredientName = null,
+        public readonly ?string $componentName = null,
         ?\Throwable $previous = null,
     ) {
         parent::__construct($reason, 422, $previous);
@@ -30,10 +31,13 @@ final class SpokenMealFailure extends DomainException
     /**
      * @param ?string $ingredientName l'ingrédient (de l'utilisateur) dont l'unité ne se convertit pas : Alexa le nomme, comme l'application ; `null` quand
      *                                on ne le sait pas (la phrase retombe sur le nom de la recette). Comme le nom de la recette : dit à son propriétaire, jamais journalisé.
+     * @param ?string $componentName  la recette UTILISÉE par la recette (ADR 0040 décision 16) d'où vient la ligne qui ne se convertit pas : Alexa la nomme
+     *                                (« … pour farine, dans pâte sablée. »), car c'est elle qu'il faut ouvrir ; `null` quand la ligne est de la recette elle-même.
+     *                                Dit à son propriétaire, jamais journalisé.
      */
-    public static function missingConversion(string $recipeName, ?string $ingredientName = null, ?\Throwable $previous = null): self
+    public static function missingConversion(string $recipeName, ?string $ingredientName = null, ?string $componentName = null, ?\Throwable $previous = null): self
     {
-        return new self(self::MISSING_CONVERSION, $recipeName, $ingredientName, $previous);
+        return new self(self::MISSING_CONVERSION, $recipeName, $ingredientName, $componentName, $previous);
     }
 
     public static function recipeGone(?\Throwable $previous = null): self

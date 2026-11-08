@@ -16,6 +16,7 @@ use Repas\Voice\Domain\Exception\SpokenMealFailure;
 use Repas\Voice\Domain\Model\ChangedMealServings;
 use Repas\Voice\Domain\Model\PlannedSpokenMeal;
 use Repas\Voice\Domain\Model\RemovedSpokenMeal;
+use Repas\Voice\Domain\Model\VoiceReplies;
 use Repas\Voice\Domain\Model\ResolvedRecipe;
 use Repas\Voice\Domain\Model\RecipeSuggestion;
 use Repas\Voice\Domain\Model\SpokenRecipeResolution;
@@ -130,8 +131,31 @@ class RepasMealAdaptersTest extends TestCase
                 $this->fail('Un échec connu doit remonter.');
             } catch (SpokenMealFailure $failure) {
                 // Then
-                $this->assertSame([SpokenMealFailure::MISSING_CONVERSION, 'Blanquette', 'Farine'], [$failure->reason, $failure->recipeName, $failure->ingredientName]);
+                $this->assertSame([SpokenMealFailure::MISSING_CONVERSION, 'Blanquette', 'Farine', null], [$failure->reason, $failure->recipeName, $failure->ingredientName, $failure->componentName]);
                 $this->assertInstanceOf(MealPlanningException::class, $failure->getPrevious());
+            }
+        }
+    }
+
+    public function testAMissingConversionInAUsedRecipeKeepsTheNameOfThatRecipe(): void
+    {
+        // Given : la ligne en cause est celle de la pâte, recette utilisée par la tarte (ADR 0040 décision 16)
+        $this->repas->willFailToWriteMeals(MealPlanningException::missingConversion('Tarte au citron', 'Farine', 'Pâte sablée'));
+        $port = $this->repas->mealPlanPort();
+
+        foreach ([
+            static fn() => $port->plan('user-1', 'r1'),
+            static fn() => $port->changeServings('user-1', 'r1', 4),
+            static fn() => $port->removeMeal('user-1', 'r1', 2),
+        ] as $call) {
+            // When
+            try {
+                $call();
+                $this->fail('Un échec connu doit remonter.');
+            } catch (SpokenMealFailure $failure) {
+                // Then : la recette utilisée traverse la couche anticorruption, jusqu'à la phrase
+                $this->assertSame([SpokenMealFailure::MISSING_CONVERSION, 'Tarte au citron', 'Farine', 'Pâte sablée'], [$failure->reason, $failure->recipeName, $failure->ingredientName, $failure->componentName]);
+                $this->assertSame('Il manque une conversion pour farine, dans pâte sablée. Ouvre-la dans Repas.', VoiceReplies::mealFailure($failure->reason, $failure->recipeName, $failure->ingredientName, $failure->componentName));
             }
         }
     }
