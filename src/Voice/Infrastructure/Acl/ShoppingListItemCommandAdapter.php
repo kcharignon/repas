@@ -32,6 +32,7 @@ final readonly class ShoppingListItemCommandAdapter implements ShoppingListItemC
             unitSubstituted: $added->unitSubstituted,
             addedQuantity: $added->addedQuantity,
             listName: $added->listName,
+            foldedInto: $added->foldedInto,
         );
     }
 
@@ -47,6 +48,7 @@ final readonly class ShoppingListItemCommandAdapter implements ShoppingListItemC
             unitName: $removed->unitName,
             unitSubstituted: $removed->unitSubstituted,
             listName: $removed->listName,
+            foldedInto: $removed->foldedInto,
         );
     }
 }

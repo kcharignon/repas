@@ -17,6 +17,8 @@ final readonly class RemovedItem
      * @param ?string $listName       le nom de la liste d'un TYPE dont la ligne a été retirée (ADR 0036, LST-008) ; `null` : la liste principale
      * @param bool   $unitSubstituted une unité a été dite mais n'est pas celle de la ligne : l'ingrédient ne la connaît pas, ou la quantité dite a été
      *                                convertie (ou retirée telle quelle si aucune conversion n'existe)
+     * @param ?string $foldedInto     le nom du PARENT quand l'article dit est une partie d'ingrédient (« jaune d'œuf », ADR 0038 décision 33) : `$remaining`, `$unitSlug` et
+     *                                `$unitName` décrivent alors la ligne du PARENT (« il te reste 4 œufs »), `$removed` ce qui a été retiré de la partie ; `null` : un article ordinaire
      */
     public function __construct(
         public bool $found,
@@ -26,6 +28,7 @@ final readonly class RemovedItem
         public string $unitName = 'unité',
         public bool $unitSubstituted = false,
         public ?string $listName = null,
+        public ?string $foldedInto = null,
     ) {
     }
 

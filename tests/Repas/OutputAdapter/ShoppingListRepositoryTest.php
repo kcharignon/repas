@@ -773,4 +773,38 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $this->assertSame('main', $this->shoppingListRepository->findOneActiveWithRow($user->getId(), 'oeuf')?->getId());
         $this->assertNull($this->shoppingListRepository->findOneActiveWithRow($user->getId(), 'lardon'));
     }
+
+    public function testTheListInProgressThatHoldsAPartOrALineOfAnIngredientIsTheMainListFirstAndNeverASentOne(): void
+    {
+        // Arrange : les œufs et leur partie (ADR 0038 décision 33) ; une liste de type qui garde 2 jaunes, la principale qui n'en garde pas, une envoyée qui en garde
+        $user = $this->savedUser();
+        $make = function (string $id, ?string $typeId, string $date, bool $withPart, ShoppingListStatus $status = ShoppingListStatus::ACTIVE) use ($user): void {
+            $builder = new ShoppingListBuilder()->withId($id)->withOwner($user)->withListTypeId($typeId)->withCreatedAt(new \DateTimeImmutable($date));
+            $this->shoppingListRepository->save($builder->withStatus($status)->build());
+            if ($withPart) {
+                // Le registre est posé tel quel : une liste envoyée ne se modifie plus par le modèle
+                $this->entityManager->getConnection()->executeStatement('UPDATE shopping_list SET part_shares = ?::jsonb WHERE id = ?', [json_encode(['jaune' => ['parent' => 'oeuf', 'quantity' => 2, 'equivalent' => 2]]), $id]);
+            }
+        };
+        $make('sent', null, '2026-01-01T10:00:00+00:00', true, ShoppingListStatus::SENT);
+        $make('market-new', 'market', '2026-03-01T10:00:00+00:00', true);
+        $make('main', null, '2026-06-01T10:00:00+00:00', false);
+        $this->entityManager->clear();
+
+        // Act / Assert : l'entrée du registre, la liste envoyée jamais rendue, un ingrédient dont aucune liste ne parle rien
+        $this->assertSame('market-new', $this->shoppingListRepository->findOneActiveHolding($user->getId(), 'jaune')?->getId());
+        $this->assertNull($this->shoppingListRepository->findOneActiveHolding($user->getId(), 'blanc'));
+        $this->assertNull($this->shoppingListRepository->findOneActiveHolding('someone-else', 'jaune'));
+
+        // Arrange : la principale garde aussi une ligne d'œufs (pas un jaune) : une ligne est trouvée comme avant
+        $main = $this->shoppingListRepository->findOneById('main');
+        $main->addRow('oeuf', 'unite', 1.0);
+        $this->shoppingListRepository->save($main);
+        $this->entityManager->clear();
+
+        // Act / Assert : la liste principale d'abord pour la ligne, la liste du type pour le jaune
+        $this->assertSame('main', $this->shoppingListRepository->findOneActiveHolding($user->getId(), 'oeuf')?->getId());
+        $this->assertSame('market-new', $this->shoppingListRepository->findOneActiveHolding($user->getId(), 'jaune')?->getId());
+        $this->assertSame($this->shoppingListRepository->findOneActiveWithRow($user->getId(), 'oeuf')?->getId(), $this->shoppingListRepository->findOneActiveHolding($user->getId(), 'oeuf')?->getId());
+    }
 }

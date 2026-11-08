@@ -24,6 +24,7 @@ use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\FrozenClock;
+use Repas\Tests\Helper\PartLines;
 use Repas\Tests\Helper\TypedLists;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
@@ -70,6 +71,7 @@ class AddSpokenIngredientHandlerTest extends TestCase
             listRoutingRepository: $typed->routing,
             activeListForType: $typed->activeListForType,
             listName: new SpokenListName($typed->listTypes),
+            partLines: PartLines::for($this->ingredientRepository, new ConversionService($this->conversionRepository, $unitRepository)),
         );
     }
 

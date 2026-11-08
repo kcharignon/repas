@@ -9,6 +9,9 @@ use Repas\Voice\Domain\Service\SpokenUnits;
  * quantité ajoutée et la quantité TOTALE de la ligne après l'ajout, dans l'unité de la ligne, si la ligne existait déjà, si l'utilisateur a cité
  * une unité et si cette unité n'est pas celle de la ligne (inconnue de l'ingrédient, ou convertie dans l'unité de la ligne).
  *
+ * Une PARTIE d'ingrédient (« jaune d'œuf », ADR 0038 décision 33) s'est pliée dans la ligne de son parent : `$foldedInto` dit le nom du parent, et `$total`,
+ * `$unitSlug` et `$unitName` décrivent alors la ligne du PARENT (« 3 œufs »), `$added` ce qui a été ajouté à la partie.
+ *
  * `single()` est le défaut des réponses sans quantité : une unité d'achat, rien de cité.
  */
 final readonly class AddedLine
@@ -28,6 +31,8 @@ final readonly class AddedLine
         public bool $unitSubstituted = false,
         /** Le nom de la liste d'un TYPE qui a reçu l'article (ADR 0036, LST-008) ; `null` : la liste principale. */
         public ?string $listName = null,
+        /** Le nom du parent quand l'article dit est une partie d'ingrédient qui s'est pliée dans sa ligne ; `null` : un article ordinaire. */
+        public ?string $foldedInto = null,
     ) {
     }
 

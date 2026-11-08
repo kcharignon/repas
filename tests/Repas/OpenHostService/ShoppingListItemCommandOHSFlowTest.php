@@ -330,6 +330,43 @@ class ShoppingListItemCommandOHSFlowTest extends DatabaseTestCase
         }
     }
 
+    public function testAddingAndRemovingAPartOfAnIngredientFoldsItIntoTheLineOfItsParent(): void
+    {
+        // Given : 3 œufs dans la liste, « Jaune d'œuf » est une partie d'« Œuf » (ADR 0038 décision 33)
+        $user = $this->savedUser();
+        $egg = new IngredientBuilder()->isEgg()->withCreator($user, true)->build();
+        $this->persister->saveIngredient($egg);
+        $yolk = new IngredientBuilder()->isEgg()->withName("Jaune d'œuf")->withSlug('jaune')->withCreator($user, true)->withParent($egg->getSlug(), 1.0)->build();
+        $this->persister->saveIngredient($yolk);
+        $list = new ShoppingListBuilder()->withOwner($user)->build();
+        $list->addRow($egg->getSlug(), 'unite', 3);
+        $this->shoppingListRepository->save($list);
+        $this->entityManager->clear();
+
+        // When : un jaune, puis trois jaunes
+        $one = $this->voiceShoppingList->addItem($user->getId(), $yolk->getSlug());
+        $three = $this->voiceShoppingList->addItem($user->getId(), $yolk->getSlug(), 3);
+
+        // Then : la ligne du parent dit le total, la partie n'est jamais une ligne
+        $this->assertEquals(new AddedItem(listCreated: false, previousListSent: false, quantity: 4.0, lineExisted: true, addedQuantity: 1.0, foldedInto: $egg->getName()), $one);
+        $this->assertSame([7.0, 3.0, $egg->getName()], [$three->quantity, $three->addedQuantity, $three->foldedInto]);
+        $this->entityManager->clear();
+        $reloaded = $this->shoppingListRepository->findOneById($list->getId());
+        $this->assertSame([$egg->getSlug()], array_map(static fn($row) => $row->getIngredientSlug(), $reloaded->getRows()->toArray()));
+        $this->assertSame(7.0, $reloaded->findRow($egg->getSlug())->getQuantity());
+        $this->assertSame(4.0, $reloaded->partShareOf($yolk->getSlug())->quantity);
+
+        // And : retirer deux jaunes
+        $removed = $this->voiceShoppingList->removeItem($user->getId(), $yolk->getSlug(), 2);
+        $this->assertEquals(new RemovedItem(found: true, remaining: 5.0, removed: 2.0, unitSlug: 'unite', unitName: 'unité', foldedInto: $egg->getName()), $removed);
+        // And : plus de jaune du tout, puis un jaune de trop
+        $this->voiceShoppingList->removeItem($user->getId(), $yolk->getSlug(), 5);
+        $this->assertFalse($this->voiceShoppingList->removeItem($user->getId(), $yolk->getSlug())->found);
+        $this->entityManager->clear();
+        $final = $this->shoppingListRepository->findOneById($list->getId());
+        $this->assertSame([3.0, []], [$final->findRow($egg->getSlug())->getQuantity(), $final->getPartShares()]);
+    }
+
     private function savedUser(): User
     {
         $user = new UserBuilder()->build();

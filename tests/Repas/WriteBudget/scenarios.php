@@ -348,6 +348,29 @@ return [
 
         return new AddIngredientToShoppingListCommand($owner->getId(), $part->getSlug());
     },
+    // La voix et les sous-ingrédients (ADR 0038 décision 33, SUB-005) : « ajoute / enlève un jaune d'œuf » dans une liste qui planifie déjà une recette à parties.
+    // La partie va au registre de la liste de son parent, ou en est retirée ; la liste d'un compte sans partie ne coûte rien de plus (budgets
+    // `ajouter-*` et `retirer-*` des articles ordinaires inchangés). Constants quel que soit le nombre de parties (PartsReadsAreConstantTest).
+    'ajouter-partie-par-la-voix' => static function (WriteBudgetTestCase $t) use ($partsRecipe): object {
+        [$owner, , $part] = $partsRecipe($t, 2, true);
+
+        return new AddSpokenIngredientCommand($owner->getId(), $part->getSlug(), UuidGenerator::new());
+    },
+    'retirer-partie-par-la-voix' => static function (WriteBudgetTestCase $t) use ($partsRecipe): object {
+        [$owner, , $part] = $partsRecipe($t, 2, true);
+
+        return new RemoveSpokenIngredientCommand($owner->getId(), $part->getSlug());
+    },
+    'ajouter-partie-dit-a-alexa' => static function (WriteBudgetTestCase $t) use ($partsRecipe): object {
+        [$owner, , $part] = $partsRecipe($t, 2, true);
+
+        return new AddSpokenItemCommand($owner->getId(), $part->getName(), true);
+    },
+    'retirer-partie-dit-a-alexa' => static function (WriteBudgetTestCase $t) use ($partsRecipe): object {
+        [$owner, , $part] = $partsRecipe($t, 2, true);
+
+        return new RemoveSpokenItemCommand($owner->getId(), $part->getName(), true);
+    },
     'retirer-repas' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
         [$first] = $recipes = $t->typicalRecipes($owner);

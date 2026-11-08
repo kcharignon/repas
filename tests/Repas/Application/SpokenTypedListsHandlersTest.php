@@ -22,6 +22,7 @@ use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
+use Repas\Tests\Helper\PartLines;
 use Repas\Tests\Helper\SplitRecipeScenario;
 
 /**
@@ -55,6 +56,7 @@ class SpokenTypedListsHandlersTest extends TestCase
             listRoutingRepository: $this->s->typed->routing,
             activeListForType: $this->s->typed->activeListForType,
             listName: new SpokenListName($this->s->typed->listTypes),
+            partLines: PartLines::for($this->s->ingredients, new ConversionService($this->s->conversionRepository, $this->units)),
         );
     }
 

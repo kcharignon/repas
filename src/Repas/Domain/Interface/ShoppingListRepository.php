@@ -92,6 +92,14 @@ interface ShoppingListRepository
     public function findOneActiveWithRow(string $ownerId, string $ingredientSlug): ?ShoppingList;
 
     /**
+     * La liste EN COURS du propriétaire qui porte cet ingrédient : une ligne de cet ingrédient, OU une entrée de son registre des parties quand c'est une
+     * PARTIE d'ingrédient (ADR 0038 décisions 6 et 33 : une partie n'est jamais une ligne, la liste en garde une entrée) ; la liste principale d'abord, puis
+     * la plus ancienne. Une seule requête, comme `findOneActiveWithRow` : retirer un article dit à la voix cherche ici. Une liste envoyée au drive, en pause
+     * ou terminée n'est jamais rendue.
+     */
+    public function findOneActiveHolding(string $ownerId, string $ingredientSlug): ?ShoppingList;
+
+    /**
      * Une liste de courses contient-elle cet ingrédient ? (existence seulement : aucun agrégat n'est hydraté, une seule requête). Un produit ajouté
      * à la main dans une liste, ou une entrée du registre des parties d'une liste NON TERMINÉE qui le nomme, en partie ou en parent (ADR 0038
      * décisions 6 et 26 : le registre n'est jamais réécrit, un ingrédient qu'il nomme ne se supprime ni ne se fusionne).

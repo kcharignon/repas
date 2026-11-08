@@ -29,6 +29,12 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *
  * Alias résolus comme partout (un ancien slug désigne l'ingrédient actuel de l'utilisateur) ; un ingrédient d'un autre n'a aucune ligne dans la
  * liste de l'utilisateur : « pas dans la liste », sans rien révéler.
+ *
+ * Une PARTIE d'ingrédient (« Jaune d'œuf », ADR 0038 décisions 11 et 33) n'a pas de ligne : ce que la liste en a gardé est une entrée de son registre. Un
+ * retrait suit la LISTE, jamais ce que l'ingrédient est aujourd'hui (décision 9) : la liste qui porte la ligne ou l'entrée du registre
+ * (`findOneActiveHolding`, une seule requête, comme avant). Une entrée se diminue
+ * PROPORTIONNELLEMENT (`ShoppingList::subtractPart`), la ligne du parent perd la différence de son plus grand équivalent, et le résultat décrit la ligne du
+ * PARENT (`RemovedItem::$foldedInto` : « Il te reste 4 œufs. »). Un ingrédient ordinaire fait les mêmes lectures et les mêmes écritures qu'avant.
  */
 #[AsMessageHandler]
 readonly class RemoveSpokenIngredientHandler
@@ -39,7 +45,7 @@ readonly class RemoveSpokenIngredientHandler
         private ShoppingListRepository $shoppingListRepository,
         private IngredientSlugResolver $slugResolver,
         private UnitRepository $unitRepository,
-        IngredientRepository $ingredientRepository,
+        private IngredientRepository $ingredientRepository,
         ConversionService $conversionService,
         private SpokenListName $listName,
     ) {
@@ -62,9 +68,17 @@ readonly class RemoveSpokenIngredientHandler
 
         // La liste en cours qui porte la ligne : la liste principale d'abord (un compte sans type n'en a pas d'autre), sinon la plus ancienne liste d'un
         // type qui la porte (ADR 0036, LST-008 : le même ordre que diminuer un produit). Une seule lecture ; sans liste en cours ou sans ligne, rien n'est écrit
-        $shoppingList = $this->shoppingListRepository->findOneActiveWithRow($command->ownerId, $ingredientSlug);
-        $row = $shoppingList?->findRow($ingredientSlug);
-        if (!$shoppingList instanceof ShoppingList || $row === null) {
+        $shoppingList = $this->shoppingListRepository->findOneActiveHolding($command->ownerId, $ingredientSlug);
+        if (!$shoppingList instanceof ShoppingList) {
+            return new RemovedItem(found: false);
+        }
+        // Le registre de la liste décide, pas l'ingrédient d'aujourd'hui (décision 9) : une entrée pour ce slug (une partie d'ingrédient n'a jamais de ligne,
+        // ADR 0038 décision 33) se diminue avant toute ligne
+        if ($shoppingList->partShareOf($ingredientSlug) !== null) {
+            return $this->removePart($shoppingList, $ingredientSlug, $command);
+        }
+        $row = $shoppingList->findRow($ingredientSlug);
+        if ($row === null) {
             return new RemovedItem(found: false);
         }
 
@@ -82,6 +96,46 @@ readonly class RemoveSpokenIngredientHandler
             unitName: $this->unitRepository->findOneBySlug($unitSlug)->getName(),
             unitSubstituted: $substituted,
             listName: $shoppingList->getListTypeId() === null ? null : $this->listName->ofTyped($shoppingList->getName(), $shoppingList->getListTypeId()),
+        );
+    }
+
+    /**
+     * Retire `$command->quantity` d'une PARTIE d'ingrédient, dans l'unité d'achat de la partie (celle de l'entrée du registre ; l'unité dite est convertie
+     * quand elle diffère, comme pour une ligne). La partie entière quitte le registre quand on retire autant ou plus qu'elle n'a ; la ligne du parent
+     * garde sa quantité directe (rien de ce que les œufs entiers ont posé n'est retiré).
+     */
+    private function removePart(ShoppingList $shoppingList, string $partSlug, RemoveSpokenIngredientCommand $command): RemovedItem
+    {
+        $kept = $shoppingList->partShareOf($partSlug)?->quantity;
+        if ($kept === null) {
+            return new RemovedItem(found: false);
+        }
+        $quantity = (float) $command->quantity;
+        $substituted = false;
+        if ($command->unitSlug !== null) {
+            $partUnitSlug = $this->ingredientRepository->findOneBySlug($partSlug)->getDefaultPurchaseUnit()->getSlug();
+            [, $quantity, $substituted] = $this->lineQuantity->inLineUnit($partSlug, $command->quantity, $command->unitSlug, $partUnitSlug, $partUnitSlug);
+        }
+
+        $share = $shoppingList->subtractPart($partSlug, $quantity);
+        if ($share === null) {
+            return new RemovedItem(found: false);
+        }
+        $this->shoppingListRepository->save($shoppingList);
+
+        $parent = $this->ingredientRepository->findOneBySlug($share->parentSlug);
+        $row = $shoppingList->findRow($parent->getSlug());
+        $unitSlug = $row?->getUnitSlug() ?? $parent->getDefaultPurchaseUnit()->getSlug();
+
+        return new RemovedItem(
+            found: true,
+            remaining: $row?->getQuantity() ?? 0.0,
+            removed: min($quantity, $kept),
+            unitSlug: $unitSlug,
+            unitName: $this->unitRepository->findOneBySlug($unitSlug)->getName(),
+            unitSubstituted: $substituted,
+            listName: $shoppingList->getListTypeId() === null ? null : $this->listName->ofTyped($shoppingList->getName(), $shoppingList->getListTypeId()),
+            foldedInto: $parent->getName(),
         );
     }
 }

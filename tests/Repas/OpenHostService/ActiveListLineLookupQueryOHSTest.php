@@ -5,7 +5,9 @@ namespace Repas\Tests\Repas\OpenHostService;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\OpenHostService\ActiveListLineDTO;
 use Repas\Repas\Application\OpenHostService\ActiveListLineLookupQueryOHS;
+use Repas\Repas\Application\OpenHostService\ActiveListParentDTO;
 use Repas\Repas\Domain\Model\ActiveListLine;
+use Repas\Repas\Domain\Model\ActiveListParent;
 use Repas\Repas\Domain\Model\SpokenCandidate;
 use Repas\Repas\Domain\Service\ActiveListLookup;
 use Repas\Repas\Domain\Service\SpokenIngredientRanker;
@@ -79,6 +81,27 @@ class ActiveListLineLookupQueryOHSTest extends TestCase
         // Then
         $this->assertEquals([new ActiveListLineDTO('croquette', 'Croquette', 'animalerie', 'Animalerie', 2.0, 'paquet', 'paquet')], $match->lines);
         $this->assertSame([true, null, false, []], [$match->hasList, $match->absentName, $match->listSent, $match->suggestions]);
+    }
+
+    public function testAPartOfAnIngredientIsPublishedWithTheParentLineItCountsIn(): void
+    {
+        // Given : la partie est une « ligne » du registre de la liste, qui dit sa ligne d'œufs (ADR 0038 décision 33)
+        $ohs = $this->ohs(
+            [
+                self::line('oeuf', 'Œuf', 'divers', 'Divers', 5.0),
+                new ActiveListLine('jaune', "Jaune d'œuf", 'divers', 'Divers', 2.0, 'unite', 'unité', null, new ActiveListParent('Œuf', 5.0, 'unite', 'unité')),
+            ],
+            [new SpokenCandidate('jaune', 'jaune-d-oeuf', "Jaune d'œuf", 'Divers', 0, 'divers'), new SpokenCandidate('oeuf', 'oeuf', 'Œuf', 'Divers', 0, 'divers')],
+        );
+
+        // When
+        $match = $ohs->findLine('user-id', "un jaune d'œuf");
+
+        // Then : un DTO, avec la ligne du parent, jamais un modèle de Repas
+        $this->assertEquals(
+            [new ActiveListLineDTO('jaune', "Jaune d'œuf", 'divers', 'Divers', 2.0, 'unite', 'unité', null, new ActiveListParentDTO('Œuf', 5.0, 'unite', 'unité'))],
+            $match->lines,
+        );
     }
 
     public function testIngredientsThatTieAreAllInTheListAndPublishedWithTheirDepartment(): void

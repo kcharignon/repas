@@ -59,7 +59,7 @@ final readonly class SpokenListAnswerer
 
     private static function listLine(ListedLine $line): ListLine
     {
-        return new ListLine($line->name, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName, $line->listName);
+        return new ListLine($line->name, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName, $line->listName, $line->foldedInto);
     }
 
     /**

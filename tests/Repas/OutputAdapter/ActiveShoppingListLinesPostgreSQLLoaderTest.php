@@ -10,6 +10,7 @@ use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Domain\Model\ShoppingListType;
 use Repas\Repas\Domain\Model\ActiveListLine;
+use Repas\Repas\Domain\Model\ActiveListParent;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
@@ -211,6 +212,82 @@ class ActiveShoppingListLinesPostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then : toujours deux requêtes
         $this->assertSame(2, $counter->count());
+    }
+
+    public function testAPartOfAnIngredientIsALineOfTheRegistryThatSaysWhereItCounts(): void
+    {
+        // Given : 3 œufs et 2 jaunes d'œuf (une partie, ADR 0038) : la liste dit 5 œufs, le registre garde les 2 jaunes
+        $user = $this->savedUser();
+        $egg = $this->savedIngredient($user, new IngredientBuilder()->isEgg());
+        $yolk = $this->savedIngredient($user, new IngredientBuilder()->isEgg()->withName("Jaune d'œuf")->withSlug('jaune')->withParent($egg->getSlug(), 1.0));
+        $list = new ShoppingListBuilder()->withOwner($user)->addIngredient($egg)->build();
+        $list->addRow($egg->getSlug(), 'unite', 2);
+        $list->addPart($yolk->getSlug(), $egg->getSlug(), 'unite', 2.0, 2.0);
+        $this->shoppingLists->save($list);
+        $this->entityManager->clear();
+
+        // When
+        $lines = $this->bySlug($this->loader->forUser($user->getId()) ?? []);
+
+        // Then : la ligne des œufs, et la partie comme une ligne qui dit le parent où elle compte (nom, total, unité)
+        $this->assertSame([5.0, null], [$lines[$egg->getSlug()]->quantity, $lines[$egg->getSlug()]->foldedInto]);
+        $this->assertEquals(
+            new ActiveListLine($yolk->getSlug(), $yolk->getName(), $yolk->getDepartment()->getSlug(), $yolk->getDepartment()->getName(), 2.0, 'unite', 'unité', null, new ActiveListParent($egg->getName(), 5.0, 'unite', 'unité')),
+            $lines[$yolk->getSlug()],
+        );
+    }
+
+    public function testAnEntryOfTheRegistryWhoseParentHasNoLineOrWhoseIngredientIsGoneIsNotRead(): void
+    {
+        // Given : un registre abîmé (jamais par l'API) : une entrée pour un parent sans ligne, une autre pour un ingrédient qui n'existe plus
+        $user = $this->savedUser();
+        $egg = $this->savedIngredient($user, new IngredientBuilder()->isEgg());
+        $yolk = $this->savedIngredient($user, new IngredientBuilder()->isEgg()->withName("Jaune d'œuf")->withSlug('jaune')->withParent($egg->getSlug(), 1.0));
+        $milk = $this->savedIngredient($user, new IngredientBuilder()->isMilk());
+        $list = new ShoppingListBuilder()->withOwner($user)->addIngredient($milk)->build();
+        $this->shoppingLists->save($list);
+        $this->entityManager->getConnection()->executeStatement(
+            'UPDATE shopping_list SET part_shares = ?::jsonb WHERE id = ?',
+            [json_encode([$yolk->getSlug() => ['parent' => $egg->getSlug(), 'quantity' => 2, 'equivalent' => 2], 'fantome' => ['parent' => $milk->getSlug(), 'quantity' => 1, 'equivalent' => 1]]), $list->getId()],
+        );
+        $this->entityManager->clear();
+
+        // When / Then : seule la ligne du lait est lue
+        $this->assertSame([$milk->getSlug()], array_keys($this->bySlug($this->loader->forUser($user->getId()) ?? [])));
+    }
+
+    public function testTheNumberOfQueriesIsOneMoreOnlyWhenTheRegistryHasEntriesWhateverTheirNumber(): void
+    {
+        // Given : un compte sans partie (deux requêtes), puis des listes qui gardent une, puis six parties
+        $user = $this->savedUser();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $egg = $this->savedIngredient($user, new IngredientBuilder()->isEgg());
+        $list = new ShoppingListBuilder()->withOwner($user)->addIngredient($egg)->build();
+        $this->shoppingLists->save($list);
+        $this->entityManager->clear();
+        $counter->reset();
+        $this->loader->forUser($user->getId());
+        $without = $counter->count();
+
+        $withParts = function (int $parts) use ($user, $egg, $list, $counter): int {
+            $reloaded = $this->shoppingLists->findOneById($list->getId());
+            for ($i = 0; $i < $parts; $i++) {
+                $part = $this->savedIngredient($user, new IngredientBuilder()->isEgg()->withName("Partie $parts-$i")->withSlug("partie-$parts-$i")->withParent($egg->getSlug(), 1.0));
+                $reloaded->addPart($part->getSlug(), $egg->getSlug(), 'unite', 1.0, 1.0);
+            }
+            $this->shoppingLists->save($reloaded);
+            $this->entityManager->clear();
+            $counter->reset();
+            $this->loader->forUser($user->getId());
+
+            return $counter->count();
+        };
+
+        // When / Then : une requête de plus pour les parties, jamais davantage avec le nombre de parties
+        $this->assertSame(2, $without);
+        $one = $withParts(1);
+        $this->assertSame(3, $one);
+        $this->assertSame($one, $withParts(5));
     }
 
     public function testItSaysWhetherTheUserHasAListSentToTheDriveInOneQuery(): void

@@ -9,6 +9,7 @@ use ReflectionClass;
 use Repas\Voice\Domain\Model\AddedLine;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\ListLine;
+use Repas\Voice\Domain\Model\ParentLine;
 use Repas\Voice\Domain\Model\RemovedLine;
 use Repas\Voice\Domain\Model\SpokenDialogueState;
 use Repas\Voice\Domain\Exception\SpokenMealFailure;
@@ -972,6 +973,113 @@ class VoiceRepliesTest extends TestCase
             }
             $this->assertStringNotContainsString('%', $answer);
             $this->assertStringNotContainsStringIgnoringCase('autre chose', $answer);
+        }
+    }
+
+    public function testTheAnswersToAPartOfAnIngredientSayTheTotalOfTheParentLine(): void
+    {
+        // Given : « jaune d'œuf » se plie dans la ligne des œufs (ADR 0038 décision 33, SUB-005) ; `total`, l'unité décrivent la ligne du PARENT
+        $one = new AddedLine(1.0, 3.0, 'unite', 'unité', existed: true, foldedInto: 'Œuf');
+        $many = new AddedLine(3.0, 7.0, 'unite', 'unité', existed: true, foldedInto: 'Œuf');
+        $first = new AddedLine(1.0, 1.0, 'unite', 'unité', foldedInto: 'Œuf');
+
+        // Then : « C'est ajouté. Ça fait 3 œufs dans ta liste. »
+        $this->assertSame("C'est ajouté. Ça fait 3 œufs dans ta liste.", VoiceReplies::added("jaune d'œuf", 'divers', true, false, false, $one));
+        $this->assertSame("C'est ajouté. Ça fait 7 œufs dans ta liste.", VoiceReplies::added("jaune d'œuf", 'divers', true, false, false, $many));
+        $this->assertSame("C'est ajouté. Ça fait 1 œuf dans ta liste.", VoiceReplies::added("jaune d'œuf", 'divers', true, false, false, $first));
+        $this->assertSame("J'ai mis jaune d'œuf, divers. Ça fait 3 œufs dans ta liste.", VoiceReplies::added("jaune d'œuf", 'divers', false, false, false, $one));
+        $this->assertSame("J'ai commencé une nouvelle liste avec 3 jaunes d'œuf.", VoiceReplies::added("jaune d'œuf", 'divers', true, true, false, new AddedLine(3.0, 3.0, 'unite', 'unité', foldedInto: 'Œuf')));
+        $this->assertSame(
+            "J'ai commencé une nouvelle liste avec jaune d'œuf. Ta liste précédente est partie au drive.",
+            VoiceReplies::added("jaune d'œuf", 'divers', true, true, true, $first),
+        );
+        $this->assertSame("C'est noté, ça fait 3 œufs dans ta liste. Je m'en souviendrai.", VoiceReplies::remembered("jaune d'œuf", false, false, $one));
+        $this->assertSame("C'est noté, ça fait 3 œufs dans ta liste. Je m'en souviendrai.", VoiceReplies::rememberedIn("jaune d'œuf", 'divers', false, false, $one));
+        // Une quantité qui n'est pas à l'unité se dit avec son unité
+        $this->assertSame(
+            "C'est ajouté. Ça fait 2 kilos de farine dans ta liste.",
+            VoiceReplies::added('semoule', 'épicerie', true, false, false, new AddedLine(1.0, 2.0, 'kilo', 'kilo', existed: true, foldedInto: 'Farine')),
+        );
+        // Dans la liste d'un type
+        $this->assertSame(
+            "C'est ajouté à marché. Ça fait 3 œufs.",
+            VoiceReplies::added("jaune d'œuf", 'divers', true, false, false, new AddedLine(1.0, 3.0, 'unite', 'unité', existed: true, listName: 'Marché', foldedInto: 'Œuf')),
+        );
+        $this->assertSame(
+            "C'est noté à marché, ça fait 3 œufs. Je m'en souviendrai.",
+            VoiceReplies::remembered("jaune d'œuf", false, false, new AddedLine(1.0, 3.0, 'unite', 'unité', existed: true, listName: 'Marché', foldedInto: 'Œuf')),
+        );
+    }
+
+    public function testRemovingAPartOfAnIngredientSaysWhatIsLeftOfTheParentLine(): void
+    {
+        // Then : « C'est retiré. Il te reste 2 œufs. » ; la ligne du parent a disparu : « Il n'y a plus d'œuf dans ta liste. »
+        $this->assertSame("C'est retiré. Il te reste 2 œufs.", VoiceReplies::removed("jaune d'œuf", new RemovedLine(1.0, 2.0, 'unite', 'unité', foldedInto: 'Œuf')));
+        $this->assertSame("C'est retiré. Il te reste 1 œuf.", VoiceReplies::removed("jaune d'œuf", new RemovedLine(1.0, 1.0, 'unite', 'unité', foldedInto: 'Œuf')));
+        $this->assertSame("C'est retiré. Il n'y a plus d'œuf dans ta liste.", VoiceReplies::removed("jaune d'œuf", new RemovedLine(2.0, 0.0, 'unite', 'unité', foldedInto: 'Œuf')));
+        $this->assertSame(
+            "C'est retiré de marché. Il te reste 4 œufs.",
+            VoiceReplies::removed("jaune d'œuf", new RemovedLine(1.0, 4.0, 'unite', 'unité', listName: 'Marché', foldedInto: 'Œuf')),
+        );
+        $this->assertSame(
+            "C'est retiré de marché. Il n'y a plus d'œuf dans cette liste.",
+            VoiceReplies::removed("jaune d'œuf", new RemovedLine(1.0, 0.0, 'unite', 'unité', listName: 'Marché', foldedInto: 'Œuf')),
+        );
+        // Un reste négligeable est une ligne disparue
+        $this->assertStringStartsWith("C'est retiré. Il n'y a plus", VoiceReplies::removed("jaune d'œuf", new RemovedLine(1.0, 0.004, 'unite', 'unité', foldedInto: 'Œuf')));
+    }
+
+    public function testAskingAboutAPartOfAnIngredientSaysWhereItCounts(): void
+    {
+        $egg = static fn(float $total): ParentLine => new ParentLine('Œuf', $total, 'unite', 'unité');
+
+        // Then : « Oui : 2 jaunes d'œuf, ils comptent dans tes 5 œufs. »
+        $this->assertSame("Oui : 2 jaunes d'œuf. Ça compte dans tes 5 œufs.", VoiceReplies::inList(new ListLine("jaune d'œuf", 'divers', 2.0, 'unite', 'unité', foldedInto: $egg(5.0))));
+        $this->assertSame("Oui : 1 jaune d'œuf. Ça compte dans tes 5 œufs.", VoiceReplies::inList(new ListLine("jaune d'œuf", 'divers', 1.0, 'unite', 'unité', foldedInto: $egg(5.0))));
+        $this->assertSame("Oui : 1 jaune d'œuf. Ça fait 1 œuf dans ta liste.", VoiceReplies::inList(new ListLine("jaune d'œuf", 'divers', 1.0, 'unite', 'unité', foldedInto: $egg(1.0))));
+        $this->assertSame(
+            "Oui : 2 jaunes d'œuf dans la liste marché. Ça compte dans tes 5 œufs.",
+            VoiceReplies::inList(new ListLine("jaune d'œuf", 'divers', 2.0, 'unite', 'unité', 'Marché', $egg(5.0))),
+        );
+        $this->assertSame(
+            'Oui : 2 cuillères de semoule. Ça compte dans tes 3 kilos de farine.',
+            VoiceReplies::inList(new ListLine('cuillère de semoule', 'épicerie', 2.0, 'unite', 'unité', foldedInto: new ParentLine('Farine', 3.0, 'kilo', 'kilo'))),
+        );
+    }
+
+    public function testEveryAnswerAboutAPartOfAnIngredientStaysShortWithRealisticNames(): void
+    {
+        // Given : des noms et des listes longs
+        $parent = 'Gousse de vanille de Madagascar';
+        $part = 'Graines de gousse de vanille de Madagascar';
+        $list = 'Épicerie fine du marché couvert';
+        $answers = [
+            VoiceReplies::added($part, 'épicerie', true, false, false, new AddedLine(3.0, 7.0, 'gousse', 'gousse', existed: true, foldedInto: $parent)),
+            VoiceReplies::added($part, 'épicerie', false, false, false, new AddedLine(3.0, 7.0, 'gousse', 'gousse', existed: true, foldedInto: $parent)),
+            VoiceReplies::added($part, 'épicerie', true, false, false, new AddedLine(3.0, 7.0, 'gousse', 'gousse', existed: true, listName: $list, foldedInto: $parent)),
+            VoiceReplies::added($part, 'épicerie', false, false, false, new AddedLine(3.0, 7.0, 'gousse', 'gousse', existed: true, listName: $list, foldedInto: $parent)),
+            VoiceReplies::added($part, 'épicerie', true, true, true, new AddedLine(3.0, 3.0, 'gousse', 'gousse', foldedInto: $parent)),
+            VoiceReplies::remembered($part, false, false, new AddedLine(3.0, 7.0, 'gousse', 'gousse', existed: true, foldedInto: $parent)),
+            VoiceReplies::remembered($part, false, false, new AddedLine(3.0, 7.0, 'gousse', 'gousse', existed: true, listName: $list, foldedInto: $parent)),
+            VoiceReplies::remembered($part, true, true, new AddedLine(3.0, 3.0, 'gousse', 'gousse', foldedInto: $parent)),
+            VoiceReplies::removed($part, new RemovedLine(3.0, 4.0, 'gousse', 'gousse', foldedInto: $parent)),
+            VoiceReplies::removed($part, new RemovedLine(3.0, 0.0, 'gousse', 'gousse', foldedInto: $parent)),
+            VoiceReplies::removed($part, new RemovedLine(3.0, 4.0, 'gousse', 'gousse', listName: $list, foldedInto: $parent)),
+            VoiceReplies::removed($part, new RemovedLine(3.0, 0.0, 'gousse', 'gousse', listName: $list, foldedInto: $parent)),
+            VoiceReplies::inList(new ListLine($part, 'épicerie', 2.0, 'unite', 'unité', foldedInto: new ParentLine($parent, 5.0, 'gousse', 'gousse'))),
+            VoiceReplies::inList(new ListLine($part, 'épicerie', 2.0, 'unite', 'unité', $list, new ParentLine($parent, 5.0, 'gousse', 'gousse'))),
+        ];
+
+        foreach ($answers as $answer) {
+            // Then : deux phrases au plus, 15 mots chacune, tutoiement, jamais de relance
+            $sentences = $this->sentences($answer);
+            $this->assertLessThanOrEqual(2, count($sentences), $answer);
+            foreach ($sentences as $sentence) {
+                $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $sentence)), $sentence);
+            }
+            $this->assertStringNotContainsString('%', $answer);
+            $this->assertStringNotContainsStringIgnoringCase('autre chose', $answer);
+            $this->assertDoesNotMatchRegularExpression('/(?<![\p{L}])(vous|votre|vos)(?![\p{L}])/u', mb_strtolower($answer), $answer);
         }
     }
 }

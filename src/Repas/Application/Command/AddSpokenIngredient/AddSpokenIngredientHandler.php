@@ -6,6 +6,8 @@ use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListHandler;
 use Repas\Repas\Application\Service\ActiveListForType;
 use Repas\Repas\Application\Service\IngredientSlugResolver;
+use Repas\Repas\Application\Service\PartAwareLines;
+use Repas\Repas\Application\Service\PreparedLine;
 use Repas\Repas\Application\Service\SpokenListName;
 use Repas\Repas\Application\Service\SpokenLineQuantity;
 use Repas\Repas\Domain\Exception\IngredientException;
@@ -14,6 +16,7 @@ use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\ListRoutingRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Repas\Domain\Model\AddedItem;
@@ -37,6 +40,11 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *
  * L'ingrédient et l'unité dite ne sont lus que lorsqu'une unité est dite et diffère de celle de la ligne : l'ajout ordinaire ne coûte qu'une
  * lecture de l'unité de la ligne (son nom).
+ *
+ * Une PARTIE d'ingrédient (« Jaune d'œuf », ADR 0038 décisions 11 et 33) n'est jamais une ligne : la quantité dite va À LA PARTIE, donc au registre de la
+ * liste de son parent (`ShoppingList::addPart`), et la ligne du parent grandit de la différence de son plus grand équivalent. Le placement dit déjà
+ * celui du parent (sa liste, son unité d'achat). Le résultat décrit alors la ligne du PARENT (`AddedItem::$foldedInto` : son nom, son total, son unité) :
+ * « Ça fait 3 œufs dans ta liste. ». Un ingrédient ordinaire fait exactement les mêmes écritures et les mêmes lectures qu'avant.
  */
 #[AsMessageHandler]
 readonly class AddSpokenIngredientHandler
@@ -53,6 +61,7 @@ readonly class AddSpokenIngredientHandler
         private ListRoutingRepository $listRoutingRepository,
         private ActiveListForType $activeListForType,
         private SpokenListName $listName,
+        private PartAwareLines $partLines,
     ) {
         $this->lineQuantity = new SpokenLineQuantity($ingredientRepository, $unitRepository, $conversionService);
     }
@@ -75,6 +84,9 @@ readonly class AddSpokenIngredientHandler
         $placement = $this->listRoutingRepository->placementsFor($command->ownerId, [$ingredientSlug])[$ingredientSlug] ?? throw IngredientException::notFound($ingredientSlug);
         $purchaseUnitSlug = $placement->purchaseUnitSlug;
 
+        // Une partie est jugée AVANT la première écriture (une conversion manquante du parent refuse tout, la liste n'est pas créée pour rien)
+        [$partLine, $parent, $partQuantity, $partSubstituted] = $placement->partOf === null ? [null, null, 0.0, false] : $this->preparePart($command, $ingredientSlug);
+
         $listCreated = false;
         $previousListSent = false;
         $spokenListName = null;
@@ -92,6 +104,14 @@ readonly class AddSpokenIngredientHandler
                 ($this->createShoppingListHandler)(new CreateShoppingListCommand($command->newShoppingListId, $command->ownerId));
                 $shoppingList = $this->shoppingListRepository->findOneById($command->newShoppingListId);
             }
+        }
+
+        if ($partLine !== null && $parent !== null) {
+            $existed = $shoppingList->findRow($parent->getSlug()) !== null;
+            $partLine->addTo($shoppingList);
+            $this->shoppingListRepository->save($shoppingList);
+
+            return $this->foldedItem($shoppingList, $parent, $existed, $partQuantity, $partSubstituted, $listCreated, $previousListSent, $spokenListName);
         }
 
         $existingRow = $shoppingList->findRow($ingredientSlug);
@@ -112,6 +132,47 @@ readonly class AddSpokenIngredientHandler
             unitSubstituted: $substituted,
             addedQuantity: $quantity,
             listName: $spokenListName,
+        );
+    }
+
+    /**
+     * La quantité dite pour une PARTIE, dans l'unité d'achat de la partie (celle du registre ; l'unité dite est convertie quand elle diffère, comme pour une
+     * ligne), prête à poser, avec le parent lu en une fois.
+     *
+     * @return array{PreparedLine, Ingredient, float, bool} la ligne à poser, le parent, la quantité de la partie, et si l'unité dite n'a pas servi telle quelle
+     *
+     * @throws IngredientException le parent n'existe plus (404) ou ne convertit pas son unité de recette en son unité d'achat
+     */
+    private function preparePart(AddSpokenIngredientCommand $command, string $partSlug): array
+    {
+        $part = $this->ingredientRepository->findOneBySlug($partSlug);
+        $partUnitSlug = $part->getDefaultPurchaseUnit()->getSlug();
+        [, $quantity, $substituted] = $this->lineQuantity->inLineUnit($partSlug, $command->quantity, $command->unitSlug, $partUnitSlug, $partUnitSlug);
+
+        $parents = $this->partLines->parentsOf([$part]);
+
+        return [$this->partLines->prepare($part, $quantity, $parents), $parents[(string) $part->getParentSlug()], $quantity, $substituted];
+    }
+
+    /**
+     * Ce qu'un ajout de PARTIE a fait, vu de la ligne du parent qui l'a reçu : son total, son unité et son nom (ADR 0038 décision 33).
+     */
+    private function foldedItem(ShoppingList $shoppingList, Ingredient $parent, bool $lineExisted, float $addedQuantity, bool $unitSubstituted, bool $listCreated, bool $previousListSent, ?string $spokenListName): AddedItem
+    {
+        $row = $shoppingList->findRow($parent->getSlug());
+        $unitSlug = $row?->getUnitSlug() ?? $parent->getDefaultPurchaseUnit()->getSlug();
+
+        return new AddedItem(
+            listCreated: $listCreated,
+            previousListSent: $previousListSent,
+            quantity: $row?->getQuantity() ?? 0.0,
+            unitSlug: $unitSlug,
+            unitName: $this->unitRepository->findOneBySlug($unitSlug)->getName(),
+            lineExisted: $lineExisted,
+            unitSubstituted: $unitSubstituted,
+            addedQuantity: $addedQuantity,
+            listName: $spokenListName,
+            foldedInto: $parent->getName(),
         );
     }
 }

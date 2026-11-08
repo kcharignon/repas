@@ -8,6 +8,9 @@ use Repas\Voice\Domain\Service\SpokenUnits;
  * Ce que la liste a fait d'un article retiré à voix haute, de quoi choisir les mots de la réponse (`VoiceReplies`, ADR 0029 décision 12) : la
  * quantité retirée et celle qui reste dans la ligne, dans l'unité de la ligne, si l'utilisateur a cité une unité et si cette unité n'est pas celle
  * de la ligne (inconnue de l'ingrédient, ou convertie dans l'unité de la ligne). Une quantité restante nulle : la ligne a disparu.
+ *
+ * Une PARTIE d'ingrédient (« jaune d'œuf », ADR 0038 décision 33) se retire de l'entrée du registre de la liste : `$foldedInto` dit le nom du parent, et `$remaining`,
+ * `$unitSlug` et `$unitName` décrivent alors la ligne du PARENT (« il te reste 4 œufs »), `$removed` ce qui a été retiré de la partie.
  */
 final readonly class RemovedLine
 {
@@ -30,6 +33,8 @@ final readonly class RemovedLine
         public bool $unitSubstituted = false,
         /** Le nom de la liste d'un TYPE dont la ligne a été retirée (ADR 0036, LST-008) ; `null` : la liste principale. */
         public ?string $listName = null,
+        /** Le nom du parent quand l'article dit est une partie d'ingrédient ; `null` : un article ordinaire. */
+        public ?string $foldedInto = null,
     ) {
     }
 

@@ -3,6 +3,7 @@
 namespace Repas\Voice\Domain\Model;
 
 use Repas\Voice\Domain\Exception\SpokenMealFailure;
+use Repas\Voice\Domain\Service\SpokenUnits;
 
 
 /**
@@ -106,6 +107,38 @@ final class VoiceReplies
     public const string IN_LIST = 'Oui, tu en as %s.';
     /** Consulter : plusieurs lignes portent le produit (X : « 2 tomates en fruit et légume, 1 en surgelé »). */
     public const string IN_LIST_MANY = 'Oui : %s.';
+
+    // Une PARTIE d'ingrédient (« jaune d'œuf », ADR 0038 décision 33) n'est jamais une ligne de la liste : elle se plie dans la ligne de son parent, et les
+    // réponses disent le total de cette ligne (X : « 3 œufs »). Un compte qui n'a découpé aucun ingrédient n'entend jamais ces phrases.
+
+    /** Une partie ajoutée : le total de la ligne du parent (X : « 3 œufs »). */
+    public const string PART_ADDED = "C'est ajouté. Ça fait %s dans ta liste.";
+    /** La même, dans la liste d'un type (X : la liste, Y : « 3 œufs »). */
+    public const string PART_ADDED_TO_LIST = "C'est ajouté à %s. Ça fait %s.";
+    /** Un choix deviné (X : la partie, Y : son rayon, Z : « 3 œufs »). */
+    public const string PART_ADDED_GUESSED = "J'ai mis %s, %s. Ça fait %s dans ta liste.";
+    /** Un choix deviné, dans la liste d'un type (X : la partie, Y : son rayon, Z : la liste, T : « 3 œufs »). */
+    public const string PART_ADDED_GUESSED_TO_LIST = "J'ai mis %s, %s, à %s. Ça fait %s.";
+    /** Une proposition choisie, une partie ajoutée (X : « 3 œufs »). */
+    public const string PART_REMEMBERED = "C'est noté, ça fait %s dans ta liste. Je m'en souviendrai.";
+    /** La même, dans la liste d'un type (X : la liste, Y : « 3 œufs »). */
+    public const string PART_REMEMBERED_TO_LIST = "C'est noté à %s, ça fait %s. Je m'en souviendrai.";
+    /** Une partie retirée, la ligne du parent reste (X : « 4 œufs »). */
+    public const string PART_REMOVED_LEFT = "C'est retiré. Il te reste %s.";
+    /** La même, dans la liste d'un type (X : la liste, Y : « 4 œufs »). */
+    public const string PART_REMOVED_LEFT_FROM_LIST = "C'est retiré de %s. Il te reste %s.";
+    /** Une partie retirée, la ligne du parent a disparu (X : « d'œuf »). */
+    public const string PART_REMOVED_GONE = "C'est retiré. Il n'y a plus %s dans ta liste.";
+    /** La même, dans la liste d'un type (X : la liste, Y : « d'œuf »). */
+    public const string PART_REMOVED_GONE_FROM_LIST = "C'est retiré de %s. Il n'y a plus %s dans cette liste.";
+    /** Une partie retirée de la liste d'un type, trop long à dire en entier (X : la liste). */
+    public const string PART_REMOVED_FROM_LIST = "C'est retiré de %s.";
+    /** Une partie retirée, trop long à dire en entier. */
+    public const string PART_REMOVED = "C'est retiré.";
+    /** Consulter : la partie est dans la liste, elle compte dans la ligne du parent (X : « 2 jaunes d'œuf », Y : « 5 œufs »). Sans accord : « ça ». */
+    public const string PART_IN_LIST = 'Oui : %s. Ça compte dans tes %s.';
+    /** La même, quand la ligne du parent est trop petite pour un « tes » (X : « 1 jaune d'œuf », Y : « 1 œuf »). */
+    public const string PART_IN_LIST_SINGLE = 'Oui : %s. Ça fait %s dans ta liste.';
 
     /** Le nom entendu est celui de l'ingrédient. */
     public const string ADDED_SURE = "C'est noté : %s.";
@@ -280,6 +313,9 @@ final class VoiceReplies
     public static function added(string $ingredientName, string $departmentName, bool $isSure, bool $listCreated, bool $previousListSent, ?AddedLine $line = null): string
     {
         $line ??= AddedLine::single();
+        if ($line->foldedInto !== null) {
+            return self::addedToParent($ingredientName, $departmentName, $isSure, $listCreated, $previousListSent, $line);
+        }
         $ingredient = self::item($ingredientName, $line);
         $department = self::speakable($departmentName);
 
@@ -438,6 +474,9 @@ final class VoiceReplies
     public static function rememberedIn(string $ingredientName, string $departmentName, bool $listCreated, bool $previousListSent, ?AddedLine $line = null): string
     {
         $line ??= AddedLine::single();
+        if ($line->foldedInto !== null) {
+            return self::rememberedInParent($ingredientName, $listCreated, $previousListSent, $line);
+        }
         $ingredient = self::item($ingredientName, $line);
         $department = self::speakable($departmentName);
 
@@ -465,6 +504,9 @@ final class VoiceReplies
     public static function remembered(string $ingredientName, bool $listCreated, bool $previousListSent, ?AddedLine $line = null): string
     {
         $line ??= AddedLine::single();
+        if ($line->foldedInto !== null) {
+            return self::rememberedInParent($ingredientName, $listCreated, $previousListSent, $line);
+        }
         $ingredient = self::item($ingredientName, $line);
 
         if ($line->listName !== null) {
@@ -686,6 +728,9 @@ final class VoiceReplies
      */
     public static function removed(string $ingredientName, RemovedLine $line): string
     {
+        if ($line->foldedInto !== null) {
+            return self::removedFromParent($line);
+        }
         $list = $line->listName === null ? null : self::speakable($line->listName);
 
         if ($line->isGone()) {
@@ -732,6 +777,9 @@ final class VoiceReplies
     /** Consulter un produit qui est dans la liste : « Oui, tu en as 2 paquets. », « Oui, tu en as 3. » (unité « unité »). */
     public static function inList(ListLine $line): string
     {
+        if ($line->foldedInto !== null) {
+            return self::partInList($line);
+        }
         $amount = self::amount($line->quantity, $line->unitName, $line->isCount());
 
         return $line->listName === null ? sprintf(self::IN_LIST, $amount) : sprintf(self::IN_LIST_OF, $amount, self::speakable($line->listName));
@@ -837,6 +885,139 @@ final class VoiceReplies
         }
 
         return sprintf(self::TOTAL_ADDED, $line->isCount() ? $total : $total . ' ' . self::unitWord($line->unitName, $line->total));
+    }
+
+    /**
+     * Une partie d'ingrédient ajoutée (ADR 0038 décision 33) : Alexa dit le TOTAL de la ligne du parent qui l'a reçue, jamais la partie seule (« Ça fait 3 œufs
+     * dans ta liste. »). Une liste neuve dit ce qu'elle commence, comme pour un article ordinaire ; la liste d'un type est nommée.
+     */
+    private static function addedToParent(string $ingredientName, string $departmentName, bool $isSure, bool $listCreated, bool $previousListSent, AddedLine $line): string
+    {
+        $ingredient = self::partItem($ingredientName, $line);
+        $department = self::speakable($departmentName);
+        $total = self::counted(self::speakable((string) $line->foldedInto), $line->total, $line->unitName, $line->isCount());
+
+        if ($line->listName !== null) {
+            $list = self::speakable($line->listName);
+            $full = $isSure
+                ? sprintf(self::PART_ADDED_TO_LIST, $list, $total)
+                : sprintf(self::PART_ADDED_GUESSED_TO_LIST, self::speakable($ingredientName), $department, $list, $total);
+
+            return self::withinWords($full, sprintf(self::ADDED_TO_LIST, $list));
+        }
+
+        if (!$listCreated) {
+            return $isSure
+                ? self::withinWords(sprintf(self::PART_ADDED, $total), sprintf(self::ADDED_SURE, $ingredient))
+                : self::withinWords(sprintf(self::PART_ADDED_GUESSED, self::speakable($ingredientName), $department, $total), sprintf(self::ADDED_GUESSED, $ingredient, $department));
+        }
+
+        $started = $isSure
+            ? sprintf(self::LIST_STARTED, $ingredient)
+            : sprintf(self::LIST_STARTED_GUESSED, $ingredient, $department);
+
+        return $previousListSent ? $started . ' ' . self::PREVIOUS_LIST_SENT : $started;
+    }
+
+    /**
+     * Une proposition choisie qui est une partie d'ingrédient : le total de la ligne du parent, puis la promesse de s'en souvenir (ou, pour une liste envoyée
+     * au drive remplacée, ce qui a été fait à la place de la promesse, comme `remembered()`).
+     */
+    private static function rememberedInParent(string $ingredientName, bool $listCreated, bool $previousListSent, AddedLine $line): string
+    {
+        $total = self::counted(self::speakable((string) $line->foldedInto), $line->total, $line->unitName, $line->isCount());
+
+        if ($line->listName !== null) {
+            return self::withinWords(sprintf(self::PART_REMEMBERED_TO_LIST, self::speakable($line->listName), $total), sprintf(self::ADDED_TO_LIST, self::speakable($line->listName)));
+        }
+        if (!$listCreated) {
+            return self::withinWords(sprintf(self::PART_REMEMBERED, $total), sprintf(self::REMEMBERED, self::partItem($ingredientName, $line)));
+        }
+
+        $ingredient = self::partItem($ingredientName, $line);
+
+        return $previousListSent
+            ? sprintf(self::LIST_STARTED, $ingredient) . ' ' . self::PREVIOUS_LIST_SENT
+            : sprintf(self::LIST_STARTED_REMEMBERED, $ingredient);
+    }
+
+    /** Ce qui a été ajouté à la partie, dit en peu de mots : « jaune d'œuf », « 3 jaunes d'œuf » (jamais l'unité du parent, qui n'est pas la sienne). */
+    private static function partItem(string $ingredientName, AddedLine $line): string
+    {
+        return self::item($ingredientName, new AddedLine($line->added, $line->added, SpokenUnits::COUNT, 'unité'));
+    }
+
+    /**
+     * Une partie d'ingrédient retirée (ADR 0038 décision 33) : Alexa dit ce qui reste de la ligne du PARENT (« Il te reste 4 œufs. »), ou que la ligne a
+     * disparu (« Il n'y a plus d'œuf dans ta liste. »).
+     */
+    private static function removedFromParent(RemovedLine $line): string
+    {
+        $parent = self::speakable((string) $line->foldedInto);
+        $list = $line->listName === null ? null : self::speakable($line->listName);
+
+        if ($line->isGone()) {
+            $of = self::of($parent);
+
+            return $list === null
+                ? self::withinWords(sprintf(self::PART_REMOVED_GONE, $of), self::PART_REMOVED)
+                : self::withinWords(sprintf(self::PART_REMOVED_GONE_FROM_LIST, $list, $of), sprintf(self::PART_REMOVED_FROM_LIST, $list));
+        }
+
+        $left = self::counted($parent, $line->remaining, $line->unitName, $line->isCount());
+
+        return $list === null
+            ? self::withinWords(sprintf(self::PART_REMOVED_LEFT, $left), self::PART_REMOVED)
+            : self::withinWords(sprintf(self::PART_REMOVED_LEFT_FROM_LIST, $list, $left), sprintf(self::PART_REMOVED_FROM_LIST, $list));
+    }
+
+    /**
+     * Consulter une partie d'ingrédient qui est dans la liste (ADR 0038 décision 33) : « Oui : 2 jaunes d'œuf. Ça compte dans tes 5 œufs. » (« ça » : aucun accord de genre ni de nombre à faire). Quand la ligne
+     * du parent est trop petite pour un « tes » (moins de deux), le total se dit seul : « Oui : 1 jaune d'œuf. Ça fait 1 œuf dans ta liste. ».
+     */
+    private static function partInList(ListLine $line): string
+    {
+        $parent = $line->foldedInto;
+        $list = $line->listName === null ? null : self::speakable($line->listName);
+        $part = self::counted(self::speakable($line->name), $line->quantity, $line->unitName, $line->isCount());
+        if ($list !== null) {
+            $part .= ' dans la liste ' . $list;
+        }
+        // Trop long à dire (noms et liste longs), ou le parent a disparu : la réponse d'un ingrédient ordinaire, sans le nom
+        $amount = self::amount($line->quantity, $line->unitName, $line->isCount());
+        $short = $list === null ? sprintf(self::IN_LIST, $amount) : sprintf(self::IN_LIST_OF, $amount, $list);
+        if ($parent === null) {
+            return $short;
+        }
+
+        $total = self::counted(self::speakable($parent->name), $parent->quantity, $parent->unitName, $parent->isCount());
+        $full = $parent->quantity < 2
+            ? sprintf(self::PART_IN_LIST_SINGLE, $part, $total)
+            : sprintf(self::PART_IN_LIST, $part, $total);
+
+        return self::withinWords($full, $short);
+    }
+
+    /** Une quantité avec son nom, toujours dite : « 3 œufs », « 1 œuf », « 2 kilos de farine ». */
+    private static function counted(string $name, float $quantity, string $unitName, bool $isCount): string
+    {
+        $count = self::number($quantity);
+
+        return $isCount
+            ? $count . ' ' . ($quantity >= 2 ? self::pluralize($name) : $name)
+            : $count . ' ' . self::unitWord($unitName, $quantity) . ' ' . self::of($name);
+    }
+
+    /** Une réponse parlée reste courte : quand une de ses phrases dépasse la limite de mots, la version courte la remplace. */
+    private static function withinWords(string $full, string $short): string
+    {
+        foreach (preg_split('/(?<=[.?])\s+/u', $full) ?: [] as $sentence) {
+            if (count(preg_split('/\s+/u', $sentence)) > self::MAX_REMOVED_WORDS) {
+                return $short;
+            }
+        }
+
+        return $full;
     }
 
     /** Un article ajouté tout seul : une unité, rien de cité. */

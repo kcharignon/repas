@@ -6,6 +6,7 @@ use Repas\Repas\Application\OpenHostService\ActiveListLineLookupCommandOHS;
 use Repas\Repas\Domain\Model\ActiveListLine;
 use Repas\Voice\Application\Port\ListLineLookupCommandPort;
 use Repas\Voice\Domain\Model\ListedLine;
+use Repas\Voice\Domain\Model\ParentLine;
 use Repas\Voice\Domain\Model\SpokenListLookupResult;
 
 /**
@@ -49,6 +50,18 @@ final readonly class ListLineLookupCommandAdapter implements ListLineLookupComma
 
     private static function line(ActiveListLine $line): ListedLine
     {
-        return new ListedLine($line->slug, $line->name, $line->departmentSlug, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName, $line->listName);
+        $parent = $line->foldedInto;
+
+        return new ListedLine(
+            $line->slug,
+            $line->name,
+            $line->departmentSlug,
+            $line->departmentName,
+            $line->quantity,
+            $line->unitSlug,
+            $line->unitName,
+            $line->listName,
+            $parent === null ? null : new ParentLine($parent->name, $parent->quantity, $parent->unitSlug, $parent->unitName),
+        );
     }
 }

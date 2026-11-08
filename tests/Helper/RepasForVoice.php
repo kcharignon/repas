@@ -332,7 +332,7 @@ final class RepasForVoice
     public function listHas(ListedLine $line, int $uses = 0): self
     {
         $this->hasActiveList();
-        $this->lines[] = new \Repas\Repas\Domain\Model\ActiveListLine($line->slug, $line->name, $line->departmentSlug, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName, $line->listName);
+        $this->lines[] = new \Repas\Repas\Domain\Model\ActiveListLine($line->slug, $line->name, $line->departmentSlug, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName, $line->listName, $line->foldedInto === null ? null : new \Repas\Repas\Domain\Model\ActiveListParent($line->foldedInto->name, $line->foldedInto->quantity, $line->foldedInto->unitSlug, $line->foldedInto->unitName));
         $this->candidates->add($this->candidate($line->slug, $line->name, $line->departmentName, $line->departmentSlug, $uses));
         $this->syncList();
 
@@ -370,6 +370,7 @@ final class RepasForVoice
             $added->unitSubstituted,
             $added->addedQuantity,
             $added->listName,
+            $added->foldedInto,
         ));
 
         return $this;
@@ -386,6 +387,7 @@ final class RepasForVoice
             $removed->unitName,
             $removed->unitSubstituted,
             $removed->listName,
+            $removed->foldedInto,
         ));
 
         return $this;
