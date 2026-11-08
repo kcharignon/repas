@@ -3,6 +3,7 @@
 namespace Repas\Tests\Repas\OutputAdapter;
 
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\IngredientMergeRepository;
 use Repas\Repas\Domain\Model\MergeUnitMove;
@@ -47,9 +48,9 @@ class IngredientMergeRepositoryTest extends DatabaseTestCase
         return $this->repository->usageOf($this->user->getId(), $this->absorbed->getSlug(), $this->kept->getSlug(), $keptPurchaseUnit);
     }
 
-    private function repoint(array $factors = [], string $keptPurchaseUnit = 'kilo'): \Repas\Repas\Domain\Model\IngredientMergeRepointed
+    private function repoint(array $factors = [], string $keptPurchaseUnit = 'kilo', bool $partLinks = false): \Repas\Repas\Domain\Model\IngredientMergeRepointed
     {
-        $result = $this->repository->repoint($this->user->getId(), $this->absorbed->getSlug(), $this->kept->getSlug(), $keptPurchaseUnit, $factors);
+        $result = $this->repository->repoint($this->user->getId(), $this->absorbed->getSlug(), $this->kept->getSlug(), $keptPurchaseUnit, $factors, $partLinks);
         $this->entityManager->clear();
 
         return $result;
@@ -389,6 +390,243 @@ class IngredientMergeRepositoryTest extends DatabaseTestCase
         $this->assertSame($before, $this->dataset->hashOfUser($this->other->getId()));
         $this->assertSame($otherB->getSlug(), $this->dataset->recipeRows('o1')[0][1]);
         $this->assertNotSame($otherA->getSlug(), $otherB->getSlug());
+    }
+
+    /**
+     * @param int $count combien d'ingrédients à créer, chacun une partie de `$parent`
+     * @return list<Ingredient>
+     */
+    private function parts(Ingredient $parent, int $count, string $prefix, ?User $owner = null): array
+    {
+        $parts = [];
+        for ($i = 1; $i <= $count; ++$i) {
+            $part = $this->dataset->ingredient("$prefix $i", $owner ?? $this->user);
+            $this->dataset->partOf($part, $parent, (float) $i);
+            $parts[] = $part;
+        }
+
+        return $parts;
+    }
+
+    public function testUsageCountsThePartsOfBothIngredientsAndStopsCountingAfterTheTenthPlusOne(): void
+    {
+        // Given : trois parties pour l'absorbé, douze pour le gardé (plus que le plafond ; une donnée que l'API ne produit pas)
+        $this->parts($this->absorbed, 3, 'Droite');
+        $this->parts($this->kept, 12, 'Gauche');
+        // et une partie du même nom de parent chez un autre utilisateur : jamais comptée
+        $otherParent = $this->dataset->ingredient('Tomates', $this->other);
+        $this->parts($otherParent, 2, 'Etrangere', $this->other);
+
+        // When
+        $usage = $this->usage();
+
+        // Then : le décompte s'arrête à onze, la onzième suffit à dépasser le plafond de dix
+        $this->assertSame([3, 11], [$usage->absorbedPartCount, $usage->keptPartCount]);
+    }
+
+    public function testUsageWithoutAnyPartSaysSo(): void
+    {
+        // Given / When : un compte qui n'a aucune partie, aucun registre, aucune liste
+        $usage = $this->usage();
+
+        // Then
+        $this->assertSame([0, 0, false, false], [$usage->absorbedPartCount, $usage->keptPartCount, $usage->partRegistryMentioned, $usage->openListLine]);
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function registriesOfTheUnfinishedLists(): iterable
+    {
+        foreach (['ACTIVE', 'PAUSED', 'SENT'] as $status) {
+            yield "liste $status, l'absorbé en partie" => [$status, true];
+        }
+        yield 'liste terminée' => ['COMPLETED', false];
+    }
+
+    #[DataProvider('registriesOfTheUnfinishedLists')]
+    public function testUsageSeesTheRegistryOfAnUnfinishedListThatNamesTheAbsorbedPart(string $status, bool $expected): void
+    {
+        // Given : le registre d'une liste nomme l'absorbé comme partie (clé) d'un autre parent
+        $this->dataset->shoppingList('l1', $this->user->getId(), $status);
+        $this->dataset->registry('l1', [$this->absorbed->getSlug() => ['parent' => 'oeuf', 'quantity' => 2.0, 'equivalent' => 2.0]]);
+
+        // When / Then
+        $this->assertSame($expected, $this->usage()->partRegistryMentioned);
+    }
+
+    public function testUsageSeesTheRegistryThatNamesTheKeptOrTheAbsorbedAsAParentAndNoOtherEntry(): void
+    {
+        $a = $this->kept->getSlug();
+        $b = $this->absorbed->getSlug();
+        $user = $this->user->getId();
+        $this->dataset->shoppingList('l1', $user);
+
+        // Given / Then : un registre qui ne nomme ni l'un ni l'autre
+        $this->dataset->registry('l1', ['jaune' => ['parent' => 'oeuf', 'quantity' => 2.0, 'equivalent' => 2.0]]);
+        $this->assertFalse($this->usage()->partRegistryMentioned);
+
+        // un registre qui nomme le gardé en parent, puis l'absorbé en parent
+        foreach ([$a, $b] as $parent) {
+            $this->dataset->registry('l1', ['jaune' => ['parent' => $parent, 'quantity' => 2.0, 'equivalent' => 2.0], 'blanc' => ['parent' => 'oeuf', 'quantity' => 1.0, 'equivalent' => 1.0]]);
+            $this->assertTrue($this->usage()->partRegistryMentioned, $parent);
+        }
+
+        // et le registre d'un AUTRE utilisateur est lu de même : le slug d'un ingrédient est unique, aucune liste ne doit le nommer
+        $this->dataset->registry('l1', ['x' => ['parent' => 'y', 'quantity' => 1.0, 'equivalent' => 1.0]]);
+        $this->dataset->shoppingList('theirs', $this->other->getId());
+        $this->dataset->registry('theirs', [$b => ['parent' => 'oeuf', 'quantity' => 1.0, 'equivalent' => 1.0]]);
+        $this->assertTrue($this->usage()->partRegistryMentioned);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function registriesThatAreNotRegistries(): iterable
+    {
+        yield 'un tableau' => ['["tomates", "tomate"]'];
+        yield 'un texte' => ['"tomates"'];
+        yield 'un nombre' => ['12'];
+        yield 'null JSON' => ['null'];
+        yield 'des entrées qui ne sont pas des objets' => ['{"x": 5, "y": ["tomates"], "z": null, "w": "tomates"}'];
+        yield 'un objet vide' => ['{}'];
+    }
+
+    #[DataProvider('registriesThatAreNotRegistries')]
+    public function testAnUnreliableRegistryNeverFailsTheReadNorNamesAnyone(string $json): void
+    {
+        // Given : une valeur de la colonne qui n'est pas un registre (la lecture le tolère, ici aussi)
+        $this->dataset->shoppingList('l1', $this->user->getId());
+        $this->connection()->executeStatement('UPDATE shopping_list SET part_shares = CAST(? AS jsonb) WHERE id = ?', [$json, 'l1']);
+
+        // When / Then : aucune erreur de type JSON, personne n'est nommé
+        $this->assertFalse($this->usage()->partRegistryMentioned);
+    }
+
+    public function testUsageSeesALineOfTheTwoIngredientsInAnUnfinishedListOnly(): void
+    {
+        $a = $this->kept->getSlug();
+        $b = $this->absorbed->getSlug();
+        $user = $this->user->getId();
+
+        // Given : un produit ajouté à la main (sans ligne) dans une liste en cours, une ligne d'un autre ingrédient, une liste terminée avec une ligne
+        $this->dataset->shoppingList('hand', $user, items: [['i1', $b, 1.0, 'kilo']]);
+        $this->dataset->shoppingList('other', $user, rows: [['r1', 'autre', 1.0, 'kilo']]);
+        $this->dataset->shoppingList('done', $user, 'COMPLETED', rows: [['r2', $b, 1.0, 'kilo']]);
+        $this->assertFalse($this->usage()->openListLine);
+
+        // When / Then : une ligne d'un des deux dans une liste en cours, envoyée ou en pause
+        foreach (['ACTIVE' => $a, 'PAUSED' => $b, 'SENT' => $a] as $status => $slug) {
+            $this->dataset->shoppingList("open-$status", $user, $status, rows: [["row-$status", $slug, 1.0, 'kilo']]);
+            $this->assertTrue($this->usage()->openListLine, $status);
+            $this->connection()->executeStatement('DELETE FROM shopping_list_row WHERE shopping_list = ?', ["open-$status"]);
+            $this->connection()->executeStatement('DELETE FROM shopping_list WHERE id = ?', ["open-$status"]);
+        }
+    }
+
+    public function testRepointGivesTheKeptIngredientTheLinkOfTheAbsorbedPart(): void
+    {
+        // Given : « Tomates » est une partie d'un parent à raison de 2, « Tomate » est ordinaire ; un autre compte a la même situation
+        $parent = $this->dataset->ingredient('Parent', $this->user);
+        $this->dataset->partOf($this->absorbed, $parent, 2.0);
+        $otherA = $this->dataset->ingredient('Tomate', $this->other);
+        $otherB = $this->dataset->ingredient('Tomates', $this->other);
+        $otherParent = $this->dataset->ingredient('Parent', $this->other);
+        $this->dataset->partOf($otherB, $otherParent, 3.0);
+
+        // When
+        $result = $this->repoint(partLinks: true);
+
+        // Then : « Tomate » est la partie du parent, au même ratio ; rien d'autre ne bouge
+        $this->assertSame([$parent->getSlug(), 2.0], $this->dataset->linkOf($this->kept->getSlug()));
+        $this->assertSame([true, 0], [$result->linkInherited, $result->parts]);
+        $this->assertSame([$otherParent->getSlug(), 3.0], $this->dataset->linkOf($otherB->getSlug()), 'le lien d\'un autre compte n\'est pas touché');
+        $this->assertSame([null, null], $this->dataset->linkOf($otherA->getSlug()));
+    }
+
+    public function testRepointNeverOverwritesTheLinkTheKeptIngredientAlreadyHas(): void
+    {
+        // Given : les deux sont des parties du même parent, de ratios 1 et 5 ; le planificateur ne l'écrit pas, mais l'instruction se défend seule
+        $parent = $this->dataset->ingredient('Parent', $this->user);
+        $this->dataset->partOf($this->kept, $parent, 1.0);
+        $this->dataset->partOf($this->absorbed, $parent, 5.0);
+
+        // When
+        $result = $this->repoint(partLinks: true);
+
+        // Then
+        $this->assertSame([$parent->getSlug(), 1.0], $this->dataset->linkOf($this->kept->getSlug()));
+        $this->assertSame([false, 0], [$result->linkInherited, $result->parts]);
+    }
+
+    public function testRepointMovesThePartsOfTheAbsorbedParentToTheKeptOneWithTheirRatios(): void
+    {
+        // Given : « Tomate » a une partie, « Tomates » en a trois ; un autre compte a un parent du même nom et ses parties
+        $mine = $this->parts($this->kept, 1, 'Gauche');
+        $moving = $this->parts($this->absorbed, 3, 'Droite');
+        $otherParent = $this->dataset->ingredient('Tomates', $this->other);
+        $theirs = $this->parts($otherParent, 2, 'Etrangere', $this->other);
+
+        // When
+        $result = $this->repoint(partLinks: true);
+
+        // Then : quatre parties pour « Tomate », leurs ratios intacts ; aucune pour « Tomates » ; celles de l'autre compte ne bougent pas
+        $this->assertSame(3, $result->parts);
+        $this->assertSame([false, 3], [$result->linkInherited, $result->parts]);
+        $expected = array_map(static fn(Ingredient $part): string => $part->getSlug(), [...$mine, ...$moving]);
+        sort($expected);
+        $this->assertSame($expected, $this->dataset->partsOf($this->kept->getSlug()));
+        $this->assertSame([], $this->dataset->partsOf($this->absorbed->getSlug()));
+        $this->assertSame([$this->kept->getSlug(), 2.0], $this->dataset->linkOf($moving[1]->getSlug()));
+        $this->assertSame(array_map(static fn(Ingredient $part): string => $part->getSlug(), $theirs), $this->dataset->partsOf($otherParent->getSlug()));
+    }
+
+    public function testRepointWithoutALinkToCarryWritesNothingForTheSplit(): void
+    {
+        // Given : un compte sans aucun découpage, et un parent de plus chez l'utilisateur dont les parties ne sont pas celles de l'absorbé
+        $other = $this->dataset->ingredient('Autre parent', $this->user);
+        $parts = $this->parts($other, 2, 'Etrangere');
+        $before = $this->dataset->tableHashes()['ingredient'];
+
+        // When
+        $result = $this->repoint();
+
+        // Then : sans le drapeau, aucune instruction de découpage ; seule l'ingrédient absorbé (supprimé plus tard par le cas d'usage) est inchangé ici
+        $this->assertSame([0, false], [$result->parts, $result->linkInherited]);
+        $this->assertSame($before, $this->dataset->tableHashes()['ingredient']);
+        $this->assertSame(array_map(static fn(Ingredient $part): string => $part->getSlug(), $parts), $this->dataset->partsOf($other->getSlug()));
+    }
+
+    public function testAPartThatStillPointsToTheAbsorbedIngredientCancelsTheWriteWithAConflict(): void
+    {
+        // Given : une partie de l'absorbé que l'analyse n'a pas vue (écrite après elle, ou donnée héritée) : le drapeau est resté faux
+        $this->parts($this->absorbed, 1, 'Droite');
+
+        // Then : l'absorbé va disparaître, une partie ne peut pas pendre dans le vide
+        $this->expectExceptionObject(IngredientException::mergeConflict());
+
+        // When
+        $this->repoint(partLinks: false);
+    }
+
+    public function testRepointNeverRewritesTheRegistryOfAnyList(): void
+    {
+        // Given : un registre qui nomme d'autres ingrédients (celui d'une liste de l'utilisateur et celui d'une liste d'un autre) et une liste de l'utilisateur
+        // qui utilise l'absorbé (sa version monte, pas son registre)
+        $share = ['jaune' => ['parent' => 'oeuf', 'quantity' => 2.0, 'equivalent' => 2.0]];
+        $this->dataset->shoppingList('mine', $this->user->getId(), rows: [['mine-b', $this->absorbed->getSlug(), 1.0, 'kilo']]);
+        $this->dataset->registry('mine', $share);
+        $this->dataset->shoppingList('theirs', $this->other->getId());
+        $this->dataset->registry('theirs', $share);
+        $this->dataset->shoppingList('empty', $this->user->getId());
+
+        // When
+        $this->repoint(partLinks: true);
+
+        // Then
+        $this->assertEquals($share, $this->dataset->registryOf('mine'));
+        $this->assertEquals($share, $this->dataset->registryOf('theirs'));
+        $this->assertNull($this->dataset->registryOf('empty'));
     }
 
     public function testLockTakesBothIngredientsInAlphabeticalOrderWithoutFailingOnAnUnknownSlug(): void

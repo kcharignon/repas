@@ -187,6 +187,54 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $this->assertFalse($this->shoppingListRepository->isIngredientUsed($egg->getSlug()));
     }
 
+    public function testIsIngredientUsedSeesTheRegistryOfAnUnfinishedListAsAPartAndAsAParentInASingleQuery(): void
+    {
+        // Arrange : une liste par statut, dont le registre nomme une partie (« jaune-<statut> ») d'un parent (« oeuf-<statut> ») ; une liste sans registre
+        $user = $this->savedUser();
+        $named = [];
+        foreach ([ShoppingListStatus::ACTIVE, ShoppingListStatus::PAUSED, ShoppingListStatus::SENT, ShoppingListStatus::COMPLETED] as $status) {
+            $list = new ShoppingListBuilder()->withOwner($user)->build();
+            $list->addPart('jaune-' . $status->value, 'oeuf-' . $status->value, 'unite', 2.0, 2.0);
+            // On passe au statut demandé en dernier : une liste envoyée ou terminée n'est plus modifiable
+            if ($status !== ShoppingListStatus::ACTIVE) {
+                $list->setStatus($status);
+            }
+            $this->shoppingListRepository->save($list);
+            $named[$status->value] = ['jaune-' . $status->value, 'oeuf-' . $status->value];
+        }
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->build());
+        $this->entityManager->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // Act
+        $answers = array_map(fn(array $slugs): array => array_map(fn(string $slug): bool => $this->shoppingListRepository->isIngredientUsed($slug), $slugs), $named);
+
+        // Assert : une liste terminée ne compte plus, les autres (envoyée comprise) comptent, en partie comme en parent ; huit questions = huit requêtes
+        $this->assertSame(['ACTIVE' => [true, true], 'PAUSED' => [true, true], 'SENT' => [true, true], 'COMPLETED' => [false, false]], $answers);
+        $this->assertSame(8, $counter->count());
+        // Un slug que le registre ne nomme pas, ni dans la clé ni dans le parent
+        $this->assertFalse($this->shoppingListRepository->isIngredientUsed('jaune'));
+        $this->assertFalse($this->shoppingListRepository->isIngredientUsed('oeuf'));
+    }
+
+    public function testIsIngredientUsedIgnoresARegistryThatIsNotARegistry(): void
+    {
+        // Arrange : la colonne contient autre chose qu'un objet (lue comme vide partout ailleurs) : la requête ne lève aucune erreur de type JSON
+        $user = $this->savedUser();
+        $list = new ShoppingListBuilder()->withOwner($user)->build();
+        $this->shoppingListRepository->save($list);
+        foreach (['["tomate"]', '"tomate"', '7', 'null', '{"tomate": 5, "autre": ["tomate"]}'] as $json) {
+            $this->entityManager->getConnection()->executeStatement('UPDATE shopping_list SET part_shares = CAST(? AS jsonb) WHERE id = ?', [$json, $list->getId()]);
+
+            // Act & Assert
+            $this->assertFalse($this->shoppingListRepository->isIngredientUsed('inconnu'), $json);
+        }
+        // et le seul cas où une clé nomme vraiment l'ingrédient : un objet
+        $this->entityManager->getConnection()->executeStatement('UPDATE shopping_list SET part_shares = CAST(? AS jsonb) WHERE id = ?', ['{"tomate": 5}', $list->getId()]);
+        $this->assertTrue($this->shoppingListRepository->isIngredientUsed('tomate'));
+    }
+
     public function testIsIngredientInOpenListSeesARowInAnyListThatIsNotCompleted(): void
     {
         // Arrange : chaque statut porte une ligne d'un ingrédient différent, plus un ingrédient qu'aucune liste ne porte

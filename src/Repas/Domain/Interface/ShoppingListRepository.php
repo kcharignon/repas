@@ -92,7 +92,9 @@ interface ShoppingListRepository
     public function findOneActiveWithRow(string $ownerId, string $ingredientSlug): ?ShoppingList;
 
     /**
-     * Une liste de courses contient-elle cet ingrédient ? (existence seulement : aucun agrégat n'est hydraté)
+     * Une liste de courses contient-elle cet ingrédient ? (existence seulement : aucun agrégat n'est hydraté, une seule requête). Un produit ajouté
+     * à la main dans une liste, ou une entrée du registre des parties d'une liste NON TERMINÉE qui le nomme, en partie ou en parent (ADR 0038
+     * décisions 6 et 26 : le registre n'est jamais réécrit, un ingrédient qu'il nomme ne se supprime ni ne se fusionne).
      */
     public function isIngredientUsed(string $ingredientSlug): bool;
 

@@ -298,8 +298,11 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
      * Avec `$recoveredConversions` > 0, « Tomates » sait en plus compter autant d'unités (la tranche, la boîte, le bloc, la cuillère à soupe) que
      * « Tomate » ne connaît pas : elles sont récupérées, et une recette de « Tomates » en tranches (unité qu'il déclare compatible) fait gagner
      * la tranche aux unités compatibles de « Tomate ».
+     *
+     * Avec `$absorbedParts` > 0, « Tomates » est le PARENT d'autant de parties (ADR 0038), qui deviennent celles de « Tomate » ; avec
+     * `$absorbedIsPart`, « Tomates » est une partie d'un parent et « Tomate » hérite de son lien : les deux coûtent la même instruction de plus.
      */
-    public function savedMerge(User $owner, int $recipes, int $lists, int $recoveredConversions = 0): MergeIngredientsCommand
+    public function savedMerge(User $owner, int $recipes, int $lists, int $recoveredConversions = 0, int $absorbedParts = 0, bool $absorbedIsPart = false): MergeIngredientsCommand
     {
         $dataset = new MergeDataset($this->entityManager, $this->persister);
         $dataset->units();
@@ -307,6 +310,12 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
         $absorbed = $dataset->ingredient('Tomates', $owner, compatible: $recoveredConversions > 0 ? [new UnitBuilder()->isGramme(), new UnitBuilder()->isKilo(), new UnitBuilder()->isSlice()] : null);
         $dataset->conversion($kept);
         $dataset->conversion($absorbed);
+        for ($i = 1; $i <= $absorbedParts; ++$i) {
+            $dataset->partOf($dataset->ingredient("Droite $i", $owner), $absorbed, (float) $i);
+        }
+        if ($absorbedIsPart) {
+            $dataset->partOf($absorbed, $dataset->ingredient('Parent', $owner), 2.0);
+        }
         $dataset->volume($owner, $kept, $absorbed, $recipes, $lists);
         if ($recoveredConversions > 0) {
             foreach (array_slice([new UnitBuilder()->isSlice(), new UnitBuilder()->isBox(), new UnitBuilder()->isBlock(), new UnitBuilder()->isSoupSpoon()], 0, $recoveredConversions) as $unit) {

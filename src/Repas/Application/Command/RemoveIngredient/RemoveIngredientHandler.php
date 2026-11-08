@@ -42,11 +42,15 @@ readonly class RemoveIngredientHandler
             throw IngredientException::cannotBeRemoveExistInRecipe($ingredient->getId());
         }
 
-        // Si l'ingrédient est dans une liste de course, alors on ne le supprime pas
+        // Si l'ingrédient est dans une liste de course, alors on ne le supprime pas. Une liste non terminée qui le NOMME dans son registre des parties
+        // (en partie ou en parent, ADR 0038 décisions 6 et 26) y compte aussi : le registre n'est jamais réécrit, il ne doit pas pendre dans le vide.
         if ($this->shoppingListRepository->isIngredientUsed($ingredient->getSlug())) {
             throw IngredientException::cannotBeRemoveExistInShoppingList($ingredient->getId());
         }
 
+        // Supprimer un parent détache ses parties : elles redeviennent des ingrédients ordinaires, avec leurs recettes et leurs conversions (une seule
+        // instruction, quel que soit leur nombre ; supprimer une partie ne change rien d'autre, le parent n'a pas de liste de ses parties à tenir)
+        $this->ingredientRepository->detachParts($ingredient->getSlug());
         $this->conversionRepository->deleteByIngredient($ingredient);
         $this->ingredientRepository->delete($ingredient);
         // Les alias qui désignaient cet ingrédient disparaissent avec lui : un alias ne désigne jamais un ingrédient qui n'existe plus (ADR 0028)

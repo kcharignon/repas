@@ -413,6 +413,247 @@ class IngredientMergeApiFlowTest extends DatabaseTestCase
         $this->assertSame(0, $this->scalar("SELECT COUNT(*) FROM drive_choice_product WHERE product_id LIKE '%777002%'"));
     }
 
+    private function splitInto(User $user, string $part, string $parent, float $ratio = 1.0): void
+    {
+        $this->request('PUT', "/api/v1/ingredients/$part/parent", $user, ['parent' => $parent, 'ratio' => $ratio]);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode(), $this->client->getResponse()->getContent());
+    }
+
+    /**
+     * @return array<string, mixed> la fiche de l'ingrédient, avec ses parties et son parent
+     */
+    private function card(User $user, string $slug): array
+    {
+        $this->request('GET', "/api/v1/ingredients/$slug", $user);
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode(), $this->client->getResponse()->getContent());
+
+        return $this->jsonBody();
+    }
+
+    /**
+     * @return list<string> les slugs des parties d'un ingrédient, triés
+     */
+    private function partSlugs(User $user, string $slug): array
+    {
+        $slugs = array_column($this->card($user, $slug)['parts'], 'slug');
+        sort($slugs);
+
+        return $slugs;
+    }
+
+    public function testTheMergeCarriesThePartLinkOfTheAbsorbedIngredientToTheKeptOne(): void
+    {
+        // Given : « Jaune » est une partie d'« Oeuf » à raison de 2 (dans une recette), « Jaunes » est un doublon ordinaire
+        $user = $this->savedUser();
+        $egg = $this->createIngredient($user, 'Oeuf entier');
+        $yolk = $this->createIngredient($user, 'Jaune');
+        $duplicate = $this->createIngredient($user, 'Jaunes');
+        $this->splitInto($user, $yolk, $egg, 2.0);
+        $recipe = $this->createRecipe($user, 'Mousse', [[$yolk, 100]]);
+        $this->request('GET', "/api/v1/ingredients/$yolk/merge-preview?into=$duplicate", $user);
+        $this->assertSame([null, true], [$this->jsonBody()['blockedBy'], $this->jsonBody()['canMerge']]);
+
+        // When
+        $this->request('POST', "/api/v1/ingredients/$yolk/merge", $user, ['into' => $duplicate]);
+
+        // Then : « Jaunes » est la partie d'« Oeuf », au même ratio ; « Jaune » a disparu des parties ; la recette suit
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $partOf = $this->card($user, $duplicate)['partOf'];
+        $this->assertEquals(['slug' => $egg, 'name' => 'Oeuf entier', 'ratio' => 2], $partOf);
+        $this->assertSame([$duplicate], $this->partSlugs($user, $egg));
+        $this->assertSame([[$duplicate, 100.0, 'gramme']], $this->recipeRows($recipe));
+    }
+
+    public function testTheMergeOfTwoPartsOfTheSameParentKeepsTheRatioOfTheKeptOne(): void
+    {
+        // Given : deux parties d'« Oeuf », de ratios 1 (gardée) et 4 (absorbée)
+        $user = $this->savedUser();
+        $egg = $this->createIngredient($user, 'Oeuf entier');
+        $kept = $this->createIngredient($user, 'Jaune');
+        $absorbed = $this->createIngredient($user, 'Jaunes');
+        $this->splitInto($user, $kept, $egg, 1.0);
+        $this->splitInto($user, $absorbed, $egg, 4.0);
+
+        // When
+        $this->request('POST', "/api/v1/ingredients/$absorbed/merge", $user, ['into' => $kept]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame([$kept], $this->partSlugs($user, $egg));
+        $this->assertEquals(1, $this->card($user, $kept)['partOf']['ratio']);
+    }
+
+    public function testTheMergeOfAParentGivesItsPartsToTheKeptParent(): void
+    {
+        // Given : « Oeuf » a une partie, « Oeufs » deux autres (ratios 1, 2, 3) et une autre partie dépend d'un tout autre parent
+        $user = $this->savedUser();
+        $kept = $this->createIngredient($user, 'Oeuf');
+        $absorbed = $this->createIngredient($user, 'Oeufs');
+        $citron = $this->createIngredient($user, 'Citron');
+        $parts = [];
+        foreach ([[$kept, 'Jaune', 1.0], [$absorbed, 'Blanc', 2.0], [$absorbed, 'Coquille', 3.0], [$citron, 'Zeste', 5.0]] as [$parent, $name, $ratio]) {
+            $parts[$name] = $this->createIngredient($user, $name);
+            $this->splitInto($user, $parts[$name], $parent, $ratio);
+        }
+        $this->request('GET', "/api/v1/ingredients/$absorbed/merge-preview?into=$kept", $user);
+        $this->assertSame([null, true], [$this->jsonBody()['blockedBy'], $this->jsonBody()['canMerge']]);
+
+        // When
+        $this->request('POST', "/api/v1/ingredients/$absorbed/merge", $user, ['into' => $kept]);
+
+        // Then : les trois parties sont à « Oeuf », leurs ratios intacts ; celle d'un autre parent n'a pas bougé
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $expected = [$parts['Jaune'], $parts['Blanc'], $parts['Coquille']];
+        sort($expected);
+        $this->assertSame($expected, $this->partSlugs($user, $kept));
+        $this->assertEquals([1, 2, 3], array_map(fn(string $name): int|float => $this->card($user, $parts[$name])['partOf']['ratio'], ['Jaune', 'Blanc', 'Coquille']));
+        $this->assertSame([$parts['Zeste']], $this->partSlugs($user, $citron));
+        $this->assertSame(0, $this->scalar("SELECT COUNT(*) FROM ingredient WHERE parent_slug = '$absorbed'"));
+    }
+
+    public function testAMergeThatWouldBreakTheSplitIsRefusedWithItsCodeAndWritesNothing(): void
+    {
+        // Given : « Oeuf » (parent de « Jaune »), « Citron » (parent de « Zeste »), et un ingrédient ordinaire
+        $user = $this->savedUser();
+        $egg = $this->createIngredient($user, 'Oeuf');
+        $citron = $this->createIngredient($user, 'Citron');
+        $yolk = $this->createIngredient($user, 'Jaune');
+        $zest = $this->createIngredient($user, 'Zeste');
+        $this->splitInto($user, $yolk, $egg);
+        $this->splitInto($user, $zest, $citron);
+        $hash = $this->tablesHash();
+
+        /** @var array<string, array{string, string}> $cases `[absorbé, gardé]` */
+        $cases = [
+            'le parent absorbé dans l\'une de ses parties' => [$egg, $yolk],
+            'une partie absorbée dans son parent' => [$yolk, $egg],
+            'deux parties de deux parents différents' => [$yolk, $zest],
+            'un parent absorbé dans une partie d\'un autre parent' => [$egg, $zest],
+            'une partie absorbée dans un parent qui a des parties' => [$zest, $egg],
+        ];
+        foreach ($cases as $label => [$absorbed, $kept]) {
+            // When
+            $this->request('GET', "/api/v1/ingredients/$absorbed/merge-preview?into=$kept", $user);
+            $preview = $this->jsonBody();
+            $this->request('POST', "/api/v1/ingredients/$absorbed/merge", $user, ['into' => $kept]);
+
+            // Then : l'aperçu et l'écriture disent la même chose, rien n'est écrit
+            $this->assertSame(['PART_CONFLICT', false], [$preview['blockedBy'], $preview['canMerge']], $label);
+            $this->assertSame(422, $this->client->getResponse()->getStatusCode(), $label);
+            $this->assertSame(['error' => ['message' => 'MERGE_PART_CONFLICT']], $this->jsonBody(), $label);
+            $this->assertSame($hash, $this->tablesHash(), $label);
+        }
+    }
+
+    public function testTheRegistryOfAnOpenListBlocksTheMergeUntilTheMealIsTakenOffThePlan(): void
+    {
+        // Given : « Jaune » (partie d'« Oeuf ») est dans une recette planifiée : la liste porte « Oeuf » et son registre nomme « Jaune » ; « Jaunes » est ordinaire
+        $user = $this->savedUser();
+        $egg = $this->createIngredient($user, 'Oeuf');
+        $yolk = $this->createIngredient($user, 'Jaune');
+        $duplicate = $this->createIngredient($user, 'Jaunes');
+        $this->splitInto($user, $yolk, $egg);
+        $recipe = $this->createRecipe($user, 'Mousse', [[$yolk, 200]]);
+        $listId = $this->savedActiveList($user);
+        $this->request('PUT', "/api/v1/shopping-lists/active/recipes/$recipe", $user);
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode(), $this->client->getResponse()->getContent());
+        $this->assertSame([$egg], array_keys($this->listRows($listId)));
+        $hash = $this->tablesHash();
+
+        // When : l'aperçu, puis la fusion
+        $this->request('GET', "/api/v1/ingredients/$yolk/merge-preview?into=$duplicate", $user);
+        $preview = $this->jsonBody();
+        $this->request('POST', "/api/v1/ingredients/$yolk/merge", $user, ['into' => $duplicate]);
+
+        // Then : 409, rien n'a bougé, le registre de la liste moins que tout
+        $this->assertSame(['PART_IN_LIST', false], [$preview['blockedBy'], $preview['canMerge']]);
+        $this->assertSame(409, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'MERGE_PART_IN_LIST']], $this->jsonBody());
+        $this->assertSame($hash, $this->tablesHash());
+
+        // When : l'utilisateur retire le repas de la liste, puis fusionne
+        $this->request('DELETE', "/api/v1/shopping-lists/active/recipes/$recipe", $user);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('POST', "/api/v1/ingredients/$yolk/merge", $user, ['into' => $duplicate]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame($egg, $this->card($user, $duplicate)['partOf']['slug']);
+    }
+
+    public function testAnOrdinaryMergeIsNotStoppedByTheRegistryOfAnotherIngredient(): void
+    {
+        // Given : le registre d'une liste nomme « Jaune » et « Oeuf » ; on fusionne deux autres ingrédients
+        $user = $this->savedUser();
+        $egg = $this->createIngredient($user, 'Oeuf');
+        $yolk = $this->createIngredient($user, 'Jaune');
+        $this->splitInto($user, $yolk, $egg);
+        $recipe = $this->createRecipe($user, 'Mousse', [[$yolk, 200]]);
+        $this->savedActiveList($user);
+        $this->request('PUT', "/api/v1/shopping-lists/active/recipes/$recipe", $user);
+        $a = $this->createIngredient($user, 'Tomate');
+        $b = $this->createIngredient($user, 'Tomates');
+
+        // When
+        $this->request('POST', "/api/v1/ingredients/$b/merge", $user, ['into' => $a]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testRemovingAParentDetachesItsPartsAndTheRegistryOfAnOpenListBlocksTheRemoval(): void
+    {
+        // Given : « Jaune » et « Blanc » sont deux parties d'« Oeuf »
+        $user = $this->savedUser();
+        $egg = $this->createIngredient($user, 'Oeuf');
+        $yolk = $this->createIngredient($user, 'Jaune');
+        $white = $this->createIngredient($user, 'Blanc');
+        $this->splitInto($user, $yolk, $egg);
+        $this->splitInto($user, $white, $egg, 2.0);
+
+        // When : on supprime le parent
+        $this->request('DELETE', "/api/v1/ingredients/$egg", $user);
+
+        // Then : les deux parties sont devenues ordinaires, avec leur fiche
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        foreach ([$yolk, $white] as $part) {
+            $card = $this->card($user, $part);
+            $this->assertSame([null, []], [$card['partOf'], $card['parts']], $part);
+        }
+
+        // Given : de nouveau un parent, une partie planifiée dans une recette puis retirée de la recette (le registre de la liste la nomme encore)
+        $parent = $this->createIngredient($user, 'Citron');
+        $part = $this->createIngredient($user, 'Zeste');
+        $this->splitInto($user, $part, $parent);
+        $recipe = $this->createRecipe($user, 'Tarte', [[$part, 200]]);
+        $listId = $this->savedActiveList($user);
+        $this->request('PUT', "/api/v1/shopping-lists/active/recipes/$recipe", $user);
+        $this->entityManager->getConnection()->executeStatement('DELETE FROM recipe_row WHERE recipe = ?', [$recipe]);
+        $hash = $this->tablesHash();
+
+        // When : on supprime la partie, puis le parent
+        $responses = [];
+        foreach ([$part, $parent] as $slug) {
+            $this->request('DELETE', "/api/v1/ingredients/$slug", $user);
+            $responses[$slug] = [$this->client->getResponse()->getStatusCode(), $this->jsonBody()['error']['message'] ?? null];
+        }
+
+        // Then : refusé comme un ingrédient d'une liste, ni l'un ni l'autre n'est supprimé, rien n'est détaché
+        $this->assertSame([409, 409], array_column($responses, 0));
+        $this->assertStringContainsString('exist in shopping list', (string) $responses[$part][1]);
+        $this->assertStringContainsString('exist in shopping list', (string) $responses[$parent][1]);
+        $this->assertSame($hash, $this->tablesHash());
+
+        // When : la liste est terminée
+        $this->request('POST', "/api/v1/shopping-lists/$listId/complete", $user);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode(), $this->client->getResponse()->getContent());
+        $this->request('DELETE', "/api/v1/ingredients/$parent", $user);
+
+        // Then : le registre d'une liste terminée n'empêche plus rien, la partie est détachée
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertNull($this->card($user, $part)['partOf']);
+    }
+
     private function choicesBody(string $ingredientSlug, string $retailerProductId): array
     {
         return ['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [

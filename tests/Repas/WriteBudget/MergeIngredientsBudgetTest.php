@@ -43,4 +43,42 @@ class MergeIngredientsBudgetTest extends WriteBudgetTestCase
         $this->assertCount(1, array_unique($counts), json_encode($counts, JSON_UNESCAPED_UNICODE));
         $this->assertSame((require __DIR__ . '/budgets.php')['fusionner-ingredients-avec-recuperation'], array_values($counts)[0]);
     }
+
+    public function testCarryingThePartsOfTheAbsorbedParentCostsOneMoreQueryWhateverTheNumberOfPartsAndTheVolume(): void
+    {
+        $counts = [];
+        foreach ([[2, 2, 1], [8, 6, 5], [40, 30, 10]] as [$recipes, $lists, $parts]) {
+            // When : le parent absorbé a 1, 5 puis 10 parties (le plafond), dans un volume qui grandit
+            [$count] = $this->measure(static fn(WriteBudgetTestCase $t) => $t->savedMerge($t->savedUser(), $recipes, $lists, absorbedParts: $parts));
+            $counts["$recipes recettes, $lists listes, $parts parties"] = $count;
+        }
+
+        // Then : la même instruction de plus, quel que soit le nombre de parties ; c'est le budget du scénario avec parties, une de plus que sans
+        $this->assertCount(1, array_unique($counts), json_encode($counts, JSON_UNESCAPED_UNICODE));
+        $budgets = require __DIR__ . '/budgets.php';
+        $this->assertSame($budgets['fusionner-ingredients-avec-parties'], array_values($counts)[0]);
+        $this->assertSame($budgets['fusionner-ingredients'] + 1, $budgets['fusionner-ingredients-avec-parties']);
+    }
+
+    public function testInheritingTheLinkOfTheAbsorbedPartCostsTheSameOneMoreQuery(): void
+    {
+        // When
+        [$count] = $this->measure(static fn(WriteBudgetTestCase $t) => $t->savedMerge($t->savedUser(), 3, 0, absorbedIsPart: true));
+
+        // Then : sans liste, la fusion coûte moins que `fusionner-ingredients` de ses requêtes de liste ; l'instruction du lien est la même que pour des parties
+        $budgets = require __DIR__ . '/budgets.php';
+        $this->assertSame($budgets['fusionner-ingredients-lien-herite'], $count);
+        [$without] = $this->measure(static fn(WriteBudgetTestCase $t) => $t->savedMerge($t->savedUser(), 3, 0));
+        $this->assertSame($without + 1, $count);
+    }
+
+    public function testAnAccountWithoutAnyPartPaysNothingMoreForTheSplit(): void
+    {
+        // When : le même scénario que le budget d'avant le découpage
+        [$count] = $this->measure(static fn(WriteBudgetTestCase $t) => $t->savedMerge($t->savedUser(), 3, 3));
+
+        // Then : 22 requêtes, comme avant SUB-004 (le budget n'a pas bougé)
+        $this->assertSame(22, $count);
+        $this->assertSame(22, (require __DIR__ . '/budgets.php')['fusionner-ingredients']);
+    }
 }

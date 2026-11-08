@@ -171,6 +171,14 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
                     return true;
                 }
             }
+            // Le registre des parties d'une liste non terminée nomme l'ingrédient, en partie (la clé) ou en parent (ADR 0038 décision 26)
+            if (!$shoppingList->isCompleted()) {
+                foreach ($shoppingList->getPartShares() as $partSlug => $share) {
+                    if ($partSlug === $ingredientSlug || $share->parentSlug === $ingredientSlug) {
+                        return true;
+                    }
+                }
+            }
         }
 
         return false;

@@ -54,13 +54,17 @@ interface IngredientMergeRepository
      *    dans son unité (somme), et reste cochée seulement si les deux l'étaient ; sinon la ligne de `B` devient une ligne de `A`
      *    (quantité ré-exprimée dans l'unité d'achat de `A`, cochage inchangé). Les ingrédients ajoutés à la main (compteurs de pas
      *    entiers) suivent la même règle, arrondis au pas supérieur ;
-     *  - la version de chaque recette et de chaque liste modifiée monte de 1, celle des autres jamais.
+     *  - la version de chaque recette et de chaque liste modifiée monte de 1, celle des autres jamais ;
+     *  - le découpage (ADR 0038 décision 25), seulement quand `$repointPartLinks` : `A` hérite du lien de `B` s'il n'en a pas, et les parties de
+     *    `B` (`ingredient.parent_slug`) deviennent celles de `A`, en UNE instruction. Le registre des parties d'une liste (`shopping_list.part_shares`)
+     *    n'est JAMAIS réécrit : l'appelant a refusé la fusion quand une liste non terminée le mentionnait (`MergeBlock::PART_IN_LIST`).
      *
      * Les listes envoyées au drive ne sont pas écartées ici : l'appelant les a refusées avant (`MergeBlock::IN_SENT_LIST`).
      *
      * @param list<UnitFactor> $factors les facteurs des changements d'unité de la liste (`IngredientMergePlan::$factors`)
+     * @param bool $repointPartLinks il y a un lien de découpage à transporter (`IngredientMergePlan::$repointsPartLinks`) ; faux : aucune instruction de plus
      *
      * @throws IngredientException `INGREDIENT_MERGE_CONFLICT` si une référence à `B` apparaît ou reste après coup (écriture concurrente)
      */
-    public function repoint(string $userId, string $absorbedSlug, string $keptSlug, string $keptPurchaseUnitSlug, array $factors): IngredientMergeRepointed;
+    public function repoint(string $userId, string $absorbedSlug, string $keptSlug, string $keptPurchaseUnitSlug, array $factors, bool $repointPartLinks = false): IngredientMergeRepointed;
 }

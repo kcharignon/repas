@@ -109,6 +109,26 @@ class DuplicateIngredientFinderTest extends TestCase
         $this->assertSame(['tomate-u+tomates-u'], self::slugs($this->finder->find($candidates)));
     }
 
+    public function testAPartAndItsParentAreNeverProposedInEitherDirectionButTwoPartsOfTheSameParentAre(): void
+    {
+        // Given : « Tomates » est une partie de « Tomate » ; « Poireau » est une partie de « Poireaux » (l'autre sens) ; « Oignon » et « Oignons » sont deux
+        // parties du même parent
+        $candidates = [
+            self::own('tomate-u', 'Tomate'),
+            new IngredientCandidate('tomates-u', 'Tomates', 'fruit-et-legume', 'kilo', [], null, 'tomate-u'),
+            new IngredientCandidate('poireau-u', 'Poireau', 'fruit-et-legume', 'kilo', [], null, 'poireaux-u'),
+            self::own('poireaux-u', 'Poireaux'),
+            new IngredientCandidate('oignon-u', 'Oignon', 'fruit-et-legume', 'kilo', [], null, 'legume-u'),
+            new IngredientCandidate('oignons-u', 'Oignons', 'fruit-et-legume', 'kilo', [], null, 'legume-u'),
+        ];
+
+        // When
+        $pairs = $this->finder->find($candidates);
+
+        // Then : « aucune autre règle » : seules les deux parties du même parent sont proposées
+        $this->assertSame(['oignon-u+oignons-u'], self::slugs($pairs));
+    }
+
     public function testADistinctPairIsNeverProposedAgainInAnyOrder(): void
     {
         // Given

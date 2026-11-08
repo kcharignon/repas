@@ -6,6 +6,7 @@ namespace Repas\Repas\Infrastructure\Merge;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\IngredientMergeUsage;
 use Repas\Repas\Domain\Model\MergeConversion;
 use Repas\Repas\Domain\Model\MergeUnitMove;
@@ -59,7 +60,14 @@ final readonly class IngredientMergeUsageReader
             . '   OR EXISTS (SELECT 1 FROM shopping_list_ingredient x WHERE x.shopping_list = l.id AND x.ingredient IN (:a, :b)))) AS result_lists,'
             // Les conversions PROPRES de B, que A peut récupérer : dans un ordre fixe (le planificateur les retrie de toute façon)
             . " (SELECT json_agg(json_build_object('id', c.id, 'start', c.start_unit, 'end', c.end_unit, 'coefficient', c.coefficient) ORDER BY c.start_unit, c.end_unit, c.id)"
-            . '   FROM conversion c WHERE c.ingredient = :b) AS absorbed_conversions',
+            . '   FROM conversion c WHERE c.ingredient = :b) AS absorbed_conversions,'
+            // Le découpage (ADR 0038 décision 25) : combien de parties ont A et B (onze au plus, la onzième suffit à dépasser le plafond de dix ; le
+            // `creator` mène l'index partiel des parties), si le registre d'une liste NON TERMINÉE nomme l'un des deux, et si l'un des deux a une ligne
+            // dans une liste non terminée. Dans la même requête : aucune lecture de plus.
+            . ' (SELECT count(*) FROM (SELECT 1 FROM ingredient WHERE creator = :u AND parent_slug = :b LIMIT ' . (Ingredient::MAX_PARTS + 1) . ') p) AS absorbed_parts,'
+            . ' (SELECT count(*) FROM (SELECT 1 FROM ingredient WHERE creator = :u AND parent_slug = :a LIMIT ' . (Ingredient::MAX_PARTS + 1) . ') p) AS kept_parts,'
+            . " EXISTS (SELECT 1 FROM shopping_list l WHERE l.status <> 'COMPLETED' AND l.part_shares IS NOT NULL AND (" . PartRegistrySql::mentions('l', ':a') . ' OR ' . PartRegistrySql::mentions('l', ':b') . ')) AS registry_mentioned,'
+            . " EXISTS (SELECT 1 FROM shopping_list_row x JOIN shopping_list l ON l.id = x.shopping_list WHERE x.ingredient IN (:a, :b) AND l.status <> 'COMPLETED') AS open_line",
             ['u' => $userId, 'a' => $keptSlug, 'b' => $absorbedSlug, 'pa' => $keptPurchaseUnitSlug],
         );
 
@@ -88,6 +96,10 @@ final readonly class IngredientMergeUsageReader
                 static fn(array $conversion): MergeConversion => new MergeConversion($conversion['id'], $conversion['start'], $conversion['end'], (float) $conversion['coefficient']),
                 $conversions,
             ),
+            absorbedPartCount: (int) $row['absorbed_parts'],
+            keptPartCount: (int) $row['kept_parts'],
+            partRegistryMentioned: (bool) $row['registry_mentioned'],
+            openListLine: (bool) $row['open_line'],
         );
     }
 

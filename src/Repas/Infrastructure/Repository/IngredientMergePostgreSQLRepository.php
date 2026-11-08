@@ -70,7 +70,7 @@ readonly class IngredientMergePostgreSQLRepository implements IngredientMergeRep
         }
     }
 
-    public function repoint(string $userId, string $absorbedSlug, string $keptSlug, string $keptPurchaseUnitSlug, array $factors): IngredientMergeRepointed
+    public function repoint(string $userId, string $absorbedSlug, string $keptSlug, string $keptPurchaseUnitSlug, array $factors, bool $repointPartLinks = false): IngredientMergeRepointed
     {
         $connection = $this->connection();
         // PDO refuse un paramètre nommé que la requête n'utilise pas : chaque requête reçoit les siens
@@ -158,13 +158,31 @@ readonly class IngredientMergePostgreSQLRepository implements IngredientMergeRep
             throw IngredientException::mergeConflict();
         }
 
+        // 5. Le découpage (ADR 0038 décision 25), en UNE instruction et seulement s'il y a un lien à transporter : A hérite du lien de B s'il n'en a pas
+        // (même parent, même ratio), et les parties de B deviennent celles de A. Le registre `shopping_list.part_shares` n'est jamais réécrit : une liste non
+        // terminée qui le mentionne a refusé la fusion avant (`MergeBlock::PART_IN_LIST`). Les deux `UPDATE` ne se croisent jamais : l'un écrit A (sans
+        // parent), l'autre les lignes dont le parent est B.
+        $parts = 0;
+        $inherited = false;
+        if ($repointPartLinks) {
+            $counts = $connection->fetchNumeric(
+                'WITH inherited AS (UPDATE ingredient k SET parent_slug = b.parent_slug, parent_ratio = b.parent_ratio FROM ingredient b'
+                . '   WHERE k.slug = :a AND k.creator = :u AND k.parent_slug IS NULL AND b.slug = :b AND b.parent_slug IS NOT NULL RETURNING k.slug),'
+                . ' moved AS (UPDATE ingredient SET parent_slug = :a WHERE creator = :u AND parent_slug = :b RETURNING slug)'
+                . ' SELECT (SELECT count(*) FROM inherited), (SELECT count(*) FROM moved)',
+                $recipeParams,
+            );
+            $inherited = (int) ($counts[0] ?? 0) > 0;
+            $parts = (int) ($counts[1] ?? 0);
+        }
+
         // Filet : plus aucune ligne ne doit référencer B. Une ligne d'un autre utilisateur est refusée avant (`usageOf()`) ; il ne reste
         // qu'une écriture concurrente, qui poserait une référence sur un ingrédient sur le point d'être supprimé.
         if ($this->referencesTo($absorbedSlug) > 0) {
             throw IngredientException::mergeConflict();
         }
 
-        return new IngredientMergeRepointed($recipes, $lists);
+        return new IngredientMergeRepointed($recipes, $lists, $parts, $inherited);
     }
 
     private function referencesTo(string $slug): int
@@ -172,7 +190,9 @@ readonly class IngredientMergePostgreSQLRepository implements IngredientMergeRep
         return (int) $this->connection()->fetchOne(
             'SELECT (SELECT count(*) FROM recipe_row WHERE ingredient = :slug)'
             . ' + (SELECT count(*) FROM shopping_list_row WHERE ingredient = :slug)'
-            . ' + (SELECT count(*) FROM shopping_list_ingredient WHERE ingredient = :slug)',
+            . ' + (SELECT count(*) FROM shopping_list_ingredient WHERE ingredient = :slug)'
+            // Une partie dont le parent est B : B va disparaître, la partie ne doit pas pendre dans le vide (ADR 0038 décision 25)
+            . ' + (SELECT count(*) FROM ingredient WHERE parent_slug = :slug)',
             ['slug' => $slug],
         );
     }

@@ -18,6 +18,8 @@ final readonly class IngredientMergePlan
      *        (vide quand la fusion est refusée : rien n'est écrit)
      * @param list<string> $compatibleUnitSlugsToAdd les unités compatibles de l'absorbé, utilisées par les lignes de recette déplacées, que
      *        le gardé n'avait pas et qui s'ajoutent aux siennes (vide quand la fusion est refusée)
+     * @param bool $repointsPartLinks la fusion change des liens de découpage (ADR 0038 décision 25) : le gardé hérite du lien de l'absorbé, ou les
+     *        parties de l'absorbé deviennent celles du gardé. Faux pour deux ingrédients qui n'ont aucun lien à transporter : aucune instruction de plus
      */
     public function __construct(
         public ?MergeBlock $block,
@@ -25,6 +27,7 @@ final readonly class IngredientMergePlan
         public array $factors = [],
         public array $recoveredConversions = [],
         public array $compatibleUnitSlugsToAdd = [],
+        public bool $repointsPartLinks = false,
     ) {
     }
 
