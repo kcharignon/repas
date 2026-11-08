@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Repas\Domain\Exception\IngredientException;
+use Repas\Repas\Domain\Interface\IngredientAdoptionBulkRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Shared\Domain\Tool\Tab;
@@ -332,6 +333,158 @@ class IngredientRepositoryTest extends DatabaseTestCase
         ksort($destinations);
         ksort($expected);
         $this->assertSame($expected, $destinations);
+    }
+
+    public function testTheParentAndTheRatioRoundTripThroughTheDatabaseAndSurviveAnUpdate(): void
+    {
+        // Arrange : une partie (ADR 0038), son parent et un ingrédient ordinaire
+        $creator = new UserBuilder()->build();
+        $this->persister->saveUser($creator);
+        $egg = new IngredientBuilder()->isEgg()->withCreator($creator, true)->build();
+        $yolk = new IngredientBuilder()->withName("Jaune d'œuf")->withCreator($creator, true)->withParent($egg->getSlug(), 2.5)->build();
+        $plain = new IngredientBuilder()->isButter()->withCreator($creator, true)->build();
+        foreach ([$egg, $yolk, $plain] as $ingredient) {
+            $this->persister->saveIngredient($ingredient);
+        }
+        $this->entityManager->clear();
+
+        // Act
+        $loaded = $this->ingredientRepository->findOneBySlug($yolk->getSlug());
+
+        // Assert : lus en base (l'identity map est vide), `null` ensemble pour les autres
+        $this->assertSame([$egg->getSlug(), 2.5], [$loaded->getParentSlug(), $loaded->getParentRatio()]);
+        $this->assertTrue($loaded->isPart());
+        $this->assertSame([null, null], [$this->ingredientRepository->findOneBySlug($egg->getSlug())->getParentSlug(), $this->ingredientRepository->findOneBySlug($egg->getSlug())->getParentRatio()]);
+        $this->assertFalse($this->ingredientRepository->findOneBySlug($plain->getSlug())->isPart());
+
+        // Act : un renommage garde le lien ; changer le ratio, puis recoller, s'écrivent
+        $loaded->setName("Jaune d'œuf frais");
+        $this->ingredientRepository->save($loaded);
+        $this->entityManager->clear();
+        $this->assertSame([$egg->getSlug(), 2.5], $this->storedParent($yolk->getSlug()));
+        $reloaded = $this->ingredientRepository->findOneBySlug($yolk->getSlug());
+        $this->ingredientRepository->save($reloaded->makePartOf($egg->getSlug(), 4.0));
+        $this->entityManager->clear();
+        $this->assertSame([$egg->getSlug(), 4.0], $this->storedParent($yolk->getSlug()));
+        $this->ingredientRepository->save($this->ingredientRepository->findOneBySlug($yolk->getSlug())->detachFromParent());
+        $this->entityManager->clear();
+
+        // Assert : les deux colonnes retombent ensemble
+        $this->assertSame([null, null], $this->storedParent($yolk->getSlug()));
+    }
+
+    /**
+     * @return array{?string, ?float} `parent_slug` et `parent_ratio` tels que la base les porte
+     */
+    private function storedParent(string $slug): array
+    {
+        $row = $this->entityManager->getConnection()->fetchAssociative('SELECT parent_slug, parent_ratio FROM ingredient WHERE slug = ?', [$slug]);
+
+        return [$row['parent_slug'], $row['parent_ratio'] === null ? null : (float) $row['parent_ratio']];
+    }
+
+    public function testPartsHaveAtLeastStopsAtTheNthPartInOneStatementWithoutCountingThemAll(): void
+    {
+        // Arrange : un parent à trois parties, un autre à une, un sans partie
+        $creator = new UserBuilder()->build();
+        $this->persister->saveUser($creator);
+        $egg = new IngredientBuilder()->isEgg()->withCreator($creator, true)->build();
+        $vanilla = new IngredientBuilder()->withName('Vanille')->withCreator($creator, true)->build();
+        $alone = new IngredientBuilder()->isButter()->withCreator($creator, true)->build();
+        $this->persister->saveIngredient($egg);
+        $this->persister->saveIngredient($vanilla);
+        $this->persister->saveIngredient($alone);
+        foreach (['Jaune', 'Blanc', 'Coquille'] as $name) {
+            $this->persister->saveIngredient(new IngredientBuilder()->withName($name . " d'œuf")->withCreator($creator, true)->withParent($egg->getSlug(), 1.0)->build());
+        }
+        $this->persister->saveIngredient(new IngredientBuilder()->withName('Demi-gousse')->withCreator($creator, true)->withParent($vanilla->getSlug(), 2.0)->build());
+        $this->entityManager->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // Act
+        $atLeast = [
+            [1, $this->ingredientRepository->partsHaveAtLeast($egg->getSlug(), 1)],
+            [3, $this->ingredientRepository->partsHaveAtLeast($egg->getSlug(), 3)],
+            [4, $this->ingredientRepository->partsHaveAtLeast($egg->getSlug(), 4)],
+        ];
+
+        // Assert : une instruction par question, aucun ingrédient hydraté ; le décompte exact n'est jamais lu
+        $this->assertSame(['SELECT ingredient' => 3], $counter->byTable());
+        $this->assertSame([[1, true], [3, true], [4, false]], $atLeast);
+        $this->assertTrue($this->ingredientRepository->partsHaveAtLeast($vanilla->getSlug(), 1));
+        $this->assertFalse($this->ingredientRepository->partsHaveAtLeast($vanilla->getSlug(), 2));
+        $this->assertFalse($this->ingredientRepository->partsHaveAtLeast($alone->getSlug(), 1));
+        $this->assertFalse($this->ingredientRepository->partsHaveAtLeast('inconnu', 1));
+    }
+
+    public function testHasPartsTellsIfTheIngredientIsAParent(): void
+    {
+        // Arrange
+        $creator = new UserBuilder()->build();
+        $this->persister->saveUser($creator);
+        $egg = new IngredientBuilder()->isEgg()->withCreator($creator, true)->build();
+        $yolk = new IngredientBuilder()->withName("Jaune d'œuf")->withCreator($creator, true)->withParent($egg->getSlug(), 1.0)->build();
+        $this->persister->saveIngredient($egg);
+        $this->persister->saveIngredient($yolk);
+
+        // Act & Assert : le parent en a, la partie non (profondeur 1)
+        $this->assertTrue($this->ingredientRepository->hasParts($egg->getSlug()));
+        $this->assertFalse($this->ingredientRepository->hasParts($yolk->getSlug()));
+    }
+
+    public function testDetachPartsGivesBackOrdinaryIngredientsInOneStatementAndTouchesNoOtherParent(): void
+    {
+        // Arrange : deux parties d'un parent, une d'un autre, un autre compte qui a les siennes
+        $creator = new UserBuilder()->build();
+        $other = new UserBuilder()->build();
+        $this->persister->saveUser($creator);
+        $this->persister->saveUser($other);
+        $egg = new IngredientBuilder()->isEgg()->withCreator($creator, true)->build();
+        $vanilla = new IngredientBuilder()->withName('Vanille')->withCreator($creator, true)->build();
+        $yolk = new IngredientBuilder()->withName("Jaune d'œuf")->withCreator($creator, true)->withParent($egg->getSlug(), 1.0)->build();
+        $white = new IngredientBuilder()->withName("Blanc d'œuf")->withCreator($creator, true)->withParent($egg->getSlug(), 1.0)->build();
+        $half = new IngredientBuilder()->withName('Demi-gousse')->withCreator($creator, true)->withParent($vanilla->getSlug(), 2.0)->build();
+        $theirEgg = new IngredientBuilder()->isEgg()->withCreator($other, true)->build();
+        $theirYolk = new IngredientBuilder()->withName("Jaune d'œuf")->withCreator($other, true)->withParent($theirEgg->getSlug(), 1.0)->build();
+        foreach ([$egg, $vanilla, $yolk, $white, $half, $theirEgg, $theirYolk] as $ingredient) {
+            $this->persister->saveIngredient($ingredient);
+        }
+        $this->entityManager->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // Act
+        $this->ingredientRepository->detachParts($egg->getSlug());
+
+        // Assert : une seule instruction, aucun ingrédient hydraté ; seules les deux parties de l'œuf sont recollées
+        $this->assertSame(['UPDATE ingredient' => 1], $counter->byTable());
+        $this->assertSame([null, null], $this->storedParent($yolk->getSlug()));
+        $this->assertSame([null, null], $this->storedParent($white->getSlug()));
+        $this->assertSame([$vanilla->getSlug(), 2.0], $this->storedParent($half->getSlug()));
+        $this->assertSame([$theirEgg->getSlug(), 1.0], $this->storedParent($theirYolk->getSlug()));
+    }
+
+    public function testACopyOfAPartThroughTheBulkSqlNeverCarriesTheParentOfItsOriginal(): void
+    {
+        // Arrange : une partie dans le catalogue du propriétaire, copiée comme à l'activation d'un compte
+        $owner = new UserBuilder()->build();
+        $user = new UserBuilder()->build();
+        $this->persister->saveUser($owner);
+        $this->persister->saveUser($user);
+        $egg = new IngredientBuilder()->isEgg()->withCreator($owner, true)->withBase()->build();
+        $yolk = new IngredientBuilder()->withName("Jaune d'œuf")->withCreator($owner, true)->withBase()->withParent($egg->getSlug(), 1.0)->build();
+        $this->persister->saveIngredient($egg);
+        $this->persister->saveIngredient($yolk);
+
+        // Act
+        $copied = static::getContainer()->get(IngredientAdoptionBulkRepository::class)->copyCatalogIngredients($user->getId(), $owner->getId(), [$egg->getSlug() => 'oeuf-copie', $yolk->getSlug() => 'jaune-copie']);
+
+        // Assert : les deux copies naissent ordinaires (le lien se refait par provenance, SUB-002), l'original garde le sien
+        $this->assertSame(2, $copied);
+        $this->assertSame([null, null], $this->storedParent('jaune-copie'));
+        $this->assertSame([null, null], $this->storedParent('oeuf-copie'));
+        $this->assertSame([$egg->getSlug(), 1.0], $this->storedParent($yolk->getSlug()));
     }
 
     public function testARowInsertedWithoutTheColumnIsNotBase(): void

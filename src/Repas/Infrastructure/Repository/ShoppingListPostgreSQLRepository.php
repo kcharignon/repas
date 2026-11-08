@@ -310,6 +310,22 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             ->getOneOrNullResult() !== null;
     }
 
+    public function isIngredientInOpenList(string $ingredientSlug): bool
+    {
+        // Une seule requête : une ligne de cet ingrédient dans une liste qui n'est pas terminée
+        return $this->entityManager->createQueryBuilder()
+            ->select('r.id')
+            ->from(ShoppingListRow::class, 'r')
+            ->innerJoin(ShoppingListEntity::class, 'sl', 'WITH', 'sl.id = r.shoppingListId')
+            ->where('r.ingredientSlug = :ingredient')
+            ->andWhere('sl.status != :completed')
+            ->setParameter('ingredient', $ingredientSlug)
+            ->setParameter('completed', ShoppingListStatus::COMPLETED)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult() !== null;
+    }
+
     public function deleteByOwner(string $ownerId): void
     {
         $ownedLists = 'SELECT sl.id FROM ' . ShoppingListEntity::class . ' sl WHERE sl.ownerId = :owner';

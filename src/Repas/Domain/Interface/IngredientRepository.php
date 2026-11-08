@@ -106,4 +106,22 @@ interface IngredientRepository
      * chargés ne sont pas mis à jour.
      */
     public function clearListDestination(string $creatorId, string $destination): void;
+
+    /**
+     * Cet ingrédient a-t-il au moins `$count` parties (ADR 0038) ? La lecture s'arrête à la `$count`-ième : jamais un décompte complet (plafond
+     * de `Ingredient::MAX_PARTS` parties). Une seule requête, sur l'index partiel des parties.
+     */
+    public function partsHaveAtLeast(string $parentSlug, int $count): bool;
+
+    /**
+     * Cet ingrédient a-t-il au moins une partie ? Il ne peut alors pas devenir une partie (profondeur 1, ADR 0038 décision 2).
+     */
+    public function hasParts(string $slug): bool;
+
+    /**
+     * Détache toutes les parties d'un ingrédient : elles redeviennent des ingrédients ordinaires (`parent_slug` et `parent_ratio` à `NULL`).
+     * Une seule instruction, aucun agrégat hydraté, les agrégats déjà chargés ne sont pas mis à jour. Déclaré par SUB-001 pour la suppression
+     * d'un parent (SUB-004).
+     */
+    public function detachParts(string $parentSlug): void;
 }

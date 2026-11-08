@@ -206,6 +206,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             ->setCompatibleUnitSlugs($ingredient->getCompatibleUnits()->map(fn(Unit $unit) => $unit->getSlug())->toArray())
             ->setIsBase($ingredient->isBase())
             ->setListDestination($ingredient->getListDestination())
+            ->setParent($ingredient->getParentSlug(), $ingredient->getParentRatio())
         ;
     }
 
@@ -228,6 +229,8 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             "adopted_from" => $ingredientEntity->getAdoptedFrom(),
             "is_base" => $ingredientEntity->isBase(),
             "list_destination" => $ingredientEntity->getListDestination(),
+            "parent_slug" => $ingredientEntity->getParentSlug(),
+            "parent_ratio" => $ingredientEntity->getParentRatio(),
         ]);
     }
 
@@ -316,6 +319,37 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             ->andWhere('i.listDestination = :destination')
             ->setParameter('creator', $creatorId)
             ->setParameter('destination', $destination)
+            ->getQuery()
+            ->execute();
+    }
+
+    public function partsHaveAtLeast(string $parentSlug, int $count): bool
+    {
+        // La `$count`-ième partie existe-t-elle ? Une ligne lue après avoir sauté les `$count - 1` premières, sur l'index partiel des parties
+        return $this->entityManager->createQueryBuilder()
+            ->select('i.slug')
+            ->from(IngredientEntity::class, 'i')
+            ->where('i.parentSlug = :parent')
+            ->setParameter('parent', $parentSlug)
+            ->setFirstResult(max(0, $count - 1))
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getScalarResult() !== [];
+    }
+
+    public function hasParts(string $slug): bool
+    {
+        return $this->partsHaveAtLeast($slug, 1);
+    }
+
+    public function detachParts(string $parentSlug): void
+    {
+        $this->entityManager->createQueryBuilder()
+            ->update(IngredientEntity::class, 'i')
+            ->set('i.parentSlug', 'NULL')
+            ->set('i.parentRatio', 'NULL')
+            ->where('i.parentSlug = :parent')
+            ->setParameter('parent', $parentSlug)
             ->getQuery()
             ->execute();
     }
