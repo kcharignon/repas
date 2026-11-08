@@ -51,6 +51,26 @@ class DevelopmentFixturesTest extends DatabaseTestCase
         $this->assertSame($expected, $marked);
     }
 
+    public function testTheCatalogHasTheYolkAndTheWhiteAsPartsOfTheEggWithTheEggDepartmentAndUnits(): void
+    {
+        // When : `make fixtures-load-dev`
+        $this->load(['dev']);
+
+        // Then : « Jaune d'œuf » et « Blanc d'œuf » sont des parties d'« Œuf » au ratio 1 (ADR 0038), de base, dans son rayon et avec ses unités
+        $connection = $this->entityManager->getConnection();
+        $rows = $connection->fetchAllAssociative("SELECT slug, name, parent_slug, parent_ratio, is_base, department, default_cooking_unit, default_purchase_unit, creator FROM ingredient WHERE slug IN ('oeuf', 'jaune-d-oeuf', 'blanc-d-oeuf') ORDER BY slug");
+        $this->assertSame(['blanc-d-oeuf', 'jaune-d-oeuf', 'oeuf'], array_column($rows, 'slug'));
+        $egg = $rows[2];
+        foreach ([$rows[0], $rows[1]] as $part) {
+            $this->assertSame(['oeuf', 1.0, true], [$part['parent_slug'], (float) $part['parent_ratio'], $part['is_base']], $part['slug']);
+            $this->assertSame([$egg['department'], $egg['default_cooking_unit'], $egg['default_purchase_unit'], $this->ownerId], [$part['department'], $part['default_cooking_unit'], $part['default_purchase_unit'], $part['creator']], $part['slug']);
+        }
+        $this->assertSame(["Blanc d'œuf", "Jaune d'œuf", 'Œuf'], array_column($rows, 'name'));
+        // l'œuf, lui, n'est la partie de personne ; et la seule colonne `parent_slug` du catalogue est celle de ces deux parties
+        $this->assertNull($egg['parent_slug']);
+        $this->assertSame(2, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE parent_slug IS NOT NULL'));
+    }
+
     public function testTheDevelopmentDepartmentsGiveAFlakeToFrozenAndACanToCannedGoodsAndNothingToTheOthers(): void
     {
         // When : `make fixtures-load-dev`
@@ -78,6 +98,8 @@ class DevelopmentFixturesTest extends DatabaseTestCase
         foreach (['user@repas.fr', 'admin@repas.fr'] as $email) {
             $id = $connection->fetchOne('SELECT id FROM "user" WHERE email = ?', [$email]);
             $this->assertSame($catalogSize, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ?', [$id]), "copies de $email");
+            // Une copie ne recopie jamais le parent de l'original (ADR 0038 décision 5) : le lien se refait par provenance (SUB-002)
+            $this->assertSame(0, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ? AND (parent_slug IS NOT NULL OR parent_ratio IS NOT NULL)', [$id]), "parents recopiés chez $email");
             $this->assertSame(
                 0,
                 (int) $connection->fetchOne('SELECT count(*) FROM recipe_row x JOIN recipe r ON r.id = x.recipe JOIN ingredient i ON i.slug = x.ingredient WHERE r.author = ? AND i.creator <> r.author', [$id]),

@@ -29,6 +29,12 @@ class SeedProductionLikeCatalogTest extends DatabaseTestCase
 {
     private const string FILE = '/docs/ingredients/base-ingredients.tsv';
 
+    /**
+     * Les deux PARTIES d'« Œuf » ajoutées au fichier après la passation (ADR 0038, SUB-001) : des données de développement, pas des anciens communs.
+     * Elles ne sont pas dans les 261 ni dans les sommes de contrôle de la passation, que ce test rejoue sur le catalogue d'alors.
+     */
+    private const array PARTS = ['jaune-d-oeuf', 'blanc-d-oeuf'];
+
     /** @var list<array{slug: string, name: string, department: string, base: bool}> */
     private array $rows = [];
     private string $ownerId;
@@ -182,6 +188,9 @@ class SeedProductionLikeCatalogTest extends DatabaseTestCase
         $rows = [];
         foreach (array_slice(file(dirname(__DIR__, 3) . self::FILE, FILE_IGNORE_NEW_LINES), 1) as $line) {
             [$slug, $name, $department, $base] = explode("\t", $line);
+            if (in_array($slug, self::PARTS, true)) {
+                continue;
+            }
             $rows[] = ['slug' => $slug, 'name' => $name, 'department' => $department, 'base' => $base === '1'];
         }
 

@@ -18,10 +18,27 @@ class BaseIngredientsDataTest extends TestCase
     private const string TSV = '/docs/ingredients/base-ingredients.tsv';
     private const string JSON = '/src/Repas/Infrastructure/Data/base-ingredients.json';
 
-    public function testTheClassificationIs261OldCommonsWith151BaseOnesAndTheDocumentedChecksums(): void
+    /**
+     * Les deux PARTIES d'« Œuf » ajoutées à la fin du fichier après la passation (ADR 0038, SUB-001) : des données de développement (les mêmes que
+     * `ingredient.json`), pas des anciens communs. Elles sont en plus des 261, de base, et ne comptent pas dans les sommes de contrôle de la passation.
+     */
+    private const array PARTS = ['jaune-d-oeuf', 'blanc-d-oeuf'];
+
+    public function testTheTwoPartsOfTheEggComeAfterTheOldCommonsAndAreBase(): void
     {
         // Given
         $classification = $this->classification()->all();
+
+        // Then : 261 anciens communs, puis les deux parties, à la fin du fichier, de base
+        $this->assertCount(263, $classification);
+        $this->assertSame(self::PARTS, array_slice(array_keys($classification), -2));
+        $this->assertSame([true, true], array_values(array_intersect_key($classification, array_flip(self::PARTS))));
+    }
+
+    public function testTheClassificationIs261OldCommonsWith151BaseOnesAndTheDocumentedChecksums(): void
+    {
+        // Given : le catalogue de la passation, sans les parties d'« Œuf » ajoutées après
+        $classification = array_diff_key($this->classification()->all(), array_flip(self::PARTS));
         $slugs = array_keys($classification);
         $base = array_keys(array_filter($classification));
         sort($slugs, SORT_STRING);

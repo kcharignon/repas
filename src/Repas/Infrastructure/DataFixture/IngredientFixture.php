@@ -19,7 +19,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 /**
  * Le catalogue d'ingrédients de développement (ADR 0028, amendement du 2026-10-20) : comme en production après la passation, il appartient
  * au propriétaire du catalogue (le compte protégé de `UserFixture`, ou le compte de `INGREDIENT_CATALOG_OWNER_EMAIL` s'il existe) et les
- * mêmes 151 ingrédients portent le marqueur « de base » (`base-ingredients.json`). Les comptes reçoivent leurs copies à l'activation, ou par
+ * mêmes 151 ingrédients portent le marqueur « de base » (`base-ingredients.json`), plus les deux PARTIES d'« Œuf » (« Jaune d'œuf » et « Blanc d'œuf »,
+ * ADR 0038 : `parent` et `parent_ratio` dans `ingredient.json`, de base elles aussi). Les comptes reçoivent leurs copies à l'activation, ou par
  * l'amorçage des comptes de démonstration (`make fixtures-demo`) : aucun ingrédient n'est « commun », aucun n'est sans créateur.
  */
 class IngredientFixture extends RepasFixture implements DependentFixtureInterface, FixtureGroupInterface
@@ -68,6 +69,9 @@ class IngredientFixture extends RepasFixture implements DependentFixtureInterfac
                     creatorId: $ownerId,
                     compatibleUnitSlugs: $ingredientData['compatible_units'] ?? array_unique([$ingredientData['default_cooking_unit'], $ingredientData['default_purchase_unit']]),
                     isBase: $isBase[$ingredientData['slug']] ?? false,
+                    // Une PARTIE du catalogue (« Jaune d'œuf » est une partie d'« Œuf », ADR 0038) : le parent et le ratio sont posés ensemble
+                    parentSlug: $ingredientData['parent'] ?? null,
+                    parentRatio: isset($ingredientData['parent']) ? (float) $ingredientData['parent_ratio'] : null,
                 );
                 $manager->persist($ingredientEntity);
 
