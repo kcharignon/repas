@@ -102,6 +102,7 @@ use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\ComposedRecipeDataset;
 use Repas\Tests\Helper\Image\Images;
 use Repas\Tests\Helper\MarmitonPages;
 use Repas\Tests\Helper\WriteBudgetTestCase;
@@ -345,6 +346,25 @@ return [
 
         return new removeMealFromPlanCommand($owner->getId(), $recipe->getId());
     },
+    // Les recettes utilisées dans d'autres recettes (ADR 0040, COMP-004) : « Grande tarte » utilise deux recettes de deux lignes chacune et la liste principale
+    // planifie déjà les trois recettes typiques. Les recettes utilisées se lisent en lot (quatre lectures, quel que soit leur nombre), leurs lignes se
+    // mettent à l'échelle avec celles de la tarte ; seules les écritures suivent le nombre de lignes (tests/Repas/WriteBudget/ComposedRecipeReadsAreConstantTest).
+    // Les budgets des recettes sans composant ne changent pas.
+    'planifier-recette-composee' => static function (WriteBudgetTestCase $t): object {
+        [$owner, $recipe] = ComposedRecipeDataset::create($t, 2, 2);
+
+        return new PlannedMealCommand($owner->getId(), $recipe->getId(), $owner->getDefaultServing());
+    },
+    'modifier-portions-recette-composee' => static function (WriteBudgetTestCase $t): object {
+        [, , $mealId] = ComposedRecipeDataset::create($t, 2, 2, planned: true);
+
+        return new UpdateServingMealCommand($mealId, 6);
+    },
+    'retirer-repas-recette-composee' => static function (WriteBudgetTestCase $t): object {
+        [$owner, $recipe] = ComposedRecipeDataset::create($t, 2, 2, planned: true);
+
+        return new removeMealFromPlanCommand($owner->getId(), $recipe->getId());
+    },
     // Ajouter une partie à la main : 1 va au registre de la liste du parent, la ligne du parent grandit
     'ajouter-partie-a-la-liste' => static function (WriteBudgetTestCase $t) use ($partsRecipe): object {
         [$owner, , $part] = $partsRecipe($t, 2, true);
@@ -431,6 +451,17 @@ return [
         [$owner] = $butcherWithBacon($t, butcherListOpen: true, baconInButcherList: true);
 
         return new RemoveSpokenItemCommand($owner->getId(), 'du lardon', true);
+    },
+    // « planifie le repas grande tarte » / « enlève le repas grande tarte » dits à Alexa, la recette utilisant d'autres recettes (ADR 0040, COMP-004)
+    'planifier-repas-dit-a-alexa-recette-composee' => static function (WriteBudgetTestCase $t): object {
+        [$owner, $recipe] = ComposedRecipeDataset::create($t, 2, 2);
+
+        return new AddSpokenMealCommand($owner->getId(), $recipe->getName(), true);
+    },
+    'retirer-repas-dit-a-alexa-recette-composee' => static function (WriteBudgetTestCase $t): object {
+        [$owner, $recipe] = ComposedRecipeDataset::create($t, 2, 2, planned: true);
+
+        return new SpokenMealRemovalCommand($owner->getId(), $recipe->getName(), true);
     },
     // Planifier le gâteau basque dit à Alexa : la recette éclatée entre la liste principale, la Boulangerie et la Crèmerie ouverte à la demande
     'planifier-repas-dit-a-alexa-eclate' => static function (WriteBudgetTestCase $t) use ($splitRecipe): object {
@@ -1482,6 +1513,22 @@ return [
         [$first] = $t->typicalRecipes($owner);
 
         return new PlanSpokenMealCommand($owner->getId(), $first->getId(), UuidGenerator::new());
+    },
+    // La recette dite utilise d'autres recettes (ADR 0040, COMP-004) : toutes les recettes de l'utilisateur se planifient, se changent et se retirent à la voix
+    'planifier-repas-par-la-voix-recette-composee' => static function (WriteBudgetTestCase $t): object {
+        [$owner, $recipe] = ComposedRecipeDataset::create($t, 2, 2);
+
+        return new PlanSpokenMealCommand($owner->getId(), $recipe->getId(), UuidGenerator::new());
+    },
+    'modifier-portions-repas-par-la-voix-recette-composee' => static function (WriteBudgetTestCase $t): object {
+        [$owner, $recipe] = ComposedRecipeDataset::create($t, 2, 2, planned: true);
+
+        return new ChangeSpokenMealServingsCommand($owner->getId(), $recipe->getId(), 6);
+    },
+    'retirer-repas-par-la-voix-recette-composee' => static function (WriteBudgetTestCase $t): object {
+        [$owner, $recipe] = ComposedRecipeDataset::create($t, 2, 2, planned: true);
+
+        return new RemoveSpokenMealCommand($owner->getId(), $recipe->getId());
     },
     // La seule liste est partie au drive : elle n'est pas touchée, une liste neuve reçoit le repas
     'planifier-repas-par-la-voix-liste-envoyee' => static function (WriteBudgetTestCase $t): object {

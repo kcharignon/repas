@@ -16,6 +16,9 @@ final class IngredientException extends DomainException
     private ?string $conversionIngredientName = null;
     private ?string $conversionStartUnitName = null;
 
+    /** Posé par `inRecipe()` : le nom de la recette UTILISÉE d'où vient la ligne qui ne se convertit pas (ADR 0040 décision 16), dit à son propriétaire, jamais au journal. */
+    private ?string $conversionRecipeName = null;
+
     // Messages des cas de la fusion de deux ingrédients (ADR 0028 décision 9) : le front les distingue, ils ne se renomment pas
     public const string CANNOT_MERGE_INTO_ITSELF = 'CANNOT_MERGE_INTO_ITSELF';
     public const string MERGE_UNIT_MISSING = 'MERGE_UNIT_MISSING';
@@ -92,6 +95,26 @@ final class IngredientException extends DomainException
     public function conversionStartUnitName(): ?string
     {
         return $this->conversionStartUnitName;
+    }
+
+    /**
+     * La ligne qui ne se convertit pas vient d'une recette UTILISÉE par la recette qu'on planifie (ADR 0040 décision 16) : on retient son nom, de
+     * quoi dire laquelle ouvrir. Le message et le code ne changent pas (la route de planification garde son erreur d'aujourd'hui).
+     */
+    public function inRecipe(string $recipeName): static
+    {
+        $this->conversionRecipeName = $recipeName;
+
+        return $this;
+    }
+
+    /**
+     * Le nom de la recette utilisée d'où vient la ligne qui ne se convertit pas (`inRecipe()`), `null` quand elle est de la recette elle-même
+     * et pour toute autre erreur.
+     */
+    public function conversionRecipeName(): ?string
+    {
+        return $this->conversionRecipeName;
     }
 
     public static function cannotBeRemoveExistInRecipe(string $ingredientId): static

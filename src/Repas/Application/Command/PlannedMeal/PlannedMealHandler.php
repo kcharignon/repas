@@ -4,6 +4,7 @@ namespace Repas\Repas\Application\Command\PlannedMeal;
 
 
 use Repas\Repas\Application\Service\ActiveListForType;
+use Repas\Repas\Application\Service\FlattenedRecipeRows;
 use Repas\Repas\Application\Service\PartAwareLines;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
@@ -30,6 +31,8 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *   avant les types.
  * - Une liste de type sans liste en cours est ouverte à la demande, nommée comme le type (jamais une liste envoyée au drive : elle n'est pas en cours).
  *   La liste principale absente reste une erreur (`activeShoppingListNotFound`), jamais ouverte en silence.
+ * - Les lignes planifiées sont celles de la recette ET celles de ses recettes utilisées (ADR 0040), aplaties par `FlattenedRecipeRows` : la suite (destinations,
+ *   conversions, parties d'ingrédient, `meal.placed_ingredients`) ne voit que des lignes d'ingrédients, comme avant les recettes utilisées.
  * - TOUT est jugé avant la première écriture (décision 10) : une liste visée qui contient déjà la recette, les quantités à convertir, la version de la
  *   liste principale (`If-Match` ne vaut que pour elle, décision 12). Le bus des commandes est transactionnel : ce qui ne se sait qu'en écrivant (le
  *   plafond de listes à l'ouverture d'une liste de type) annule aussi tout.
@@ -45,6 +48,7 @@ readonly class PlannedMealHandler
         private ListRoutingRepository $listRoutingRepository,
         private ActiveListForType $activeListForType,
         private PartAwareLines $partLines,
+        private FlattenedRecipeRows $flattenedRows,
     ) {
     }
 
@@ -75,8 +79,11 @@ readonly class PlannedMealHandler
             throw RecipeException::notFound($recipe->getId());
         }
 
-        // On récupere les Ingredients de la recette dans les bonnes proportions
-        $rows = $recipe->getRowForServing($command->defaultServing);
+        // On récupere les Ingredients de la recette ET ceux de ses recettes utilisées (ADR 0040) dans les bonnes proportions ; sans recette utilisée,
+        // rien n'est lu de plus
+        $flat = $this->flattenedRows->of($recipe, $command->ownerId);
+        $flattened = $flat->forServing($command->defaultServing);
+        $rows = $flattened->rows();
 
         // Les parents des parties de la recette (ADR 0038 décision 10), lus en une fois ; aucune lecture quand aucune ligne n'est une partie
         $parents = $this->partLines->parentsOf(array_map(static fn(RecipeRow $row): Ingredient => $row->getIngredient(), $rows->toArray()));
@@ -125,11 +132,16 @@ readonly class PlannedMealHandler
 
         // On calcule la quantité dans l'unité d'achat : une conversion manquante refuse tout avant d'avoir ouvert ou modifié une liste
         // (une partie arrive aussi avec ce qu'elle vaut en unités d'achat de son parent : ADR 0038 décision 4)
-        $this->conversionService->preload($rows);
+        $this->conversionService->preload($flat->allRows());
         $lines = [];
         foreach ($rowsByDestination as $key => $destinationRows) {
             foreach ($destinationRows as $row) {
-                $lines[$key][] = $this->partLines->prepare($row->getIngredient(), $this->conversionService->convertRecipeRowToPurchaseUnit($row), $parents);
+                try {
+                    $lines[$key][] = $this->partLines->prepare($row->getIngredient(), $this->conversionService->convertRecipeRowToPurchaseUnit($row), $parents);
+                } catch (IngredientException $failure) {
+                    // Une ligne d'une recette utilisée qui ne se convertit pas nomme cette recette (ADR 0040 décision 16)
+                    throw $flattened->attribute($failure, $row);
+                }
             }
         }
 

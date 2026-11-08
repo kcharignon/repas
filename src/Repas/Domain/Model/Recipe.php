@@ -585,6 +585,9 @@ final class Recipe implements ModelInterface
      * Des COPIES des lignes : la recette garde ses quantités, un même modèle peut donc être mis à l'échelle plusieurs fois (le changement de
      * personnes ou le retrait d'une recette éclatée entre plusieurs listes, ADR 0036, le fait une fois par repas du groupe).
      *
+     * Les lignes PROPRES de la recette seulement : aucun cas d'usage ne l'appelle pour une liste de courses, qui doit aussi recevoir les lignes de ses
+     * recettes utilisées (ADR 0040 décision 12) ; cela passe par `FlattenedRecipeRows` et `RecipeFlattener` (`FlattenerIsTheOnlyWayToScaleARecipeTest`).
+     *
      * @return Tab<RecipeRow>
      */
     public function getRowForServing(int $serving): Tab

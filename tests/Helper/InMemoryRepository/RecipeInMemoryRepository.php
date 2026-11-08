@@ -23,6 +23,9 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
         return Recipe::class;
     }
 
+    /** Lectures de recettes EN LOT (`findByIds`) : de quoi prouver qu'une recette sans composant n'en fait aucune et qu'une recette composée n'en fait qu'une. */
+    public int $batchReads = 0;
+
     /**
      * @throws RecipeException
      */
@@ -37,6 +40,7 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
      */
     public function findByIds(array $ids): array
     {
+        $this->batchReads++;
         $recipes = [];
         foreach (array_values(array_unique($ids)) as $id) {
             $recipe = $this->models[$id] ?? null;

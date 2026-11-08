@@ -122,17 +122,17 @@ final class PartsScenario
 
     public function planned(): PlannedMealHandler
     {
-        return new PlannedMealHandler($this->lists, $this->recipes, $this->conversions, new UuidGenerator(), $this->typed->routing, $this->typed->activeListForType, $this->partLines());
+        return new PlannedMealHandler($this->lists, $this->recipes, $this->conversions, new UuidGenerator(), $this->typed->routing, $this->typed->activeListForType, $this->partLines(), FlatRows::for($this->recipes));
     }
 
     public function serving(): UpdateServingMealHandler
     {
-        return new UpdateServingMealHandler($this->lists, $this->recipes, $this->conversions, $this->typed->group, $this->partLines());
+        return new UpdateServingMealHandler($this->lists, $this->recipes, $this->conversions, $this->typed->group, $this->partLines(), FlatRows::for($this->recipes));
     }
 
     public function removal(): removeMealFromPlanHandler
     {
-        return new removeMealFromPlanHandler($this->lists, $this->recipes, $this->conversions, $this->typed->group);
+        return new removeMealFromPlanHandler($this->lists, $this->recipes, $this->conversions, $this->typed->group, FlatRows::for($this->recipes));
     }
 
     public function adding(): AddIngredientToShoppingListHandler
