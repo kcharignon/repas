@@ -178,6 +178,70 @@ check "un corps envoyé en morceaux de 1 000 001 octets est refusé en 413" test
 check "un corps de 1 Mio + 1 octet atteint le webhook d'Alexa" reaches_app "$(post_code /api/voice/alexa 1048577)"
 check "un corps de 1 Mio + 1 octet en morceaux atteint le webhook d'Alexa" reaches_app "$(post_code /api/voice/alexa 1048577 --http1.1 -H 'Transfer-Encoding: chunked')"
 check "un corps de 1 Mio + 2 octets est refusé en 413 (webhook d'Alexa)" test "$(post_code /api/voice/alexa 1048578)" = 413
+# L'envoi d'une image (ADR 0039) a sa propre limite de corps, 3 Mio + 256 Kio (l'application refuse le fichier au-delà de 3 Mio, avec un message) ;
+# l'envoi par lien est un corps JSON de quelques octets, il garde la limite de 1 Mo.
+for size in 3407872 3407873; do make_body "$size"; done
+check "un corps de 3 Mio + 256 Kio atteint l'envoi d'image" reaches_app "$(post_code /api/v1/images 3407872)"
+check "un corps d'un octet de plus est refusé en 413 (envoi d'image)" test "$(post_code /api/v1/images 3407873)" = 413
+check "l'envoi par lien garde la limite de 1 Mo (413 au-delà)" test "$(post_code /api/v1/images/from-url 1000001)" = 413
+
+echo "== Images envoyées par l'administrateur (volume uploads, ADR 0039)"
+# Le volume `uploads` est monté sur public/images/uploads : il appartient à l'utilisateur sous lequel tourne le serveur (un volume prend les droits du
+# dossier de l'image à son premier montage). Les guillemets simples sont voulus : le shell du conteneur lit les variables.
+# shellcheck disable=SC2016
+check "le volume des images envoyées appartient à l'utilisateur du serveur" docker compose exec -T php sh -c 'test "$(stat -c %u /app/public/images/uploads)" = "$(awk "/^Uid:/ {print \$2}" /proc/1/status)"'
+check "l'extension d'images (GD) sait lire et écrire du WebP et du PNG" docker compose exec -T php php -r 'exit(!empty(gd_info()["WebP Support"]) && !empty(gd_info()["PNG Support"]) && function_exists("imagewebp") && function_exists("imagepng") ? 0 : 1);'
+check "l'extension DOM (assainissement des SVG) est présente" docker compose exec -T php php -r 'exit(class_exists("DOMDocument") && class_exists("XMLReader") && class_exists("XMLWriter") ? 0 : 1);'
+# Un compte administrateur : le compte d'essai plus haut, promu en base (le rôle ne s'obtient par aucune route publique).
+docker compose exec -T database psql -q -U repas -d repas -c "UPDATE \"user\" SET roles = '[\"ROLE_USER\",\"ROLE_ADMIN\"]' WHERE email = '$email'" < /dev/null
+admin_token=$(curl_app -X POST -H 'Content-Type: application/json' -d "{\"email\":\"$email\",\"password\":\"$password\"}" "https://$app:$port/api/login_check" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p' || true)
+check "le compte d'essai promu administrateur se connecte" test -n "$admin_token"
+upload_file() { # upload_file <fichier> [type] : le corps de la réponse de POST /api/v1/images
+	curl_app -X POST -H "Authorization: Bearer $admin_token" -F "file=@$1;type=${2:-application/octet-stream}" "https://$app:$port/api/v1/images" || true
+}
+# La réponse JSON écrit les barres obliques échappées (images\/uploads\/…) : on les rétablit.
+path_of() { sed -n 's/.*"path":"\([^"]*\)".*/\1/p' <<< "$1" | sed 's#\\/#/#g'; }
+# Une image de 1 pixel (PNG), envoyée à travers toute la pile : bordure, back, GD, volume, puis servie par la bordure. Un PNG reste un PNG.
+printf 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' | base64 -d > smoke.png
+upload_body=$(upload_file smoke.png image/png)
+uploaded_path=$(path_of "$upload_body")
+[[ -n $uploaded_path ]] || echo "    (réponse du serveur : ${upload_body:0:300})"
+check "l'envoi d'un PNG rend le chemin d'un PNG nommé par son empreinte" bash -c "[[ '$uploaded_path' =~ ^images/uploads/[0-9a-f]{64}\.png\$ ]]"
+upload_headers=$(curl_app -D - -o upload.png "https://$app:$port/$uploaded_path" || true)
+check "l'image envoyée est servie par la bordure sous /images/uploads (200)" grep -q '^HTTP/[0-9.]* 200' <<< "$upload_headers"
+check "elle est servie en image/png" grep -qi '^content-type: image/png' <<< "$upload_headers"
+check "avec un cache d'un an sans revalidation" bash -c "grep -i '^cache-control:' <<< \"\$1\" | grep -qi 'max-age=31536000, immutable'" _ "$upload_headers"
+check "et nosniff une seule fois" header_is "$upload_headers" x-content-type-options nosniff
+check "c'est bien un fichier PNG" bash -c "head -c 4 upload.png | tail -c 3 | grep -q PNG"
+second_body=$(upload_file smoke.png image/png)
+check "la même image rend le même chemin" test "$(path_of "$second_body")" = "$uploaded_path"
+# Un WebP (fabriqué par l'extension GD du conteneur) reste un WebP.
+docker compose exec -T php php -r '$i = imagecreatetruecolor(8, 8); imagewebp($i);' < /dev/null > smoke.webp
+webp_path=$(path_of "$(upload_file smoke.webp image/webp)")
+check "l'envoi d'un WebP rend le chemin d'un WebP" bash -c "[[ '$webp_path' =~ \.webp\$ ]]"
+check "il est servi en image/webp" bash -c "curl -sk -D - -o /dev/null --resolve $app:$port:127.0.0.1 https://$app:$port/$webp_path | tr -d '\r' | grep -qi '^content-type: image/webp'"
+# Un JPEG est refusé (il ne gère pas la transparence).
+docker compose exec -T php php -r '$i = imagecreatetruecolor(8, 8); imagejpeg($i);' < /dev/null > smoke.jpg
+jpeg_response=$(curl_app -w '\n%{http_code}' -X POST -H "Authorization: Bearer $admin_token" -F 'file=@smoke.jpg;type=image/jpeg' "https://$app:$port/api/v1/images" || true)
+check "un JPEG est refusé en 422 (IMAGE_UNSUPPORTED)" bash -c "tail -n 1 <<< \"\$1\" | grep -q '^422\$' && grep -q IMAGE_UNSUPPORTED <<< \"\$1\"" _ "$jpeg_response"
+# Un SVG piégé : il est assaini (jamais gardé tel quel), puis servi avec la politique qui l'empêche de rien exécuter même ouvert directement.
+cat > smoke.svg << 'SVG'
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" onload="alert(1)"><script>alert(2)</script><rect width="10" height="10" fill="#0a0" onclick="alert(3)"/></svg>
+SVG
+svg_body=$(upload_file smoke.svg image/svg+xml)
+svg_path=$(path_of "$svg_body")
+check "l'envoi d'un SVG rend le chemin d'un fichier .svg" bash -c "[[ '$svg_path' =~ ^images/uploads/[0-9a-f]{64}\.svg\$ ]]"
+svg_headers=$(curl_app -D - -o served.svg "https://$app:$port/$svg_path" || true)
+check "le SVG est servi en image/svg+xml" grep -qi '^content-type: image/svg+xml' <<< "$svg_headers"
+check "avec nosniff, une seule fois" header_is "$svg_headers" x-content-type-options nosniff
+check "et la politique qui l'empêche de rien exécuter, une seule fois" header_is "$svg_headers" content-security-policy "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+check "le SVG gardé est assaini : ni script, ni gestionnaire d'événement, mais sa forme" bash -c "! grep -qi -E 'script|onload|onclick|alert' served.svg && grep -q '<rect' served.svg"
+printf 'ceci est du texte' > smoke.txt
+check "un fichier qui n'est pas une image est refusé en 422" test "$(curl_app -o /dev/null -w '%{http_code}' -X POST -H "Authorization: Bearer $admin_token" -F 'file=@smoke.txt;type=image/png' "https://$app:$port/api/v1/images")" = 422
+check "un lien vers une adresse IP est refusé en 422, sans aucun appel sortant" test "$(curl_app -o /dev/null -w '%{http_code}' -X POST -H "Authorization: Bearer $admin_token" -H 'Content-Type: application/json' -d '{"url":"https://127.0.0.1/a.png"}' "https://$app:$port/api/v1/images/from-url")" = 422
+check "sans jeton, l'envoi d'une image est refusé (401)" test "$(curl_app -o /dev/null -w '%{http_code}' -X POST -F 'file=@smoke.png;type=image/png' "https://$app:$port/api/v1/images")" = 401
+check "une image inconnue sous /images/uploads est un 404 sans cache d'un an" bash -c "curl -sk -D - -o /dev/null --resolve $app:$port:127.0.0.1 https://$app:$port/images/uploads/inconnue.svg | tr -d '\r' | { head -n 1 | grep -q ' 404' && ! grep -qi 'immutable'; }"
+check "les autres images de /images n'ont pas le cache d'un an" bash -c "! curl -sk -D - -o /dev/null --resolve $app:$port:127.0.0.1 https://$app:$port/images/logo.png | grep -qi 'immutable'"
 
 # Délais de lecture : réglage lu dans la configuration vivante de la bordure, puis essai réel (une requête dont l'en-tête n'arrive
 # pas, un corps qui arrive au compte-gouttes), les deux en parallèle pour ne pas allonger l'essai.
@@ -217,6 +281,9 @@ echo "== Nouvelle version du back (sauvegarde puis déploiement)"
 check "deploy.sh back v0.0.2" ./deploy.sh back v0.0.2
 check "une sauvegarde lisible a été créée" bash -c 'ls backups/repas-*-avant-v0.0.2.dump'
 check "BACK_TAG vaut v0.0.2" grep -q '^BACK_TAG=v0.0.2$' .env
+# Les images envoyées survivent au déploiement (le conteneur est remplacé, le volume reste) et sont dans la sauvegarde d'avant ce déploiement.
+check "l'image envoyée est toujours servie après le déploiement (volume conservé)" test "$(curl_app -o /dev/null -w '%{http_code}' "https://$app:$port/$uploaded_path")" = 200
+check "la sauvegarde d'avant le déploiement contient les images envoyées" bash -c "tar tzf backups/uploads-*-avant-v0.0.2.tar.gz | grep -q '${uploaded_path##*/}'"
 
 echo "== Retour arrière automatique (version qui ne démarre pas)"
 # Une version qui ne démarre pas : même image, mais sa commande échoue aussitôt (le conteneur ne devient jamais sain).

@@ -88,6 +88,9 @@ services:
     volumes:
       # Clés JWT : générées une fois au premier démarrage (docker-entrypoint.sh), à conserver d'un déploiement à l'autre.
       - jwt:/app/config/jwt
+      # Images envoyées par l'administrateur (rayons, types de recette ; ADR 0039) : écrites par le back sous /images/uploads, à conserver d'un déploiement
+      # à l'autre et sauvegardées avec la base (backup.sh). Le volume prend les droits du dossier de l'image au premier montage (Dockerfile).
+      - uploads:/app/public/images/uploads
 
   front:
     image: ${FRONT_IMAGE:-ghcr.io/kcharignon/repas-front}:${FRONT_TAG:-none}
@@ -121,6 +124,7 @@ services:
 volumes:
   pgdata:
   jwt:
+  uploads:
   caddy_data:
     name: ${CADDY_DATA_VOLUME:-repas-prod_caddy_data}
   caddy_config:

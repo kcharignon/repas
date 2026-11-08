@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
 	&& rm -rf /var/lib/apt/lists/*
 
+# `gd` : les images PNG et WebP envoyées par l'administrateur sont décodées puis ré-encodées dans leur format, transparence gardée (ADR 0039).
 RUN set -eux; \
 	install-php-extensions \
 		@composer \
@@ -34,6 +35,7 @@ RUN set -eux; \
 		opcache \
 		zip \
         pdo_pgsql \
+		gd \
 	;
 
 # https://getcomposer.org/doc/03-cli.md#composer-allow-superuser
@@ -86,6 +88,13 @@ RUN set -eux; \
 # copy sources
 COPY --link . ./
 RUN rm -Rf frankenphp/
+
+# Images envoyées par l'administrateur (ADR 0039) : ce dossier reçoit, en production, le volume `uploads` (deploy/compose.yaml). Un volume nommé
+# prend les droits du dossier de l'image à son premier montage : l'utilisateur du conteneur (root, dans l'image FrankenPHP) y écrit, et tout le
+# monde le lit (le serveur de fichiers le sert sous /images/uploads). Les fichiers du poste de développement n'entrent pas dans l'image (.dockerignore).
+RUN set -eux; \
+	mkdir -p public/images/uploads; \
+	chmod 0755 public/images/uploads
 
 RUN set -eux; \
 	mkdir -p var/cache var/log; \

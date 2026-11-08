@@ -34,6 +34,21 @@
 	header ?X-Content-Type-Options nosniff
 	header ?Referrer-Policy strict-origin-when-cross-origin
 
+	# Images envoyées par l'administrateur (ADR 0039, dossier public/images/uploads, le volume `uploads` en production). Posé seulement si le fichier
+	# existe (jamais sur la réponse JSON d'une image inconnue) ; les autres images de /images gardent leurs en-têtes.
+	# - Le nom d'un fichier est l'empreinte de son contenu, il ne change donc jamais : cache d'un an, sans revalidation.
+	# - Le type vient de l'extension (.png, .webp, .svg -> image/svg+xml), `nosniff` est posé plus haut : le navigateur ne devine jamais un autre type.
+	# - Un SVG est du XML qui peut porter du script ; servi depuis notre origine et ouvert directement, il s'exécuterait. Il est assaini avant d'être
+	#   écrit (SvgSanitizer), et cette politique l'empêche en plus de RIEN exécuter ni charger : ni script, ni image, ni police, ni cadre, ni formulaire,
+	#   ni requête (default-src 'none'), seul le style en ligne est permis, dans un bac à sable sans origine ni script (sandbox). Posée sur tout le
+	#   dossier : elle ne gêne pas l'affichage d'une image dans une page (la politique d'une image n'est lue que si on l'ouvre seule).
+	@uploads {
+		path /images/uploads/*
+		file {path}
+	}
+	header @uploads Cache-Control "public, max-age=31536000, immutable"
+	header @uploads Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+
 	@phpRoute {
 		not file {path}
 	}

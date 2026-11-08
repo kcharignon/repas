@@ -42,3 +42,5 @@ export/
 config/jwt/
 deploy/
 .claude/
+# Images envoyées par l'administrateur (ADR 0039) : jamais dans l'image, elles vivent dans le volume `uploads`
+public/images/uploads/
