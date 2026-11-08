@@ -186,7 +186,9 @@ class RecipeWithoutOwnerApiFlowTest extends DatabaseTestCase
         $this->request('GET', "/api/v1/recipes/$aliceCopy", $this->alice);
         $sheet = $this->jsonBody();
         $this->assertSame([200, self::CANONICAL, true, null], [$this->client->getResponse()->getStatusCode(), $sheet['sourceUrl'], $sheet['canEdit'], $sheet['originalId']]);
-        $rows = array_map(static fn(array $row): array => ['ingredientSlug' => $row['ingredientSlug'], 'unitSlug' => $row['unitSlug'], 'quantity' => $row['quantity']], $sheet['rows']);
+        // La neutre supprimée, la copie n'est plus une « version commune » et ne désigne rien
+        $this->assertSame([false, null], [$sheet['ownerless'], $sheet['copyId']]);
+        $rows =array_map(static fn(array $row): array => ['ingredientSlug' => $row['ingredientSlug'], 'unitSlug' => $row['unitSlug'], 'quantity' => $row['quantity']], $sheet['rows']);
         $this->request('PUT', "/api/v1/recipes/$aliceCopy", $this->alice, ['name' => 'Ma tarte', 'serving' => 2, 'typeSlug' => 'plat', 'rows' => $rows]);
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
         $this->request('GET', "/api/v1/recipes/$bobCopy", $this->bob);
@@ -232,6 +234,8 @@ class RecipeWithoutOwnerApiFlowTest extends DatabaseTestCase
 
         // Then : seul l'administrateur la voit encore, et le dit ; la clé est écrite pour tous
         $this->assertSame([[$neutralId, true, true]], array_map(static fn(array $recipe): array => [$recipe['id'], $recipe['fromMarmiton'], $recipe['alreadyCopied']], $asAdmin['member']));
+        $this->assertSame([true], array_map(static fn(array $recipe): bool => $recipe['copyId'] !== null, $asAdmin['member']), 'copyId nomme la copie de l\'administrateur');
+        $this->assertSame([], array_filter(array_column($asBob['member'], 'copyId')));
         $this->assertSame(1, $asAdmin['totalItems']);
         $this->assertSame([], $asBob['member']);
         $this->assertSame([$neutralId], array_column($searched['member'], 'id'));

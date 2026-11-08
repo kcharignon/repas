@@ -459,9 +459,9 @@ class ModifyRecipeWithoutOwnerTest extends DatabaseTestCase
         // Then : l'administrateur voit la neutre déjà copiée (et le dit), la recette d'Alice qu'il n'a pas copiée, pas celle qu'il a copiée
         $byId = [];
         foreach ($asAdmin->member as $recipe) {
-            $byId[$recipe->id] = [$recipe->fromMarmiton, $recipe->alreadyCopied];
+            $byId[$recipe->id] = [$recipe->fromMarmiton, $recipe->alreadyCopied, $recipe->copyId];
         }
-        $this->assertEquals([$neutralId => [true, true], $alicesToo => [false, false]], $byId);
+        $this->assertEquals([$neutralId => [true, true, $adminCopy], $alicesToo => [false, false, null]], $byId);
         $this->assertSame(2, $asAdmin->totalItems);
         $this->assertSame(1, $queriesOfTheAdmin, 'Une seule requête, comme pour un autre utilisateur : la copie déjà faite est lue dans la même instruction.');
 
@@ -473,7 +473,6 @@ class ModifyRecipeWithoutOwnerTest extends DatabaseTestCase
         // Then : la recherche de l'administrateur trouve la neutre copiée aussi
         $this->assertSame([$neutralId], array_column($searched->member, 'id'));
         $this->assertSame([true], array_map(static fn($recipe): bool => $recipe->alreadyCopied, $searched->member));
-        $this->assertNotSame('', $adminCopy);
     }
 
     public function testTheSheetSaysWhoMayEditItAndWhichRecipeItIsTheCopyOfWithoutAnyExtraQuery(): void
@@ -515,6 +514,128 @@ class ModifyRecipeWithoutOwnerTest extends DatabaseTestCase
         $this->assertNull($sheets['neutre, administrateur']->originalId);
         $this->assertNull($sheets['ordinaire, son auteur']->originalId);
         $this->assertCount(1, array_unique($queries), 'La lecture coûte autant de requêtes pour toute recette : ' . json_encode($queries));
+    }
+
+    // --- « Version commune » et copie de l'utilisateur : le front n'a rien à deviner ---------------------------------------------------------
+
+    public function testTheSheetOfARecipeWithoutOwnerSaysSoAndNamesTheCopyOfTheReaderWhateverItBecame(): void
+    {
+        // Given : la neutre, copiée par Alice (qui la renomme, change son type et la rend secrète) et par Bob ; une recette ordinaire d'Alice
+        $this->read('1', 'Tarte', ['250 g de farine']);
+        $aliceCopy = $this->import($this->alice, '1');
+        $bobCopy = $this->import($this->bob, '1');
+        $neutralId = $this->neutralId('1');
+        $this->entityManager->getConnection()->executeStatement("UPDATE recipe SET name = 'Mon dessert', slug = 'mon-dessert', type = 'dessert', secret = TRUE WHERE id = ?", [$aliceCopy]);
+        $ordinary = $this->savedOrdinaryRecipe($this->alice, 'Crêpes');
+        $loader = static::getContainer()->get(RecipeLoader::class);
+        $counter = static::getContainer()->get(QueryCounter::class);
+
+        // When
+        $cases = [
+            'neutre, Alice' => [$neutralId, $this->alice, false],
+            'neutre, Bob' => [$neutralId, $this->bob, false],
+            'neutre, administrateur sans copie' => [$neutralId, $this->admin, true],
+            'copie d\'Alice, Alice' => [$aliceCopy, $this->alice, false],
+            'ordinaire, Alice' => [$ordinary, $this->alice, false],
+            'ordinaire, administrateur' => [$ordinary, $this->admin, true],
+        ];
+        $sheets = [];
+        $queries = [];
+        foreach ($cases as $name => [$id, $user, $isAdministrator]) {
+            $this->entityManager->clear();
+            $counter->reset();
+            $sheets[$name] = $loader->get($id, $user->getId(), $isAdministrator);
+            $queries[$name] = $counter->count();
+        }
+
+        // Then : la copie du lecteur, la sienne (même secrète, renommée, d'un autre type), et nulle part ailleurs
+        $this->assertSame(
+            ['neutre, Alice' => [true, $aliceCopy], 'neutre, Bob' => [true, $bobCopy], 'neutre, administrateur sans copie' => [true, null], 'copie d\'Alice, Alice' => [false, null], 'ordinaire, Alice' => [false, null], 'ordinaire, administrateur' => [false, null]],
+            array_map(static fn($sheet): array => [$sheet->ownerless, $sheet->copyId], $sheets),
+        );
+        $this->assertCount(1, array_unique($queries), 'Aucune requête de plus : ' . json_encode($queries));
+    }
+
+    public function testWithSeveralCopiesTheOldestOneIsNamed(): void
+    {
+        // Given : Alice a deux copies de la neutre (un réimport après une suppression en laisse deux)
+        $this->read('1', 'Tarte', ['250 g de farine']);
+        $first = $this->import($this->alice, '1');
+        $neutralId = $this->neutralId('1');
+        $second = UuidGenerator::new();
+        $this->entityManager->getConnection()->executeStatement(
+            'INSERT INTO recipe (id, name, slug, serving, author, type, orignal, version, secret, favorite, source_url) SELECT ?, name, slug, serving, author, type, orignal, version, secret, favorite, source_url FROM recipe WHERE id = ?',
+            [$second, $first],
+        );
+        $oldest = min($first, $second);
+        $loader = static::getContainer()->get(RecipeLoader::class);
+
+        // When
+        $this->entityManager->clear();
+        $sheet = $loader->get($neutralId, $this->alice->getId());
+
+        // Then : l'ordre est celui de l'identifiant (une recette n'a pas de date de création), et la fiche garde une seule réponse
+        $this->assertSame($oldest, $sheet->copyId);
+    }
+
+    public function testACopyWhoseNeutralWasRemovedIsNotAVersionCommuneAnymore(): void
+    {
+        // Given : Alice a copié la neutre, que l'administrateur supprime ensuite
+        $this->read('1', 'Tarte', ['250 g de farine']);
+        $aliceCopy = $this->import($this->alice, '1');
+        $this->commands->dispatch(new RemoveRecipeCommand($this->neutralId('1'), byAdministrator: true));
+        $this->entityManager->clear();
+
+        // When
+        $sheet = static::getContainer()->get(RecipeLoader::class)->get($aliceCopy, $this->alice->getId());
+
+        // Then : une recette ordinaire, à elle, qui garde son lien Marmiton mais n'est pas « sans propriétaire »
+        $this->assertSame([false, null, null], [$sheet->ownerless, $sheet->copyId, $sheet->originalId]);
+        $this->assertNotNull($sheet->sourceUrl);
+    }
+
+    public function testTheAdministratorPageNamesTheCopyEvenRenamedOrMovedAndTheOldestWhenThereAreSeveral(): void
+    {
+        // Given : deux neutres ; l'administrateur a renommé et déplacé sa copie de la première, et a deux copies de la seconde ; Alice a copié la première
+        $this->read('1', 'Tarte', ['250 g de farine']);
+        $this->read('2', 'Gratin', ['250 g de farine']);
+        $copyOfFirst = $this->import($this->admin, '1');
+        $copyOfSecond = $this->import($this->admin, '2');
+        $this->import($this->alice, '1');
+        $first = $this->neutralId('1');
+        $second = $this->neutralId('2');
+        $this->entityManager->getConnection()->executeStatement("UPDATE recipe SET name = 'Autre chose', slug = 'autre-chose', type = 'dessert' WHERE id = ?", [$copyOfFirst]);
+        $extra = UuidGenerator::new();
+        $this->entityManager->getConnection()->executeStatement(
+            'INSERT INTO recipe (id, name, slug, serving, author, type, orignal, version, secret, favorite, source_url) SELECT ?, name, slug, serving, author, type, orignal, version, secret, favorite, source_url FROM recipe WHERE id = ?',
+            [$extra, $copyOfSecond],
+        );
+        $loader = static::getContainer()->get(RecipeLoader::class);
+        $counter = static::getContainer()->get(QueryCounter::class);
+
+        // When
+        $this->entityManager->clear();
+        $counter->reset();
+        $page = $loader->listOfOtherPeople($this->admin->getId(), 200, 0, null, true);
+        $queries = $counter->count();
+        $this->entityManager->clear();
+        $searched = $loader->listOfOtherPeople($this->admin->getId(), 200, 0, 'gratin', true);
+        $this->entityManager->clear();
+        $asAlice = $loader->listOfOtherPeople($this->alice->getId(), 200, 0);
+
+        // Then : une ligne par recette (la jointure ne multiplie rien), la copie trouvée, `alreadyCopied` vrai si et seulement si `copyId` existe
+        $byId = [];
+        foreach ($page->member as $recipe) {
+            $byId[$recipe->id] = [$recipe->copyId, $recipe->alreadyCopied];
+        }
+        $this->assertEquals([$first => [$copyOfFirst, true], $second => [min($copyOfSecond, $extra), true]], $byId);
+        $this->assertSame(2, $page->totalItems);
+        $this->assertSame(1, $queries);
+        $this->assertSame([min($copyOfSecond, $extra)], array_map(static fn($recipe): ?string => $recipe->copyId, $searched->member));
+
+        // Then : un autre utilisateur ne reçoit jamais de copyId (sa liste ne contient que ce qu'il n'a pas copié)
+        $this->assertSame([$second], array_column($asAlice->member, 'id'));
+        $this->assertSame([null], array_map(static fn($recipe): ?string => $recipe->copyId, $asAlice->member));
     }
 
     // --- Aides ------------------------------------------------------------------------------------------------------------------------------
