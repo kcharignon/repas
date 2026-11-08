@@ -636,6 +636,26 @@ return [
 
         return new UpdateRecipeCommand($recipe->getId(), 'Carbonara revisitée', 4, $updateRows($recipe), $recipe->getType()->getSlug());
     },
+    // L'administrateur corrige DIRECTEMENT la recette sans propriétaire (la neutre d'une recette Marmiton, ADR 0037 amendement du 2026-11-08, MAR-005) :
+    // l'éditeur renvoie les lignes de la neutre (ingrédients du propriétaire réservé, telles quelles) et il en ajoute une avec un ingrédient à lui, que
+    // le propriétaire réservé n'a pas (copié avec sa conversion propre). Les lectures ne dépendent pas du nombre de lignes
+    // (`RecipeWithoutOwnerReadsAreConstantTest`) ; les écritures suivent les ingrédients copiés.
+    'modifier-recette-sans-proprietaire' => static function (WriteBudgetTestCase $t) use ($updateRows): object {
+        $admin = $t->savedUser(new UserBuilder()->isAdmin());
+        $neutral = new RecipeBuilder()->isPastaCarbonara()->asMarmitonNeutral('22082')->withAuthorId(Recipe::MARMITON_OWNER_ID)->build();
+        foreach ($neutral->getRows() as $row) {
+            $row->getIngredient()->setCreatorId(Recipe::MARMITON_OWNER_ID);
+        }
+        $t->persister->saveRecipe($neutral);
+        $t->savedConversionsFor([$neutral]);
+        $butter = new IngredientBuilder()->isButter()->withCreator($admin, true)->build();
+        $t->persister->saveIngredient($butter);
+        $t->persister->saveConversion(new ConversionBuilder()->withIngredient($butter)->withStartUnit(new UnitBuilder()->isBlock())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(250)->build());
+        $rows = $updateRows($neutral);
+        $rows[] = new UpdateRecipeRowSubCommand($butter->getSlug(), 'gramme', 125.0);
+
+        return new UpdateRecipeCommand($neutral->getId(), 'Carbonara revisitée', 4, $rows, $neutral->getType()->getSlug(), userId: $admin->getId(), byAdministrator: true);
+    },
     'mettre-recette-en-favoris' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
         $recipe = $t->savedRecipe($owner, new RecipeBuilder()->isPastaCarbonara());
@@ -737,6 +757,21 @@ return [
         $t->service(CommandBusInterface::class)->dispatch(new ImportMarmitonRecipeCommand(MarmitonPages::EXAMPLE_URL, $user->getId(), UuidGenerator::new()));
 
         return new ImportMarmitonRecipeCommand(MarmitonPages::EXAMPLE_URL, $user->getId(), UuidGenerator::new());
+    },
+    // L'administrateur supprime la recette sans propriétaire : le verrou de l'identifiant Marmiton (le même qu'un import), le contrôle des listes, ses lignes
+    // et elle-même ; les copies déjà faites (ici trois) ne sont pas touchées, le coût ne dépend donc pas de leur nombre
+    // (`RecipeWithoutOwnerReadsAreConstantTest`).
+    'supprimer-recette-sans-proprietaire' => static function (WriteBudgetTestCase $t): object {
+        $neutral = new RecipeBuilder()->isPastaCarbonara()->asMarmitonNeutral('22082')->withAuthorId(Recipe::MARMITON_OWNER_ID)->build();
+        foreach ($neutral->getRows() as $row) {
+            $row->getIngredient()->setCreatorId(Recipe::MARMITON_OWNER_ID);
+        }
+        $t->persister->saveRecipe($neutral);
+        foreach (range(1, 3) as $ignored) {
+            $t->savedRecipe($t->savedUser(), new RecipeBuilder()->isPastaCarbonara()->withOriginalId($neutral->getId())->withSourceUrl($neutral->getSourceUrl()));
+        }
+
+        return new RemoveRecipeCommand($neutral->getId(), byAdministrator: true);
     },
     'supprimer-recette' => static function (WriteBudgetTestCase $t): object {
 

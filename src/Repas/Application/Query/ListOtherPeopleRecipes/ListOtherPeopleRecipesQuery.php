@@ -14,12 +14,14 @@ final readonly class ListOtherPeopleRecipesQuery implements QueryInterface
      * @param int $offset le nombre de recettes sautées (dans l'ordre de la réponse)
      * @param string|null $search le texte cherché dans le nom des recettes (ADR 0019, amendement du 2026-10-28), 100 caractères au plus à la
      *                            frontière HTTP ; `null` ou vide : toutes les recettes, triées par catégorie
+     * @param bool $isAdministrator l'utilisateur est administrateur : les recettes sans propriétaire lui sont toujours montrées, même copiées
      */
     public function __construct(
         public string $userId,
         public int $limit = self::MAX_LIMIT,
         public int $offset = 0,
         public ?string $search = null,
+        public bool $isAdministrator = false,
     ) {
     }
 }

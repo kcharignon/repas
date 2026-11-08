@@ -4,6 +4,7 @@ namespace Repas\Tests\Repas\Infrastructure\Security;
 
 
 use PHPUnit\Framework\TestCase;
+use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Infrastructure\Security\OwnerVoter;
 use Repas\Tests\Helper\ControlledAccessDecisionManager;
 use Repas\Tests\Helper\InMemoryLoader\OwnershipInMemoryLoader;
@@ -83,6 +84,17 @@ class OwnerVoterTest extends TestCase
 
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->owner, OwnerVoter::RECIPE_OWNER, 'recipe-1', $loader));
         $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'recipe-1', $loader));
+    }
+
+    public function testOnlyAnAdministratorOwnsARecipeWithoutAnOwner(): void
+    {
+        // Given : la recette Marmiton neutre, dont l'auteur réservé n'est le compte de personne (ADR 0037 décision 4, amendement du 2026-11-08)
+        $loader = new OwnershipInMemoryLoader(recipeAuthors: ['neutral' => Recipe::MARMITON_OWNER_ID]);
+
+        // Then : un utilisateur ordinaire ne la modifie ni ne la supprime ; un administrateur, oui
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->owner, OwnerVoter::RECIPE_OWNER, 'neutral', $loader));
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'neutral', $loader));
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'neutral', $loader, admin: true));
     }
 
     public function testTheSecretRecipeOfAnotherUserIsNotFoundNotForbiddenForEveryoneButItsAuthor(): void

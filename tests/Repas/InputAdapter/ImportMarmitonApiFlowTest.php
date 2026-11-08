@@ -280,7 +280,7 @@ class ImportMarmitonApiFlowTest extends DatabaseTestCase
         $this->assertSame(['Ma tarte', 4, true, true, self::CANONICAL], [$this->jsonBody()['name'], $this->jsonBody()['serving'], $this->jsonBody()['secret'], $this->jsonBody()['favorite'], $this->jsonBody()['sourceUrl']]);
     }
 
-    public function testNobodyWritesTheNeutralNotEvenAnAdministrator(): void
+    public function testNoOrdinaryUserWritesTheNeutralAndNobodyMakesItSecretOrFavorite(): void
     {
         // Given
         $this->import($this->alice);
@@ -288,17 +288,24 @@ class ImportMarmitonApiFlowTest extends DatabaseTestCase
         $body = ['name' => 'Piratée', 'serving' => 2, 'typeSlug' => 'plat', 'rows' => [], 'secret' => true];
         $before = $this->neutralSnapshot();
 
-        foreach ([$this->bob, $this->admin, $this->alice] as $who) {
-            // When & Then : modifier, supprimer, mettre en favoris, rendre secrète : refusé à tous, la recette existe donc jamais `404`
+        foreach ([$this->bob, $this->alice] as $who) {
+            // When & Then : modifier, supprimer, mettre en favoris, rendre secrète : refusé à tout utilisateur ordinaire, la recette existe donc jamais `404`
             $this->request('PUT', "/api/v1/recipes/$neutralId", $who, $body);
             $this->assertSame(403, $this->client->getResponse()->getStatusCode(), 'PUT');
-            $this->request('PUT', "/api/v1/recipes/$neutralId", $who, ['secret' => true] + $body);
-            $this->assertSame(403, $this->client->getResponse()->getStatusCode(), 'PUT secret');
+            $this->request('PUT', "/api/v1/recipes/$neutralId", $who, ['secret' => false] + $body);
+            $this->assertSame(403, $this->client->getResponse()->getStatusCode(), 'PUT visible');
             $this->request('DELETE', "/api/v1/recipes/$neutralId", $who);
             $this->assertSame(403, $this->client->getResponse()->getStatusCode(), 'DELETE');
             $this->request('PUT', "/api/v1/recipes/$neutralId/favorite", $who, ['favorite' => true]);
             $this->assertSame(403, $this->client->getResponse()->getStatusCode(), 'favori');
         }
+        // L'administrateur, lui, la modifie et la supprime (`ModifyOwnerlessRecipeApiFlowTest`) ; la rendre secrète ou favorite reste refusé : ce n'est le choix de personne
+        $this->request('GET', "/api/v1/recipes/$neutralId", $this->admin);
+        $rows = array_map(static fn(array $row): array => ['ingredientSlug' => $row['ingredientSlug'], 'unitSlug' => $row['unitSlug'], 'quantity' => $row['quantity']], $this->jsonBody()['rows']);
+        $this->request('PUT', "/api/v1/recipes/$neutralId", $this->admin, ['rows' => $rows] + $body);
+        $this->assertSame(403, $this->client->getResponse()->getStatusCode(), 'PUT secret par l\'administrateur');
+        $this->request('PUT', "/api/v1/recipes/$neutralId/favorite", $this->admin, ['favorite' => true]);
+        $this->assertSame(403, $this->client->getResponse()->getStatusCode(), 'favori par l\'administrateur');
         $this->assertSame($before, $this->neutralSnapshot(), 'La neutre est telle quelle : même version, même nom, mêmes lignes.');
     }
 

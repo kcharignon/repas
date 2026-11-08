@@ -16,7 +16,14 @@ use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Application\Service\RecipeCopier;
 use Repas\Repas\Domain\Model\AliasKind;
+use Repas\Repas\Domain\Service\IngredientNameMatcher;
+use Repas\Repas\Domain\Service\IngredientSlugPolicy;
+use Repas\Shared\Domain\Tool\UuidGenerator;
+use Repas\Tests\Helper\InMemoryRepository\IngredientMatchCandidatesInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\IngredientPartLinkInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -43,9 +50,11 @@ class UpdateRecipeHandlerTest extends TestCase
     private readonly UpdateRecipeHandler $handler;
     private readonly RecipeRepository $recipeRepository;
     private readonly RecipeTypeRepository $recipeTypeRepository;
-    private readonly IngredientRepository $ingredientRepository;
+    private readonly IngredientInMemoryRepository $ingredientRepository;
     private readonly IngredientAliasInMemoryRepository $aliasRepository;
     private readonly UnitRepository $unitRepository;
+    private readonly ConversionInMemoryRepository $conversionRepository;
+    private readonly SpyEventDispatcher $events;
 
     protected function setUp(): void
     {
@@ -62,15 +71,10 @@ class UpdateRecipeHandlerTest extends TestCase
             new UnitBuilder()->isUnite()->build(),
         ]);
         $this->aliasRepository = new IngredientAliasInMemoryRepository();
+        $this->conversionRepository = new ConversionInMemoryRepository();
+        $this->events = new SpyEventDispatcher();
 
-        $this->handler = new UpdateRecipeHandler(
-            $this->recipeRepository,
-            $this->recipeTypeRepository,
-            $this->ingredientRepository,
-            $this->unitRepository,
-            new ConversionService(new ConversionInMemoryRepository(), $this->unitRepository),
-            new IngredientSlugResolver($this->aliasRepository),
-        );
+        $this->handler = $this->handlerWith($this->ingredientRepository);
     }
 
     public function testSuccessfullyHandleUpdateRecipe(): void
@@ -296,17 +300,34 @@ class UpdateRecipeHandlerTest extends TestCase
         ($this->handler)(new UpdateRecipeCommand($recipe->getId(), 'Pates', 4, Tab::fromArray(new UpdateRecipeRowSubCommand('pate', 'gramme', 500)), 'plat'));
     }
 
-    private function handlerWith(IngredientRepository $ingredients): UpdateRecipeHandler
+    private function handlerWith(IngredientInMemoryRepository $ingredients): UpdateRecipeHandler
     {
+        $conversionService = new ConversionService($this->conversionRepository, $this->unitRepository);
+        $slugResolver = new IngredientSlugResolver($this->aliasRepository);
+
         return new UpdateRecipeHandler(
             $this->recipeRepository,
             $this->recipeTypeRepository,
             $ingredients,
             $this->unitRepository,
-            new ConversionService(new ConversionInMemoryRepository(), $this->unitRepository),
-            new IngredientSlugResolver($this->aliasRepository),
+            $conversionService,
+            $slugResolver,
+            new RecipeCopier(
+                $this->recipeRepository,
+                $ingredients,
+                $this->conversionRepository,
+                $slugResolver,
+                new IngredientMatchCandidatesInMemoryRepository($ingredients),
+                new IngredientNameMatcher(),
+                new IngredientSlugPolicy(),
+                $conversionService,
+                new IngredientPartLinkInMemoryRepository(),
+                new UuidGenerator(),
+                $this->events,
+            ),
         );
     }
+
     /**
      * @return list<string> les slugs d'ingrédient des lignes de la recette enregistrée
      */

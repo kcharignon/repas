@@ -40,6 +40,36 @@ class RemoveRecipeApiControllerTest extends QueryBusWebTestCase
         $this->assertSame([], $commandBus->dispatched());
     }
 
+    public function testAnAdministratorRemovesARecipeWithoutAnOwnerAndTheCommandSaysSo(): void
+    {
+        // Given : la recette Marmiton neutre (sans propriétaire)
+        $commandBus = $this->mockCommandBus();
+        $neutral = new RecipeBuilder()->isPastaCarbonara()->asMarmitonNeutral()->build();
+        $this->persister->saveRecipe($neutral);
+
+        // When
+        $this->client->request('DELETE', '/api/v1/recipes/' . $neutral->getId(), server: $this->bearerFor($this->savedUser(admin: true)));
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new RemoveRecipeCommand($neutral->getId(), byAdministrator: true)], $commandBus->dispatched());
+    }
+
+    public function testAnOrdinaryUserCannotRemoveARecipeWithoutAnOwner(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $neutral = new RecipeBuilder()->isPastaCarbonara()->asMarmitonNeutral()->build();
+        $this->persister->saveRecipe($neutral);
+
+        // When
+        $this->client->request('DELETE', '/api/v1/recipes/' . $neutral->getId(), server: $this->bearerFor($this->savedUser()));
+
+        // Then
+        $this->assertSame(403, $this->client->getResponse()->getStatusCode());
+        $this->assertSame([], $commandBus->dispatched());
+    }
+
     public function testReturns404ForAnUnknownRecipe(): void
     {
         // Given

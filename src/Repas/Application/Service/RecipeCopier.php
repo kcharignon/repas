@@ -91,30 +91,9 @@ readonly class RecipeCopier
             throw RecipeException::notFound($original->getId());
         }
 
-        // Les ingrédients de l'original et les unités qui y sont utilisées, une fois par ingrédient
-        /** @var array<string, Ingredient> $sources */
-        $sources = [];
-        /** @var array<string, array<string, Unit>> $unitsUsed */
-        $unitsUsed = [];
-        /** @var RecipeRow $row */
-        foreach ($original->getRows() as $row) {
-            $slug = $row->getIngredient()->getSlug();
-            $sources[$slug] ??= $row->getIngredient();
-            $unitsUsed[$slug][$row->getUnit()->getSlug()] = $row->getUnit();
-        }
-
-        // 1 à 3 : ce que le copieur utilisera sans rien créer, par slug de l'ingrédient d'origine
-        /** @var array<string, Ingredient> $retained */
-        $retained = $this->retainWithoutCreating($copierId, $sources, $unitsUsed);
-
-        // 4 : une copie pour chacun des autres, dans l'ordre de la recette ; une copie retient son origine : ce n'est pas une création
-        $copiedAPart = false;
-        foreach ($sources as $slug => $source) {
-            if (!isset($retained[$slug])) {
-                $retained[$slug] = $this->copyIngredient($copierId, $source);
-                $copiedAPart = $copiedAPart || $source->isPart();
-            }
-        }
+        // 1 à 4 : l'ingrédient que le copieur utilisera pour chacun de ceux de l'original
+        [$sources, $unitsUsed] = $this->ingredientsAndUnitsOf($original);
+        [$retained, $copiedAPart] = $this->retainOrCopy($copierId, $sources, $unitsUsed);
 
         // 5 : le découpage de l'auteur voyage avec les copies (ADR 0038 décisions 5 et 20). Une copie ne recopie jamais `parent_slug` : la partie
         // copiée est reliée au parent que le copieur a DÉJÀ (ou qu'il vient de recevoir), par provenance, sans jamais écraser un lien à lui. Une
@@ -143,6 +122,74 @@ readonly class RecipeCopier
         ));
 
         return $recipe;
+    }
+
+    /**
+     * Les ingrédients que le propriétaire des recettes Marmiton (`Recipe::MARMITON_OWNER_ID`) utilisera à la place de ceux d'un administrateur,
+     * quand celui-ci modifie une recette sans propriétaire (ADR 0037, amendement du 2026-11-08, MAR-005) : les étapes 1 à 4 de la copie
+     * ordinaire, avec le propriétaire réservé pour copieur. Un ingrédient réservé de même origine (ou, à défaut, de même nom et de même rayon)
+     * est réutilisé tant qu'il convertit les unités des lignes, sinon l'ingrédient de l'administrateur lui est copié (conversions propres,
+     * origine retenue) : d'une modification à l'autre, un même ingrédient n'est donc jamais copié deux fois.
+     *
+     * Ce n'est PAS une copie de recette : rien n'est écrit pour la recette, aucun événement n'est annoncé (le propriétaire réservé n'est pas
+     * un compte), et les sous-ingrédients ne sont pas liés : les ingrédients d'une neutre n'ont jamais de parent (ADR 0038 décision 5, comme à
+     * l'import). Un ingrédient copié est écrit dans la transaction de l'appelant.
+     *
+     * @param array<string, Ingredient> $sources les ingrédients de l'administrateur, par slug
+     * @param array<string, array<string, Unit>> $unitsUsed les unités des lignes, par slug d'ingrédient
+     * @return array<string, Ingredient> l'ingrédient du propriétaire réservé par slug d'ingrédient de l'administrateur
+     */
+    public function retainIngredientsForMarmitonOwner(array $sources, array $unitsUsed): array
+    {
+        return $this->retainOrCopy(Recipe::MARMITON_OWNER_ID, $sources, $unitsUsed)[0];
+    }
+
+    /**
+     * Les ingrédients d'une recette et les unités qui y sont utilisées, une fois par ingrédient.
+     *
+     * @return array{0: array<string, Ingredient>, 1: array<string, array<string, Unit>>} les ingrédients par slug, les unités par slug d'ingrédient
+     */
+    private function ingredientsAndUnitsOf(Recipe $recipe): array
+    {
+        /** @var array<string, Ingredient> $sources */
+        $sources = [];
+        /** @var array<string, array<string, Unit>> $unitsUsed */
+        $unitsUsed = [];
+        /** @var RecipeRow $row */
+        foreach ($recipe->getRows() as $row) {
+            $slug = $row->getIngredient()->getSlug();
+            $sources[$slug] ??= $row->getIngredient();
+            $unitsUsed[$slug][$row->getUnit()->getSlug()] = $row->getUnit();
+        }
+
+        return [$sources, $unitsUsed];
+    }
+
+    /**
+     * Les étapes 1 à 4 : pour chaque ingrédient de `$sources` (traité une fois), celui que `$copierId` utilisera, retenu sans rien créer
+     * (`retainWithoutCreating`) ou copié pour lui, dans l'ordre des sources. Une copie retient son origine : ce n'est pas une création.
+     *
+     * @param array<string, Ingredient> $sources les ingrédients de l'original, par slug
+     * @param array<string, array<string, Unit>> $unitsUsed les unités des lignes de l'original, par slug d'ingrédient
+     * @return array{0: array<string, Ingredient>, 1: bool} l'ingrédient du copieur par slug d'ingrédient de l'original, et si une copie vient
+     *         d'une partie (un sous-ingrédient) de l'auteur
+     */
+    private function retainOrCopy(string $copierId, array $sources, array $unitsUsed): array
+    {
+        // 1 à 3 : ce que le copieur utilisera sans rien créer, par slug de l'ingrédient d'origine
+        /** @var array<string, Ingredient> $retained */
+        $retained = $this->retainWithoutCreating($copierId, $sources, $unitsUsed);
+
+        // 4 : une copie pour chacun des autres, dans l'ordre de la recette ; une copie retient son origine : ce n'est pas une création
+        $copiedAPart = false;
+        foreach ($sources as $slug => $source) {
+            if (!isset($retained[$slug])) {
+                $retained[$slug] = $this->copyIngredient($copierId, $source);
+                $copiedAPart = $copiedAPart || $source->isPart();
+            }
+        }
+
+        return [$retained, $copiedAPart];
     }
 
     /**
@@ -180,7 +227,7 @@ readonly class RecipeCopier
     {
         /** @var array<string, Ingredient> $retained */
         $retained = [];
-        /** @var array<string, string> $proposed le slug de l'ingrédient du copieur proposé par slug d'origine, avant le contrôle des unités */
+        /** @var array<string, list<string>> $proposed les slugs de l'ingrédient du copieur proposés par slug d'origine (le préféré d'abord), avant le contrôle des unités */
         $proposed = [];
 
         // 1. Ce qui est déjà au copieur
@@ -197,16 +244,35 @@ readonly class RecipeCopier
                 $origins[$slug] = $source->getAdoptedFrom() ?? $slug;
             }
         }
-        $byOrigin = $this->slugResolver->resolve($copierId, array_values(array_unique($origins)));
-        foreach ($origins as $slug => $origin) {
-            // Sans alias, la provenance ne dit rien : on compare les noms
-            if (isset($byOrigin[$origin])) {
-                $proposed[$slug] = $byOrigin[$origin];
+        $candidates = null;
+        if ($copierId === Recipe::MARMITON_OWNER_ID) {
+            // Le propriétaire réservé des recettes Marmiton n'est pas un compte : aucun amorçage ne lui écrit d'alias. Ce qu'il a fait d'une
+            // origine se lit dans l'origine de ses propres ingrédients (`adopted_from`), du plus petit slug au plus grand ; l'ingrédient
+            // retenu est le premier qui convertit les unités des lignes (voir 5), de sorte qu'une mise à jour qui en a copié un meilleur
+            // le retrouve la fois suivante, sans en copier un troisième.
+            $candidates = $this->matchCandidates->visibleTo($copierId);
+            $copiesOf = [];
+            foreach ($candidates as $candidate) {
+                if ($candidate->adoptedFrom !== null) {
+                    $copiesOf[$candidate->adoptedFrom][] = $candidate->slug;
+                }
+            }
+            foreach ($origins as $slug => $origin) {
+                if (isset($copiesOf[$origin])) {
+                    $proposed[$slug] = $copiesOf[$origin];
+                }
+            }
+        } else {
+            $byOrigin = $this->slugResolver->resolve($copierId, array_values(array_unique($origins)));
+            foreach ($origins as $slug => $origin) {
+                // Sans alias, la provenance ne dit rien : on compare les noms
+                if (isset($byOrigin[$origin])) {
+                    $proposed[$slug] = [$byOrigin[$origin]];
+                }
             }
         }
 
         // 3. Le nom : ce que le copieur a déjà, du même rayon
-        $candidates = null;
         foreach ($sources as $slug => $source) {
             if (isset($retained[$slug]) || isset($proposed[$slug])) {
                 continue;
@@ -214,21 +280,24 @@ readonly class RecipeCopier
             $candidates ??= $this->matchCandidates->visibleTo($copierId);
             $match = $this->nameMatcher->match($source->getName(), $source->getDepartment()->getSlug(), $candidates);
             if ($match !== null) {
-                $proposed[$slug] = $match->candidate->slug;
+                $proposed[$slug] = [$match->candidate->slug];
             }
         }
 
         // 5. L'unité de chaque ligne doit se convertir dans l'unité d'achat de l'ingrédient proposé : sinon la recette copiée ne se
         // planifierait pas
-        $models = $this->ingredientsBySlug(array_values($proposed));
-        foreach ($proposed as $slug => $targetSlug) {
-            if (!$this->canConvertAll($models[$targetSlug], $unitsUsed[$slug])) {
-                unset($proposed[$slug]);
-            }
+        $toLoad = [];
+        foreach ($proposed as $targetSlugs) {
+            array_push($toLoad, ...$targetSlugs);
         }
-
-        foreach ($proposed as $slug => $targetSlug) {
-            $retained[$slug] = $models[$targetSlug];
+        $models = $this->ingredientsBySlug($toLoad);
+        foreach ($proposed as $slug => $targetSlugs) {
+            foreach ($targetSlugs as $targetSlug) {
+                if ($this->canConvertAll($models[$targetSlug], $unitsUsed[$slug])) {
+                    $retained[$slug] = $models[$targetSlug];
+                    break;
+                }
+            }
         }
 
         return $retained;

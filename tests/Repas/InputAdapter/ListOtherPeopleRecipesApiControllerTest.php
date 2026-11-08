@@ -16,8 +16,8 @@ class ListOtherPeopleRecipesApiControllerTest extends QueryBusWebTestCase
         // Given
         $user = $this->savedUser();
         $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([
-            new OtherPeopleRecipeDTO('recipe-1', 'pâtes carbonara', 'plat', 'plat', false),
-            new OtherPeopleRecipeDTO('recipe-2', 'tarte au citron', 'dessert', 'dessert', true),
+            new OtherPeopleRecipeDTO('recipe-1', 'pâtes carbonara', 'plat', 'plat', false, false),
+            new OtherPeopleRecipeDTO('recipe-2', 'tarte au citron', 'dessert', 'dessert', true, false),
         ], 2));
 
         // When
@@ -30,17 +30,46 @@ class ListOtherPeopleRecipesApiControllerTest extends QueryBusWebTestCase
         $this->assertSame([$user->getId(), 200, 0, null], [$query->userId, $query->limit, $query->offset, $query->search]);
         $this->assertSame([
             'member' => [
-                ['id' => 'recipe-1', 'name' => 'pâtes carbonara', 'typeName' => 'plat', 'typeSlug' => 'plat', 'fromMarmiton' => false],
-                ['id' => 'recipe-2', 'name' => 'tarte au citron', 'typeName' => 'dessert', 'typeSlug' => 'dessert', 'fromMarmiton' => true],
+                ['id' => 'recipe-1', 'name' => 'pâtes carbonara', 'typeName' => 'plat', 'typeSlug' => 'plat', 'fromMarmiton' => false, 'alreadyCopied' => false],
+                ['id' => 'recipe-2', 'name' => 'tarte au citron', 'typeName' => 'dessert', 'typeSlug' => 'dessert', 'fromMarmiton' => true, 'alreadyCopied' => false],
             ],
             'totalItems' => 2,
         ], $this->jsonBody());
     }
 
+    public function testTheQueryTellsThatTheUserIsAnAdministratorAndTheCopyAlreadyMadeIsWritten(): void
+    {
+        // Given : une recette sans propriétaire que l'administrateur a déjà copiée
+        $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([new OtherPeopleRecipeDTO('recipe-2', 'tarte au citron', 'dessert', 'dessert', true, true)], 1));
+
+        // When
+        $this->client->request('GET', '/api/v1/recipes/other-people', server: $this->bearerFor($this->savedUser(admin: true)));
+
+        // Then
+        $query = $this->queryBus->getLastAskedQuery();
+        $this->assertInstanceOf(ListOtherPeopleRecipesQuery::class, $query);
+        $this->assertTrue($query->isAdministrator);
+        $this->assertTrue($this->jsonBody()['member'][0]['alreadyCopied']);
+    }
+
+    public function testTheQueryTellsThatAnOrdinaryUserIsNotAnAdministrator(): void
+    {
+        // Given
+        $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([], 0));
+
+        // When
+        $this->client->request('GET', '/api/v1/recipes/other-people', server: $this->bearerFor($this->savedUser()));
+
+        // Then
+        $query = $this->queryBus->getLastAskedQuery();
+        $this->assertInstanceOf(ListOtherPeopleRecipesQuery::class, $query);
+        $this->assertFalse($query->isAdministrator);
+    }
+
     public function testTotalItemsIsTheRealTotalEvenWhenThePageIsShorter(): void
     {
         // Given
-        $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([new OtherPeopleRecipeDTO('recipe-1', 'omelette', 'plat', 'plat', false)], 1234));
+        $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([new OtherPeopleRecipeDTO('recipe-1', 'omelette', 'plat', 'plat', false, false)], 1234));
 
         // When
         $this->client->request('GET', '/api/v1/recipes/other-people', server: $this->bearerFor($this->savedUser()));
