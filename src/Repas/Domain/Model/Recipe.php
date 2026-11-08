@@ -58,6 +58,8 @@ final class Recipe implements ModelInterface
         private bool    $favorite = false,
         private ?string $marmitonId = null,
         private ?string $sourceUrl = null,
+        /** Une recette sans propriétaire n'est modifiée ou supprimée que par un administrateur : le cas d'usage qui le sait lève la garde, pour CETTE instance seulement. */
+        private bool    $administratorMayEdit = false,
     ) {
     }
 
@@ -309,14 +311,29 @@ final class Recipe implements ModelInterface
     }
 
     /**
-     * Une recette Marmiton neutre ne se modifie ni ne se supprime, par personne : on la copie (ADR 0037 décision 5). Le droit est refusé en
-     * amont (`RECIPE_OWNER`) ; cette garde le répète pour qu'aucun cas d'usage ne puisse l'oublier.
+     * Lève, pour cette instance, la garde d'une recette SANS PROPRIÉTAIRE : un administrateur la modifie ou la supprime (ADR 0037, amendement du
+     * 2026-11-08, MAR-005), pour corriger un import raté avant que d'autres la copient. Le cas d'usage ne l'appelle que pour un administrateur
+     * (`byAdministrator` de la commande, jugé par le contrôleur). Sans effet sur une recette ordinaire, dont la garde est le droit `RECIPE_OWNER`.
+     * Ce que personne ne change reste refusé : la rendre secrète (`changeSecret`) ou favorite (`changeFavorite`) est le choix de son auteur, et
+     * ici il n'y en a pas.
+     */
+    public function allowAdministratorEdition(): self
+    {
+        $this->administratorMayEdit = true;
+
+        return $this;
+    }
+
+    /**
+     * Une recette sans propriétaire (la neutre d'une recette Marmiton, ADR 0037 décision 5) n'est à personne : seul un administrateur la
+     * modifie ou la supprime. Le droit est refusé en amont (`RECIPE_OWNER`, qui laisse passer l'administrateur) ; cette garde le répète pour
+     * qu'aucun cas d'usage ne puisse l'oublier : tant que `allowAdministratorEdition()` n'a pas été appelé, elle refuse.
      *
-     * @throws RecipeException la recette est la neutre d'une recette Marmiton
+     * @throws RecipeException la recette est la neutre d'une recette Marmiton et personne n'a dit que l'utilisateur est administrateur
      */
     public function assertNotFrozen(): void
     {
-        if ($this->isMarmitonNeutral()) {
+        if ($this->isMarmitonNeutral() && !$this->administratorMayEdit) {
             throw RecipeException::frozen();
         }
     }

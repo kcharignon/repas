@@ -31,12 +31,12 @@ final class UpdateRecipeApiController extends AbstractController
     #[Route(path: '/api/v1/recipes/{id}', name: 'api_update_recipe', methods: ['PUT'])]
     #[IsGranted('ROLE_USER')]
     #[IsGranted('RECIPE_OWNER', 'id')]
-    #[OA\Put(summary: "Remplace une recette de l'utilisateur : nom, personnes, type et lignes (les lignes absentes du corps sont supprimées). Un ancien slug est remplacé par celui de l'ingrédient actuel de l'auteur, comme à la création", description: "Le champ facultatif `secret` rend la recette secrète (seul son auteur la voit) ou de nouveau visible : absent ou `null`, il reste inchangé. Seul l'auteur le change. Les copies déjà faites par d'autres restent à eux.")]
+    #[OA\Put(summary: "Remplace une recette de l'utilisateur : nom, personnes, type et lignes (les lignes absentes du corps sont supprimées). Un ancien slug est remplacé par celui de l'ingrédient actuel de l'auteur, comme à la création", description: "Le champ facultatif `secret` rend la recette secrète (seul son auteur la voit) ou de nouveau visible : absent ou `null`, il reste inchangé. Seul l'auteur le change. Les copies déjà faites par d'autres restent à eux. Une recette SANS PROPRIÉTAIRE (la recette Marmiton neutre : `GET /recipes/other-people`, `fromMarmiton`) n'est modifiée que par un administrateur, directement, pour corriger un import raté avant que d'autres la copient : les slugs d'ingrédients reçus sont ceux de l'administrateur (ses alias), traduits en ingrédients du propriétaire réservé (un ingrédient réservé déjà sur une ligne reste tel quel ; un réservé de même origine ou de même nom est réutilisé, sinon celui de l'administrateur est copié avec ses conversions propres) ; son tag Marmiton et son lien d'origine ne changent pas, sa version augmente, les copies déjà faites ne changent pas, et elle ne devient jamais secrète.")]
     #[OA\Tag(name: 'Recipes')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: RecipePayload::class)))]
     #[OA\Parameter(ref: '#/components/parameters/IfMatch')]
     #[OA\Response(response: 204, description: 'Recette modifiée')]
-    #[OA\Response(response: 403, description: "La recette appartient à un autre utilisateur (la recette secrète d'un autre, que son auteur seul voit, est inconnue pour tous, administrateur compris : `404`). `RECIPE_SECRET_FORBIDDEN` : un administrateur qui modifie la recette ordinaire d'un autre envoie un `secret` différent de l'actuel, rien n'est écrit")]
+    #[OA\Response(response: 403, description: "La recette appartient à un autre utilisateur, ou n'a pas de propriétaire (recette Marmiton neutre) et l'utilisateur n'est pas administrateur (la recette secrète d'un autre, que son auteur seul voit, est inconnue pour tous, administrateur compris : `404`). `RECIPE_SECRET_FORBIDDEN` : un administrateur qui modifie la recette d'un autre (ou sans propriétaire) envoie un `secret` différent de l'actuel, rien n'est écrit")]
     #[OA\Response(response: 404, description: "Recette, type, ingrédient ou unité inconnu (un ingrédient personnalisé d'un autre utilisateur l'est aussi)")]
     #[OA\Response(response: 422, description: 'Corps de la requête invalide (`secret` n\'est pas un booléen JSON)')]
     #[OA\Response(response: 412, description: "La version de la recette n'est plus celle de `If-Match` : elle a été modifiée depuis sa lecture")]
@@ -55,6 +55,8 @@ final class UpdateRecipeApiController extends AbstractController
             // Absent ou `null` : inchangé (un ancien client ne remet jamais le choix à zéro) ; le corps est déjà jugé un booléen ou `null`
             secret: is_bool($payload->secret) ? $payload->secret : null,
             userId: $user->getId(),
+            // Seul un administrateur modifie une recette sans propriétaire
+            byAdministrator: $this->isGranted('ROLE_ADMIN'),
         ));
 
         return new Response(status: Response::HTTP_NO_CONTENT);

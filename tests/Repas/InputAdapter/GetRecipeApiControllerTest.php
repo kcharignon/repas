@@ -57,7 +57,54 @@ class GetRecipeApiControllerTest extends QueryBusWebTestCase
             ]],
             'version' => 3,
             'sourceUrl' => null,
+            'originalId' => null,
+            'canEdit' => true,
         ], $this->jsonBody());
+    }
+
+    public function testTheOriginalAndTheRightToEditAreAlwaysWritten(): void
+    {
+        // Given
+        $id = UuidGenerator::new();
+        $original = UuidGenerator::new();
+        $this->queryBus->willReturn(GetRecipeQuery::class, new RecipeDTOBuilder()->withId($id)->withOriginalId($original)->withoutEditRight()->build());
+
+        // When
+        $this->client->request('GET', "/api/v1/recipes/$id", server: $this->bearerFor($this->savedUser()));
+
+        // Then
+        $body = $this->jsonBody();
+        $this->assertSame([$original, false], [$body['originalId'], $body['canEdit']]);
+    }
+
+    public function testTheQueryTellsThatTheReaderIsAnAdministrator(): void
+    {
+        // Given
+        $id = UuidGenerator::new();
+        $this->queryBus->willReturn(GetRecipeQuery::class, new RecipeDTOBuilder()->withId($id)->build());
+
+        // When
+        $this->client->request('GET', "/api/v1/recipes/$id", server: $this->bearerFor($this->savedUser(admin: true)));
+
+        // Then
+        $query = $this->queryBus->getLastAskedQuery();
+        $this->assertInstanceOf(GetRecipeQuery::class, $query);
+        $this->assertTrue($query->isAdministrator);
+    }
+
+    public function testTheQueryTellsThatTheReaderIsNotAnAdministrator(): void
+    {
+        // Given
+        $id = UuidGenerator::new();
+        $this->queryBus->willReturn(GetRecipeQuery::class, new RecipeDTOBuilder()->withId($id)->build());
+
+        // When
+        $this->client->request('GET', "/api/v1/recipes/$id", server: $this->bearerFor($this->savedUser()));
+
+        // Then
+        $query = $this->queryBus->getLastAskedQuery();
+        $this->assertInstanceOf(GetRecipeQuery::class, $query);
+        $this->assertFalse($query->isAdministrator);
     }
 
     public function testTheLinkOfOriginIsAlwaysWrittenAndRendersAsGiven(): void

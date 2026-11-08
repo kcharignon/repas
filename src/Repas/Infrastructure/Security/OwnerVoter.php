@@ -66,9 +66,13 @@ class OwnerVoter extends Voter
         try {
             if ($isAdmin && $attribute === self::RECIPE_OWNER) {
                 // L'administrateur modifie et supprime toute recette ordinaire ; la recette secrète d'un autre n'existe pas pour lui, comme pour
-                // tout utilisateur : `recipeAuthorIdFor` la traite en recette inconnue (404). La recette Marmiton NEUTRE n'a pas de propriétaire :
-                // pas même lui ne la modifie (ADR 0037 décision 5), on la copie
-                return $this->ownershipLoader->recipeAuthorIdFor($subject, $user->getId()) !== Recipe::MARMITON_OWNER_ID;
+                // tout utilisateur : `recipeAuthorIdFor` la traite en recette inconnue (404). La recette SANS PROPRIÉTAIRE (la neutre d'une
+                // recette Marmiton, ADR 0037 amendement du 2026-11-08) n'est modifiée et supprimée que par lui : un utilisateur ordinaire la
+                // trouve figée. La rendre secrète ou favorite reste refusé à tous : c'est le choix d'un auteur, et la neutre n'en a pas
+                // (`Recipe::changeSecret`, `changeFavorite`)
+                $this->ownershipLoader->recipeAuthorIdFor($subject, $user->getId());
+
+                return true;
             }
 
             return $this->owns($attribute, $subject, $user);
@@ -87,7 +91,8 @@ class OwnerVoter extends Voter
                 return $this->ownershipLoader->shoppingListOwnerId($subject) === $user->getId();
             case self::RECIPE_OWNER:
                 // Une recette secrète d'un autre n'existe pas pour lui : `404`, pas `403` (ADR 0033) ; une recette ordinaire d'un autre est refusée.
-                // La recette Marmiton neutre est refusée à tous (ADR 0037 décision 5) : son auteur réservé n'est le compte de personne
+                // La recette sans propriétaire est refusée à tout utilisateur ordinaire (ADR 0037 décision 5) : son auteur réservé n'est le
+                // compte de personne ; seul un administrateur la modifie ou la supprime (plus haut)
                 $authorId = $this->ownershipLoader->recipeAuthorIdFor($subject, $user->getId());
 
                 return $authorId === $user->getId() && $authorId !== Recipe::MARMITON_OWNER_ID;

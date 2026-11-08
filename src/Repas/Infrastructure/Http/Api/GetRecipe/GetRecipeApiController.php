@@ -38,7 +38,7 @@ final class GetRecipeApiController extends AbstractController
     public function __invoke(string $id, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         /** @var RecipeDTO $recipe */
-        $recipe = $this->queryBus->ask(new GetRecipeQuery($id, $user->getId()));
+        $recipe = $this->queryBus->ask(new GetRecipeQuery($id, $user->getId(), $this->isGranted('ROLE_ADMIN')));
 
         return new JsonResponse($recipe, headers: ['ETag' => EntityVersion::etag($recipe->version)]);
     }

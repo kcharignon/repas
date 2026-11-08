@@ -19,6 +19,6 @@ final readonly class GetRecipeQueryHandler
      */
     public function __invoke(GetRecipeQuery $query): RecipeDTO
     {
-        return $this->recipeLoader->get($query->recipeId, $query->userId);
+        return $this->recipeLoader->get($query->recipeId, $query->userId, $query->isAdministrator);
     }
 }

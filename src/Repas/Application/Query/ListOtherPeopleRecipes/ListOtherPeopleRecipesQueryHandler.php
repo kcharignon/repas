@@ -24,6 +24,7 @@ final readonly class ListOtherPeopleRecipesQueryHandler
             max($query->offset, 0),
             // Un texte réduit à des espaces n'est pas une recherche : la liste entière, triée par catégorie
             $query->search !== null && trim($query->search) !== '' ? $query->search : null,
+            $query->isAdministrator,
         );
     }
 }

@@ -34,6 +34,19 @@ class GetRecipeQueryHandlerTest extends TestCase
         $handler(new GetRecipeQuery('recipe-1', 'user-1'));
 
         // Then : le lecteur voyage jusqu'au chargeur, qui décide si une recette secrète lui est visible (ADR 0033)
-        $this->assertSame([['recipe-1', 'user-1']], $loader->getCalls);
+        $this->assertSame([['recipe-1', 'user-1', false]], $loader->getCalls);
+    }
+
+    public function testForwardsWhetherTheReaderIsAnAdministratorToTheLoader(): void
+    {
+        // Given
+        $loader = new RecipeInMemoryLoader(recipe: new RecipeDTOBuilder()->build());
+        $handler = new GetRecipeQueryHandler($loader);
+
+        // When
+        $handler(new GetRecipeQuery('recipe-1', 'admin-1', true));
+
+        // Then : le chargeur juge s'il peut modifier la recette (`canEdit`)
+        $this->assertSame([['recipe-1', 'admin-1', true]], $loader->getCalls);
     }
 }

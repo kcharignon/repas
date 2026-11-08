@@ -89,6 +89,58 @@ class RecipeMarmitonNeutralTest extends TestCase
         $this->assertSame(1, $neutral->getRows()->count());
     }
 
+    public function testTheNeutralIsEditableOnceTheCaseSaysTheUserIsAnAdministratorAndOnlyForThatInstance(): void
+    {
+        // Given
+        $neutral = $this->neutral();
+        $another = $this->neutral();
+        $type = new RecipeTypeBuilder()->isMeal()->build();
+        $reservedButter = new IngredientBuilder()->isButter()->withCreatorId(Recipe::MARMITON_OWNER_ID)->build();
+
+        // When
+        $neutral->allowAdministratorEdition();
+        $neutral->update('Tarte corrigée', $type, 2);
+        $neutral->setRows(Tab::newEmptyTyped(RecipeRow::class));
+        $neutral->addRow($reservedButter, new UnitBuilder()->isGramme()->build(), 125.0);
+
+        // Then : le contenu change, ce qui définit la recette sans propriétaire (tag, lien, auteur réservé) non
+        $this->assertSame(['Tarte corrigée', 2, 1], [$neutral->getName(), $neutral->getServing(), $neutral->getRows()->count()]);
+        $this->assertSame(['22082', self::URL, Recipe::MARMITON_OWNER_ID, true], [$neutral->getMarmitonId(), $neutral->getSourceUrl(), $neutral->getAuthorId(), $neutral->isMarmitonNeutral()]);
+        // Une autre instance de la même recette, elle, est toujours figée
+        $this->expectExceptionObject(RecipeException::frozen());
+        $another->update('Autre', $type, 2);
+    }
+
+    public function testEvenWhenEditableTheNeutralStillRefusesAnIngredientOfAnAccount(): void
+    {
+        // Given
+        $neutral = $this->neutral()->allowAdministratorEdition();
+
+        // When & Then : la modification d'un administrateur ne met pas un ingrédient de compte dans la neutre
+        $this->expectExceptionObject(IngredientException::notFound('beurre'));
+        $neutral->addRow(new IngredientBuilder()->isButter()->withCreatorId('admin-id', false)->build(), new UnitBuilder()->isGramme()->build(), 100.0);
+    }
+
+    public function testUnlockingChangesNothingForTheSecretAndTheFavoriteChoicesNorForAnOrdinaryRecipe(): void
+    {
+        // Given
+        $neutral = $this->neutral()->allowAdministratorEdition();
+        $ordinary = new RecipeBuilder()->withAuthorId('author-id')->build();
+
+        // When
+        $ordinary->allowAdministratorEdition();
+
+        // Then : la neutre n'a pas d'auteur dont ce serait le choix ; une recette ordinaire n'a rien de figé à lever
+        $this->assertFalse($neutral->changeSecret(false, 'admin-id')->isSecret());
+        $this->expectException(RecipeException::class);
+        try {
+            $neutral->changeFavorite(true, 'admin-id');
+        } finally {
+            $this->assertFalse($neutral->isFavorite());
+            $this->assertFalse($ordinary->isMarmitonNeutral());
+        }
+    }
+
     public function testNobodyChangesTheSecretOrTheFavoriteFlagOfTheNeutralNotEvenAnAdministrator(): void
     {
         // Given

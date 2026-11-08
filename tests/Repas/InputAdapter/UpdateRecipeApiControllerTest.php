@@ -116,6 +116,73 @@ class UpdateRecipeApiControllerTest extends QueryBusWebTestCase
         $this->assertSame([], $commandBus->dispatched());
     }
 
+    public function testAnAdministratorEditsARecipeWithoutAnOwnerAndTheCommandSaysSo(): void
+    {
+        // Given : la recette Marmiton neutre (sans propriétaire)
+        $commandBus = $this->mockCommandBus();
+        $admin = $this->savedUser(admin: true);
+        $neutral = $this->savedNeutral();
+
+        // When
+        $this->put('/api/v1/recipes/' . $neutral->getId(), $admin, self::BODY);
+
+        // Then : seul l'administrateur la modifie, la commande porte son identifiant et le dit
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new UpdateRecipeCommand(
+            $neutral->getId(),
+            'Pâtes revisitées',
+            6,
+            new Tab([new UpdateRecipeRowSubCommand('pate', 'gramme', 750)], UpdateRecipeRowSubCommand::class),
+            'plat',
+            userId: $admin->getId(),
+            byAdministrator: true,
+        )], $commandBus->dispatched());
+    }
+
+    public function testAnOrdinaryUserCannotEditARecipeWithoutAnOwner(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $neutral = $this->savedNeutral();
+
+        // When
+        $this->put('/api/v1/recipes/' . $neutral->getId(), $this->savedUser(), self::BODY);
+
+        // Then : `403`, rien n'est envoyé
+        $this->assertSame(403, $this->client->getResponse()->getStatusCode());
+        $this->assertSame([], $commandBus->dispatched());
+    }
+
+    public function testAnAdministratorEditingTheRecipeOfAnotherUserIsMarkedAsAnAdministratorToo(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $admin = $this->savedUser(admin: true);
+        $recipe = $this->savedRecipe($this->savedUser());
+
+        // When
+        $this->put('/api/v1/recipes/' . $recipe->getId(), $admin, self::BODY);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertTrue($commandBus->dispatched()[0]->byAdministrator);
+    }
+
+    public function testTheSecretRecipeOfAnotherIsUnknownEvenToAnAdministratorWhoNeverSeesItsAuthorsChoice(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->withAuthor($this->savedUser())->asSecret()->build();
+        $this->persister->saveRecipe($recipe);
+
+        // When
+        $this->put('/api/v1/recipes/' . $recipe->getId(), $this->savedUser(admin: true), self::BODY);
+
+        // Then
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+        $this->assertSame([], $commandBus->dispatched());
+    }
+
     public function testReturns404ForAnUnknownRecipe(): void
     {
         // Given
@@ -156,6 +223,17 @@ class UpdateRecipeApiControllerTest extends QueryBusWebTestCase
         // Then
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
         $this->assertSame([], $commandBus->dispatched());
+    }
+
+    /**
+     * La recette Marmiton neutre : son auteur est l'identifiant réservé, qui n'est le compte de personne.
+     */
+    private function savedNeutral(): \Repas\Repas\Domain\Model\Recipe
+    {
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->asMarmitonNeutral()->build();
+        $this->persister->saveRecipe($recipe);
+
+        return $recipe;
     }
 
     private function savedRecipe(User $author): \Repas\Repas\Domain\Model\Recipe

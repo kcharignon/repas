@@ -15,7 +15,7 @@ use Repas\Repas\Domain\Exception\RecipeException;
  */
 class RecipeInMemoryLoader implements RecipeLoader
 {
-    /** @var list<array{string, string}> */
+    /** @var list<array{string, string, bool}> */
     public array $getCalls = [];
 
     /** @var list<array{string, string}> */
@@ -24,7 +24,7 @@ class RecipeInMemoryLoader implements RecipeLoader
     /** @var list<string> */
     public array $listFavoritesOfAuthorCalls = [];
 
-    /** @var list<array{string, int, int, string|null}> */
+    /** @var list<array{string, int, int, string|null, bool}> */
     public array $listOfOtherPeopleCalls = [];
 
     public function __construct(
@@ -36,9 +36,9 @@ class RecipeInMemoryLoader implements RecipeLoader
     ) {
     }
 
-    public function get(string $id, string $userId): RecipeDTO
+    public function get(string $id, string $userId, bool $isAdministrator = false): RecipeDTO
     {
-        $this->getCalls[] = [$id, $userId];
+        $this->getCalls[] = [$id, $userId, $isAdministrator];
 
         return $this->recipe ?? throw RecipeException::notFound($id);
     }
@@ -57,9 +57,9 @@ class RecipeInMemoryLoader implements RecipeLoader
         return $this->favorites;
     }
 
-    public function listOfOtherPeople(string $userId, int $limit, int $offset, ?string $search = null): OtherPeopleRecipesDTO
+    public function listOfOtherPeople(string $userId, int $limit, int $offset, ?string $search = null, bool $isAdministrator = false): OtherPeopleRecipesDTO
     {
-        $this->listOfOtherPeopleCalls[] = [$userId, $limit, $offset, $search];
+        $this->listOfOtherPeopleCalls[] = [$userId, $limit, $offset, $search, $isAdministrator];
 
         return $this->otherPeopleRecipes;
     }

@@ -27,7 +27,7 @@ final class ListOtherPeopleRecipesApiController extends AbstractController
     #[IsGranted('ROLE_USER')]
     #[OA\Get(
         summary: "Recettes (non secrètes) des autres utilisateurs que l'utilisateur authentifié n'a pas encore copiées : triées par catégorie, ou cherchées par nom du plus pertinent au moins pertinent",
-        description: "Une recette secrète (`secret`, ADR 0033) n'y est jamais : ni dans `member`, ni dans `totalItems`, ni dans la recherche. Sans `q`, les recettes sont triées par catégorie (l'ordre des types de recette), puis par nom, puis par identifiant. Avec `q`, seules les recettes dont le nom correspond sont rendues, du plus pertinent au moins pertinent (Jaro-Winkler, ADR 0019), à pertinence égale par nom puis par identifiant, toutes catégories confondues ; chaque recette porte sa catégorie (`typeSlug`, `typeName`). 200 recettes au plus par réponse (`totalItems` donne le vrai nombre). Sans autre paramètre, la première page de 200 : `limit` et `offset` facultatifs lisent la suite.",
+        description: "Une recette secrète (`secret`, ADR 0033) n'y est jamais : ni dans `member`, ni dans `totalItems`, ni dans la recherche. Sans `q`, les recettes sont triées par catégorie (l'ordre des types de recette), puis par nom, puis par identifiant. Avec `q`, seules les recettes dont le nom correspond sont rendues, du plus pertinent au moins pertinent (Jaro-Winkler, ADR 0019), à pertinence égale par nom puis par identifiant, toutes catégories confondues ; chaque recette porte sa catégorie (`typeSlug`, `typeName`). 200 recettes au plus par réponse (`totalItems` donne le vrai nombre). Sans autre paramètre, la première page de 200 : `limit` et `offset` facultatifs lisent la suite. Un administrateur y voit TOUJOURS les recettes sans propriétaire (`fromMarmiton`), même celles qu'il a déjà copiées (`alreadyCopied`), pour les corriger ou les supprimer ; la page, le total et la recherche des autres utilisateurs ne changent pas.",
     )]
     #[OA\Tag(name: 'Recipes')]
     #[OA\Parameter(name: 'limit', in: 'query', required: false, description: 'Nombre de recettes de la page, de 1 à 200', schema: new OA\Schema(type: 'integer', default: 200, minimum: 1, maximum: 200))]
@@ -42,7 +42,7 @@ final class ListOtherPeopleRecipesApiController extends AbstractController
     public function __invoke(#[CurrentUser] AuthenticatedUser $user, #[MapQueryString(validationFailedStatusCode: 422)] ListOtherPeopleRecipesRequestQuery $page = new ListOtherPeopleRecipesRequestQuery()): JsonResponse
     {
         /** @var OtherPeopleRecipesDTO $recipes */
-        $recipes = $this->queryBus->ask(new ListOtherPeopleRecipesQuery($user->getId(), $page->limit, $page->offset, $page->q));
+        $recipes = $this->queryBus->ask(new ListOtherPeopleRecipesQuery($user->getId(), $page->limit, $page->offset, $page->q, $this->isGranted('ROLE_ADMIN')));
 
         return new JsonResponse($recipes);
     }
