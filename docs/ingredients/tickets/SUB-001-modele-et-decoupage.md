@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Effort recommandé pour l'agent** : **xhigh** (migration, invariants, droits sans passe-droit, contrat d'API)
 - **Dépend de** : MAR-003 fusionné dans `main` (même fichier `CopyRecipeHandler`, mêmes `openapi.json`, `budgets.php`, `migrations/`)
-- **Statut** : à faire
+- **Statut** : fait (2026-11-08)
 - **Lire d'abord** : [ADR 0038](../../adr/0038-sous-ingredients.md) décisions 1 à 5, 16, 28 à 31 ; `CLAUDE.md` (puces « Ingrédients propres à chaque utilisateur », « Conversions propres », « Plus de nouvel ingrédient commun », « Contextes étanches ») ; skill `repas-dev` ; issue #437.
 
 ## But
@@ -37,3 +37,16 @@ Un ingrédient du compte peut devenir **une partie d'un autre** (« Jaune d'œuf
 - [ ] Un compte sans partie voit exactement les mêmes réponses qu'avant, aux clés nouvelles près ; aucun budget existant ne monte.
 - [ ] `NoSharedIngredientTest`, `IngredientVisibility::visibleBy` et `OwnerVoter` inchangés.
 - [ ] PR vers `main` (**À relire** : la migration, les cinq erreurs, l'absence de passe-droit administrateur).
+
+## Réalisation (2026-11-08)
+
+- **Migration** `Version20261108140000` (additive, rejouable, `down` retire l'index puis les deux colonnes) : `ingredient.parent_slug`, `ingredient.parent_ratio` et l'index partiel `idx_ingredient_parent (creator, parent_slug) WHERE (parent_slug IS NOT NULL)`, déclaré aussi dans le mapping (`doctrine:schema:validate`). Aucune donnée écrite. `IngredientParentMigrationTest` : mêmes colonnes que le mapping, rejouable, aucune ligne touchée, compatible avec le code précédent, `down`.
+- **Domaine** : `Ingredient::getParentSlug|getParentRatio|isPart|makePartOf|detachFromParent`, `MAX_PARTS = 10` ; `makePartOf` refuse l'ingrédient lui-même et un ratio hors de `QuantityBounds` (`NaN` et l'infini compris). `create`, `copyFromOriginal` et la copie en masse laissent le lien à `NULL` (`IngredientPartTest`, `IngredientRepositoryTest`, `DevelopmentFixturesTest`). Cinq erreurs nommées dans `IngredientException`.
+- **Ports** : `IngredientRepository::partsHaveAtLeast(parent, n)` (le test d'existence de la n-ième, `SELECT … OFFSET n-1 LIMIT 1`, jamais un `COUNT`), `hasParts`, `detachParts` (une instruction, pour SUB-004) ; `ShoppingListRepository::isIngredientInOpenList` (une requête, listes en cours, en pause et envoyées).
+- **Cas d'usage** `SetIngredientParent` / `RemoveIngredientParent` (déclarés dans `IngredientSlugWritesAreResolvedTest` : la partie ET le parent passent par les alias). Ordre des contrôles : alias, les deux à l'utilisateur (`404` sinon, aucun passe-droit), pas lui-même, pas de chaîne (le parent n'est pas une partie, la partie n'a pas de partie), **puis seulement si le parent change** : ligne dans une liste non terminée (`409`), dix parties (`422`) ; enfin le ratio (modèle). Changer le ratio seul, ou refaire le même appel, n'est jamais refusé et le même appel n'écrit rien. Recoller est toujours permis.
+- **API** : `PUT|DELETE /api/v1/ingredients/{slug}/parent`, `INGREDIENT_OWNER` (403 pour l'ingrédient d'un autre, administrateur compris), `204`. Le corps refuse tout ratio qui n'est pas un nombre JSON de 0,000001 à 1 000 000 (un texte, même « 2 », est refusé sans conversion) ; son message est celui de l'erreur métier précédé du champ : `ratio: INGREDIENT_PART_RATIO_INVALID`.
+- **Lectures** : `IngredientDTO` gagne `parts` (`slug`, `name`, `ratio`, `unitName` de la partie, triées par nom normalisé puis identifiant) et `partOf` (`slug`, `name`, `ratio`) ; `IngredientOptionDTO` et `IngredientSearchResultDTO` gagnent `partOfSlug` / `partOfName` ; `RecipeRowDTO` gagne `partOfName`. Le parent est joint dans la même instruction (jamais un ingrédient d'un autre compte) : **la fiche passe de 3 à 4 requêtes** (les parties), constante avec zéro, deux ou neuf parties ; les choix, la recherche et la recette gardent leur nombre de requêtes.
+- **Budgets** : `decouper-ingredient` 9, `recoller-ingredient` 5 ; aucun budget existant ne change.
+- **Données de développement** : `ingredient.json` gagne `Jaune d'œuf` et `Blanc d'œuf` (rayon et unités d'« Œuf », clés `parent` et `parent_ratio`), `base-ingredients.tsv` / `base-ingredients.json` les deux lignes en fin de fichier (de base) ; `BaseIngredientsDataTest` et `SeedProductionLikeCatalogTest` écartent ces deux lignes de leurs 261 et de leurs sommes de contrôle ; le modèle du skill Alexa est régénéré (`make voice-model` : deux valeurs de plus dans le type `INGREDIENT`, à envoyer par le propriétaire avec `make voice-model-push`).
+- **Garde-fous du schéma** : `IngredientReferencesAreAllRepointedTest` déclare `ingredient.parent_slug` parmi les colonnes qui désignent un ingrédient sans être repointées, motif écrit : la fusion le repointera avec SUB-004 (la colonne passe alors dans `REPOINTED`). `UserOwnedDataCoverageTest` : aucune colonne de propriétaire de plus.
+- **Décisions prises seul** : voir l'amendement du 2026-11-08 de l'[ADR 0038](../../adr/0038-sous-ingredients.md) (contrôle de la liste seulement quand le parent change ; `unitName` = unité d'achat de la partie ; message du ratio ; deux lignes de plus dans le classement).
