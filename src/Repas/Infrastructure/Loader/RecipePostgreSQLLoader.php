@@ -10,6 +10,8 @@ use Repas\Repas\Application\Query\GetRecipe\RecipeDTO;
 use Repas\Repas\Application\Query\GetRecipe\RecipeRowDTO;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipeDTO;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipesDTO;
+use Repas\Repas\Application\Query\ListOtherPeopleRecipeTypes\OtherPeopleRecipeTypeDTO;
+use Repas\Repas\Application\Query\ListOtherPeopleRecipeTypes\OtherPeopleRecipeTypesDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeSummaryDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeTypeRecipesDTO;
 use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeDTO;
@@ -174,14 +176,17 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
      *
      * Avec une recherche : comme `IngredientPostgreSQLLoader::search()` (ADR 0019), le score de Jaro-Winkler n'existe pas en SQL ; une seule requête
      * lit l'identifiant, le nom et la catégorie de TOUTES les recettes des autres, et la pertinence est calculée en PHP.
+     *
+     * Avec `$typeSlug`, la page, le total ET la recherche se restreignent à cette catégorie, dans la même requête de base ; une catégorie inconnue
+     * ou sans recette à copier rend une page vide, jamais une erreur.
      */
-    public function listOfOtherPeople(string $userId, int $limit, int $offset, ?string $search = null, bool $isAdministrator = false): OtherPeopleRecipesDTO
+    public function listOfOtherPeople(string $userId, int $limit, int $offset, ?string $search = null, bool $isAdministrator = false, ?string $typeSlug = null): OtherPeopleRecipesDTO
     {
         if ($search !== null) {
-            return $this->searchOfOtherPeople($userId, $limit, $offset, $search, $isAdministrator);
+            return $this->searchOfOtherPeople($userId, $limit, $offset, $search, $isAdministrator, $typeSlug);
         }
 
-        $recipes = $this->withAdministratorCopy($this->otherPeopleQuery($userId, $isAdministrator), $isAdministrator)
+        $recipes = $this->withAdministratorCopy($this->otherPeopleQuery($userId, $isAdministrator, $typeSlug), $isAdministrator)
             ->select('r.id AS id', 'r.name AS name', 't.name AS typeName', 't.slug AS typeSlug', 'r.marmitonId AS marmitonId', ...$this->copyIdSelect($isAdministrator))
             ->orderBy('t.sequence', 'ASC')
             ->addOrderBy('r.slug', 'ASC')
@@ -193,23 +198,42 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
 
         $total = $offset === 0 && count($recipes) < $limit
             ? count($recipes)
-            : (int) $this->otherPeopleQuery($userId, $isAdministrator)->select('COUNT(r.id)')->getQuery()->getSingleScalarResult();
+            : (int) $this->otherPeopleQuery($userId, $isAdministrator, $typeSlug)->select('COUNT(r.id)')->getQuery()->getSingleScalarResult();
 
         return new OtherPeopleRecipesDTO(array_map(self::toDto(...), $recipes), $total);
     }
 
     /**
-     * Toutes catégories confondues, du plus pertinent au moins pertinent ; à pertinence égale par slug puis par identifiant. Un texte sans lettre
+     * UNE requête (GROUP BY) sur la requête commune des recettes des autres : le compte d'une catégorie est celui de sa page, par construction.
+     * Un type sans recette à copier n'a pas de ligne.
+     */
+    public function listOtherPeopleTypes(string $userId, bool $isAdministrator = false): OtherPeopleRecipeTypesDTO
+    {
+        $rows = $this->otherPeopleQuery($userId, $isAdministrator)
+            ->select('t.slug AS typeSlug', 't.name AS typeName', 'COUNT(r.id) AS recipeCount')
+            ->groupBy('t.slug', 't.name', 't.sequence')
+            ->orderBy('t.sequence', 'ASC')
+            ->addOrderBy('t.slug', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+
+        $types = array_map(static fn(array $row): OtherPeopleRecipeTypeDTO => new OtherPeopleRecipeTypeDTO($row['typeSlug'], $row['typeName'], (int) $row['recipeCount']), $rows);
+
+        return new OtherPeopleRecipeTypesDTO($types, count($types));
+    }
+
+    /**
+     * Toutes catégories confondues (ou celle de `$typeSlug`), du plus pertinent au moins pertinent ; à pertinence égale par slug puis par identifiant. Un texte sans lettre
      * ni chiffre ne trouve rien. Limite connue : toute recherche lit les noms de toutes les recettes des autres (ADR 0019, amendement).
      */
-    private function searchOfOtherPeople(string $userId, int $limit, int $offset, string $search, bool $isAdministrator): OtherPeopleRecipesDTO
+    private function searchOfOtherPeople(string $userId, int $limit, int $offset, string $search, bool $isAdministrator, ?string $typeSlug): OtherPeopleRecipesDTO
     {
         $needle = StringTool::slugify($search);
         if ($needle === '') {
             return new OtherPeopleRecipesDTO([], 0);
         }
 
-        $rows = $this->withAdministratorCopy($this->otherPeopleQuery($userId, $isAdministrator), $isAdministrator)
+        $rows = $this->withAdministratorCopy($this->otherPeopleQuery($userId, $isAdministrator, $typeSlug), $isAdministrator)
             ->select('r.id AS id', 'r.name AS name', 'r.slug AS slug', 't.name AS typeName', 't.slug AS typeSlug', 'r.marmitonId AS marmitonId', ...$this->copyIdSelect($isAdministrator))
             ->getQuery()
             ->getArrayResult();
@@ -285,8 +309,10 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
      *
      * Pour un administrateur, une recette SANS PROPRIÉTAIRE (auteur `Recipe::MARMITON_OWNER_ID`) y reste même copiée : il la modifie et la supprime,
      * il doit pouvoir la trouver. Une seule exception, dans la même instruction ; toute autre recette suit la règle commune.
+     *
+     * `$typeSlug` restreint à une catégorie (l'écran des catégories) : un filtre de plus, la règle de visibilité ne change pas.
      */
-    private function otherPeopleQuery(string $userId, bool $isAdministrator = false): QueryBuilder
+    private function otherPeopleQuery(string $userId, bool $isAdministrator = false, ?string $typeSlug = null): QueryBuilder
     {
         $notCopied = sprintf('NOT EXISTS (SELECT c.id FROM %s c WHERE c.authorId = :userId AND c.originalId = r.id)', Recipe::class);
         $query = $this->entityManager->createQueryBuilder()
@@ -296,6 +322,10 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
             ->andWhere('r.secret = false')
             ->andWhere('r.originalId IS NULL')
             ->setParameter('userId', $userId);
+
+        if ($typeSlug !== null) {
+            $query->andWhere('r.typeSlug = :typeSlug')->setParameter('typeSlug', $typeSlug);
+        }
 
         if ($isAdministrator) {
             return $query->andWhere("(r.authorId = :withoutOwner OR $notCopied)")->setParameter('withoutOwner', DomainRecipe::MARMITON_OWNER_ID);

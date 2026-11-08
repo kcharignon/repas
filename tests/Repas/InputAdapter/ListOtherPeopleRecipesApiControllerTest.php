@@ -136,6 +136,7 @@ class ListOtherPeopleRecipesApiControllerTest extends QueryBusWebTestCase
         yield 'décalage démesuré' => ['offset=99999999'];
         yield 'décalage pas un nombre' => ['offset=abc'];
         yield 'recherche de plus de cent caractères' => ['q=' . str_repeat('a', 101)];
+        yield 'catégorie de plus de cent caractères' => ['typeSlug=' . str_repeat('a', 101)];
     }
 
     #[DataProvider('invalidPages')]
@@ -169,5 +170,34 @@ class ListOtherPeopleRecipesApiControllerTest extends QueryBusWebTestCase
         // Then
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
         $this->assertSame(0, $this->queryBus->countAskedQueries());
+    }
+
+    public function testTheCategoryIsPassedToTheQueryWithTheSearch(): void
+    {
+        // Given
+        $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([], 0));
+
+        // When
+        $this->client->request('GET', '/api/v1/recipes/other-people?typeSlug=dessert&q=tarte', server: $this->bearerFor($this->savedUser()));
+
+        // Then
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $query = $this->queryBus->getLastAskedQuery();
+        $this->assertInstanceOf(ListOtherPeopleRecipesQuery::class, $query);
+        $this->assertSame(['dessert', 'tarte'], [$query->typeSlug, $query->search]);
+    }
+
+    public function testWithoutCategoryTheQueryAsksForAllOfThem(): void
+    {
+        // Given
+        $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([], 0));
+
+        // When
+        $this->client->request('GET', '/api/v1/recipes/other-people', server: $this->bearerFor($this->savedUser()));
+
+        // Then
+        $query = $this->queryBus->getLastAskedQuery();
+        $this->assertInstanceOf(ListOtherPeopleRecipesQuery::class, $query);
+        $this->assertNull($query->typeSlug);
     }
 }

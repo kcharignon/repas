@@ -15,6 +15,8 @@ final readonly class ListOtherPeopleRecipesRequestQuery
         public int $offset = 0,
         #[Assert\Length(max: 100)]
         public ?string $q = null,
+        #[Assert\Length(max: 100)]
+        public ?string $typeSlug = null,
     ) {
     }
 }

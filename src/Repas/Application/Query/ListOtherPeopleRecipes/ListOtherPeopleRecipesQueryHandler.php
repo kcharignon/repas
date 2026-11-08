@@ -25,6 +25,8 @@ final readonly class ListOtherPeopleRecipesQueryHandler
             // Un texte réduit à des espaces n'est pas une recherche : la liste entière, triée par catégorie
             $query->search !== null && trim($query->search) !== '' ? $query->search : null,
             $query->isAdministrator,
+            // Une catégorie vide n'est pas un filtre
+            $query->typeSlug !== null && trim($query->typeSlug) !== '' ? $query->typeSlug : null,
         );
     }
 }

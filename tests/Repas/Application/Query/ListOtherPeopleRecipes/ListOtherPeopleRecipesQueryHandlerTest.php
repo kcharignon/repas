@@ -36,7 +36,7 @@ class ListOtherPeopleRecipesQueryHandlerTest extends TestCase
         $handler(new ListOtherPeopleRecipesQuery('user-1'));
 
         // Then
-        $this->assertSame([['user-1', 200, 0, null, false]], $loader->listOfOtherPeopleCalls);
+        $this->assertSame([['user-1', 200, 0, null, false, null]], $loader->listOfOtherPeopleCalls);
     }
 
     public function testForwardsWhetherTheUserIsAnAdministratorToTheLoader(): void
@@ -49,7 +49,7 @@ class ListOtherPeopleRecipesQueryHandlerTest extends TestCase
         $handler(new ListOtherPeopleRecipesQuery('admin-1', isAdministrator: true));
 
         // Then : c'est le chargeur qui montre à un administrateur les recettes sans propriétaire, même copiées
-        $this->assertSame([['admin-1', 200, 0, null, true]], $loader->listOfOtherPeopleCalls);
+        $this->assertSame([['admin-1', 200, 0, null, true, null]], $loader->listOfOtherPeopleCalls);
     }
 
     public function testForwardsTheRequestedPageToTheLoader(): void
@@ -62,7 +62,7 @@ class ListOtherPeopleRecipesQueryHandlerTest extends TestCase
         $handler(new ListOtherPeopleRecipesQuery('user-1', 50, 100));
 
         // Then
-        $this->assertSame([['user-1', 50, 100, null, false]], $loader->listOfOtherPeopleCalls);
+        $this->assertSame([['user-1', 50, 100, null, false, null]], $loader->listOfOtherPeopleCalls);
     }
 
     /**
@@ -86,7 +86,7 @@ class ListOtherPeopleRecipesQueryHandlerTest extends TestCase
         $handler(new ListOtherPeopleRecipesQuery('user-1', $limit, $offset));
 
         // Then
-        $this->assertSame([['user-1', $expectedLimit, $expectedOffset, null, false]], $loader->listOfOtherPeopleCalls);
+        $this->assertSame([['user-1', $expectedLimit, $expectedOffset, null, false, null]], $loader->listOfOtherPeopleCalls);
     }
 
     public function testForwardsTheSearchTextToTheLoaderAsIs(): void
@@ -99,7 +99,7 @@ class ListOtherPeopleRecipesQueryHandlerTest extends TestCase
         $handler(new ListOtherPeopleRecipesQuery('user-1', 50, 10, ' Pâte Carbo '));
 
         // Then
-        $this->assertSame([['user-1', 50, 10, ' Pâte Carbo ', false]], $loader->listOfOtherPeopleCalls);
+        $this->assertSame([['user-1', 50, 10, ' Pâte Carbo ', false, null]], $loader->listOfOtherPeopleCalls);
     }
 
     #[DataProvider('blankSearches')]
@@ -113,7 +113,7 @@ class ListOtherPeopleRecipesQueryHandlerTest extends TestCase
         $handler(new ListOtherPeopleRecipesQuery('user-1', 200, 0, $search));
 
         // Then
-        $this->assertSame([['user-1', 200, 0, null, false]], $loader->listOfOtherPeopleCalls);
+        $this->assertSame([['user-1', 200, 0, null, false, null]], $loader->listOfOtherPeopleCalls);
     }
 
     /**
@@ -124,5 +124,32 @@ class ListOtherPeopleRecipesQueryHandlerTest extends TestCase
         yield 'absent' => [null];
         yield 'vide' => [''];
         yield 'espaces' => ["  \t "];
+    }
+
+    public function testForwardsTheCategoryToTheLoader(): void
+    {
+        // Given
+        $loader = new RecipeInMemoryLoader();
+        $handler = new ListOtherPeopleRecipesQueryHandler($loader);
+
+        // When
+        $handler(new ListOtherPeopleRecipesQuery('user-1', 200, 0, 'tarte', false, 'dessert'));
+
+        // Then
+        $this->assertSame([['user-1', 200, 0, 'tarte', false, 'dessert']], $loader->listOfOtherPeopleCalls);
+    }
+
+    #[DataProvider('blankSearches')]
+    public function testABlankCategoryIsNoFilter(?string $typeSlug): void
+    {
+        // Given
+        $loader = new RecipeInMemoryLoader();
+        $handler = new ListOtherPeopleRecipesQueryHandler($loader);
+
+        // When
+        $handler(new ListOtherPeopleRecipesQuery('user-1', 200, 0, null, false, $typeSlug));
+
+        // Then
+        $this->assertSame([['user-1', 200, 0, null, false, null]], $loader->listOfOtherPeopleCalls);
     }
 }
