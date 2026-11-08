@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Effort recommandé pour l'agent** : **xhigh** (migration, invariants, règle secrète/ordinaire sans passe-droit, contrat d'API)
 - **Dépend de** : — (SUB-001 à SUB-007 et MAR-001 à 005 sont dans `main`) ; **un agent à la fois** sur le chantier (`Recipe`, `RecipePostgreSQLRepository`, `docs/api/openapi.json`, `budgets.php`, `migrations/`)
-- **Statut** : à faire
+- **Statut** : fait (2026-11-08)
 - **Lire d'abord** : [ADR 0040](../../adr/0040-recettes-utilisees-dans-d-autres-recettes.md) décisions 1 à 10, 19 à 21, 25, 38 à 42 ; [ADR 0033](../../adr/0033-recette-secrete.md) ; [ADR 0013](../../adr/0013-agregats-references-par-identifiant.md) ; [`../../ingredients/tickets/SUB-001-modele-et-decoupage.md`](../../ingredients/tickets/SUB-001-modele-et-decoupage.md) (le modèle de forme) ; `CLAUDE.md` (puces « Recette secrète », « Copier une recette depuis Marmiton », « Contextes étanches ») ; skill `repas-dev` ; issue #435 (l'étude d'impact complète).
 
 ## But
@@ -43,7 +43,17 @@ Le modèle `Recipe` porte des **composants** (une autre recette du même compte,
 
 ## Critères d'acceptation
 
-- [ ] `make test`, `make quality`, `make openapi-check` verts ; aucune entrée de baseline PHPStan de plus ; Deptrac sans baseline.
-- [ ] Un compte sans composant voit exactement les mêmes réponses qu'avant, aux clés nouvelles près ; trois requêtes pour `GET /recipes/{id}`.
-- [ ] Aucune route ne crée de composant (COMP-002) : la migration et le modèle sont inertes en production.
-- [ ] PR vers `main` (**À relire** : la migration, le drapeau `componentsChanged`, l'état final des règles, l'absence de passe-droit administrateur).
+- [x] `make test`, `make quality`, `make openapi-check` verts ; aucune entrée de baseline PHPStan de plus ; Deptrac sans baseline.
+- [x] Un compte sans composant voit exactement les mêmes réponses qu'avant, aux clés nouvelles près ; trois requêtes pour `GET /recipes/{id}`.
+- [x] Aucune route ne crée de composant (COMP-002) : la migration et le modèle sont inertes en production.
+- [x] PR vers `main` (**À relire** : la migration, le drapeau `componentsChanged`, l'état final des règles, l'absence de passe-droit administrateur).
+
+## Réalisation (2026-11-08)
+
+- **Migration** `Version20261108180000` (additive, rejouable, `down` retire les deux index, la table puis la colonne) : `recipe_component (id, recipe, component, multiplier, position)`, `uniq_recipe_component (recipe, component)`, `idx_recipe_component_component (component)`, `recipe.component_count INT NOT NULL DEFAULT 0`, aucune clé étrangère, aucune donnée écrite ; déclarée aussi dans le mapping (`doctrine:schema:validate` vert sur une base migrée de zéro, `migrate prev` puis `next` rejoués). `RecipeComponentsMigrationTest` : mêmes colonnes que le mapping, rejouable, aucune ligne touchée, ancien code compatible (son `INSERT`/`UPDATE` ne touche ni la table ni le compte), `down`, index unique. Chargée par PHPStan (`scanFiles`).
+- **Domaine** : `RecipeComponent` (`MIN_MULTIPLIER` 0,01, `MAX_MULTIPLIER` 100, `NaN` et l'infini refusés, `withPosition`), `Recipe` (`MAX_COMPONENTS` 10, `getComponents`, `hasComponents`, `getComponentCount`, `componentIds`, `setComponents`, `areComponentsChanged`, `load` / `create` qui acceptent les composants, `copyFromOriginal` inchangée), dix constantes et fabriques de `RecipeException`, `RecipeComponentRules` (`assertCanUse`, `assertNotEmpty`, `assertCanBecomeSecret`, `assertCanBecomePublic`). Voir l'amendement du 2026-11-08 de l'[ADR 0040](../../adr/0040-recettes-utilisees-dans-d-autres-recettes.md) pour les précisions (modèle chargé sans ses arêtes mais qui sait qu'il en a, drapeau seulement pour un changement réel, ordre des contrôles).
+- **Ports et dépôt** : `RecipeRepository::findByIds` (en lot, ordre demandé, inconnu absent, sans les arêtes), `isUsedAsComponent`, `isUsedByOrdinaryRecipe`, `hasSecretComponent` ; `RecipeComponentPostgreSQLRepository` (lecture d'une requête, `replace`), `IngredientPostgreSQLRepository::preloadByRecipes`, `RecipeRowPostgreSQLRepository::findByRecipeIds`. `save` n'écrit les arêtes et `component_count` que si le drapeau est vrai (ou pour une recette neuve) ; `delete` et `deleteByAuthor` les effacent (**`deleteByAuthor` en une seule instruction avec les lignes : `supprimer-compte` reste à 29**).
+- **Lecture** : `RecipeDTO::$components` (clé toujours écrite, juste après `rows`), `RecipeComponentDTO`. `RecipePostgreSQLLoader::get` : sans composant, les trois requêtes d'avant ; avec, une de plus (arêtes jointes à la recette utilisée, jointure interne : orphelin et secrète d'un autre ignorés) ; l'instruction des lignes devient `IN (:ids)`. `make openapi` : +60 lignes (`RecipeComponentDTO`, `components`).
+- **Budgets SQL** : aucun budget ne change (`make test` vert sans `sql-budget-update`).
+- **Tests** : `RecipeComponentTest`, `RecipeComponentRulesTest`, `RecipeComponentsMigrationTest`, `RecipeRepositoryTest` (15 cas : arêtes dans l'ordre, `save` d'un modèle chargé avec ou sans ses arêtes n'efface rien, `save` avec le drapeau remplace, `component_count`, `findByIds` constant pour 1, 5 et 10 recettes, les trois prédicats, `delete`, `deleteByAuthor`), `RecipePostgreSQLLoaderTest` (7 cas), `RecipeComponentsReadsAreConstantTest`, `ComponentsSurviveEverySaveTest` (squelette : favori, défavori, `PUT` sans composants, secrète, suppression d'un type ; COMP-002 y ajoute ses cas), `RecipeComponentsReadApiFlowTest`, `UserOwnedDataCoverageTest` et `UserDataPurgeRepositoryTest` (purge des arêtes avec le compte). Builders : `RecipeBuilder::withComponent`, `RecipeDTOBuilder::withComponent` ; `RecipeInMemoryRepository` implémente les quatre méthodes du port.
+- **Pas fait ici** (périmètre des tickets suivants) : aucune écriture HTTP (COMP-002), aucun aplatissement (COMP-004), aucune copie (COMP-003), le test `RecipeComponentsArePurgedWithTheUserTest` par le cas d'usage de suppression de compte (COMP-002).
