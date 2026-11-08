@@ -109,6 +109,7 @@ const UNIT_SYNONYMS = {
   gousse: ['gousses'],
   flacon: ['flacons'],
   botte: ['bottes'],
+  pincee: ['pincées', 'pincee', 'pincees'],
 };
 
 /**

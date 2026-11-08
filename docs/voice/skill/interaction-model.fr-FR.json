@@ -2731,6 +2731,17 @@
                   "bottes"
                 ]
               }
+            },
+            {
+              "id": "pincee",
+              "name": {
+                "value": "pincée",
+                "synonyms": [
+                  "pincées",
+                  "pincee",
+                  "pincees"
+                ]
+              }
             }
           ]
         },

@@ -44,6 +44,7 @@ final readonly class SpokenUnits
         'gousse' => ['gousse', 'gousses'],
         'flacon' => ['flacon', 'flacons'],
         'botte' => ['botte', 'bottes'],
+        'pincee' => ['pincée', 'pincées', 'pincee', 'pincees'],
     ];
 
     /**
