@@ -945,6 +945,15 @@ return [
     'fusionner-ingredients-avec-recuperation' => static function (WriteBudgetTestCase $t): object {
         return $t->savedMerge($t->savedUser(), recipes: 3, lists: 3, recoveredConversions: 2);
     },
+    // La même fusion quand l'ingrédient absorbé est le PARENT de trois parties (ADR 0038 décision 25, SUB-004) : elles deviennent celles du gardé en UNE
+    // instruction, une requête de plus que `fusionner-ingredients`, quel que soit le nombre de parties (tests/Repas/WriteBudget/MergeIngredientsBudgetTest)
+    'fusionner-ingredients-avec-parties' => static function (WriteBudgetTestCase $t): object {
+        return $t->savedMerge($t->savedUser(), recipes: 3, lists: 3, absorbedParts: 3);
+    },
+    // Et quand l'absorbé est une PARTIE : le gardé hérite de son lien, par la même instruction (aucune ligne en liste en cours : une partie n'en a pas)
+    'fusionner-ingredients-lien-herite' => static function (WriteBudgetTestCase $t): object {
+        return $t->savedMerge($t->savedUser(), recipes: 3, lists: 0, absorbedIsPart: true);
+    },
     'creer-conversion' => static function (WriteBudgetTestCase $t): object {
         $t->persister->saveUnit(new UnitBuilder()->isLiter()->build());
         $t->persister->saveUnit(new UnitBuilder()->isMillilitre()->build());

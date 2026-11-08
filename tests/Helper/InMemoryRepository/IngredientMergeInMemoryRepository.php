@@ -6,6 +6,7 @@ namespace Repas\Tests\Helper\InMemoryRepository;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\IngredientMergeRepository;
 use Repas\Repas\Domain\Model\Conversion;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\IngredientMergeRepointed;
 use Repas\Repas\Domain\Model\IngredientMergeUsage;
 use Repas\Repas\Domain\Model\MergeConversion;
@@ -26,7 +27,11 @@ final class IngredientMergeInMemoryRepository implements IngredientMergeReposito
 {
     /** @var array<string, array{author: string, version: int, rows: list<array{ingredient: string, unit: string}>}> par identifiant de recette */
     public array $recipes = [];
-    /** @var array<string, array{owner: string, version: int, status: string, rows: list<array{id: string, ingredient: string, quantity: float, unit: string, checked: bool}>, items: list<array{id: string, ingredient: string, quantity: float, unit: string}>}> par identifiant de liste */
+    /**
+     * `registry` (facultatif) : le registre des parties de la liste (ADR 0038), `[slug de la partie => slug du parent]`.
+     *
+     * @var array<string, array{owner: string, version: int, status: string, rows: list<array{id: string, ingredient: string, quantity: float, unit: string, checked: bool}>, items: list<array{id: string, ingredient: string, quantity: float, unit: string}>, registry?: array<string, string>}> par identifiant de liste
+     */
     public array $lists = [];
     /** @var list<string> les appels, dans l'ordre */
     public array $calls = [];
@@ -92,7 +97,15 @@ final class IngredientMergeInMemoryRepository implements IngredientMergeReposito
 
         $listCount = $sentListCount = $resultListCount = 0;
         $moves = [];
+        $registryMentioned = $openListLine = false;
         foreach ($this->lists as $list) {
+            // Le découpage (ADR 0038 décision 25) : une liste NON TERMINÉE dont le registre nomme A ou B, ou qui a une ligne de l'un des deux
+            if ($list['status'] !== 'COMPLETED') {
+                foreach ($list['registry'] ?? [] as $partSlug => $parentSlug) {
+                    $registryMentioned = $registryMentioned || in_array($partSlug, [$absorbedSlug, $keptSlug], true) || in_array($parentSlug, [$absorbedSlug, $keptSlug], true);
+                }
+                $openListLine = $openListLine || self::has($list['rows'], $absorbedSlug) || self::has($list['rows'], $keptSlug);
+            }
             $usesAbsorbed = self::has($list['rows'], $absorbedSlug) || self::has($list['items'], $absorbedSlug);
             if ($usesAbsorbed && $list['owner'] !== $userId) {
                 $foreign = true;
@@ -137,12 +150,49 @@ final class IngredientMergeInMemoryRepository implements IngredientMergeReposito
             $resultRecipeCount,
             $resultListCount,
             $absorbedConversions,
+            $this->partCountOf($userId, $absorbedSlug),
+            $this->partCountOf($userId, $keptSlug),
+            $registryMentioned,
+            $openListLine,
         );
     }
 
-    public function repoint(string $userId, string $absorbedSlug, string $keptSlug, string $keptPurchaseUnitSlug, array $factors): IngredientMergeRepointed
+    /**
+     * Combien de parties a cet ingrédient chez l'utilisateur, onze au plus (comme la requête de la base).
+     */
+    private function partCountOf(string $userId, string $parentSlug): int
+    {
+        $count = 0;
+        foreach ($this->ingredients?->findAll() ?? [] as $ingredient) {
+            /** @var Ingredient $ingredient */
+            $count += $ingredient->getCreatorId() === $userId && $ingredient->getParentSlug() === $parentSlug ? 1 : 0;
+        }
+
+        return min($count, Ingredient::MAX_PARTS + 1);
+    }
+
+    public function repoint(string $userId, string $absorbedSlug, string $keptSlug, string $keptPurchaseUnitSlug, array $factors, bool $repointPartLinks = false): IngredientMergeRepointed
     {
         $this->calls[] = 'repoint';
+        $parts = 0;
+        $inherited = false;
+        if ($repointPartLinks) {
+            $this->calls[] = 'repointPartLinks';
+            $absorbed = $this->ingredients->findOneBySlug($absorbedSlug);
+            $kept = $this->ingredients->findOneBySlug($keptSlug);
+            // Les parties de B deviennent celles de A (avant que A n'hérite : A n'est jamais l'une des parties de B, le planificateur l'a refusé)
+            foreach ($this->ingredients->findAll() as $ingredient) {
+                /** @var Ingredient $ingredient */
+                if ($ingredient->getCreatorId() === $userId && $ingredient->getParentSlug() === $absorbedSlug) {
+                    $ingredient->makePartOf($keptSlug, $ingredient->getParentRatio());
+                    ++$parts;
+                }
+            }
+            if (!$kept->isPart() && $absorbed->isPart()) {
+                $kept->makePartOf($absorbed->getParentSlug(), $absorbed->getParentRatio());
+                $inherited = true;
+            }
+        }
 
         $factorOf = static function (string $from, string $to) use ($factors): float {
             if ($from === $to) {
@@ -245,7 +295,7 @@ final class IngredientMergeInMemoryRepository implements IngredientMergeReposito
             throw IngredientException::mergeConflict();
         }
 
-        return new IngredientMergeRepointed($recipes, $lists);
+        return new IngredientMergeRepointed($recipes, $lists, $parts, $inherited);
     }
 
     /**

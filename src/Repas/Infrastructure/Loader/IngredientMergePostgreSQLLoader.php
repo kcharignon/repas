@@ -52,8 +52,8 @@ final readonly class IngredientMergePostgreSQLLoader implements IngredientMergeL
         $absorbed = $ingredients[$absorbedSlug];
         $kept = $ingredients[$keptSlug];
 
-        $absorbedParty = new MergeParty($absorbed['slug'], $absorbed['unit_slug'], self::unitSlugsOf($absorbed['compatible_units']));
-        $keptParty = new MergeParty($kept['slug'], $kept['unit_slug'], self::unitSlugsOf($kept['compatible_units']));
+        $absorbedParty = new MergeParty($absorbed['slug'], $absorbed['unit_slug'], self::unitSlugsOf($absorbed['compatible_units']), $absorbed['parent_slug'], $absorbed['cooking_unit_slug']);
+        $keptParty = new MergeParty($kept['slug'], $kept['unit_slug'], self::unitSlugsOf($kept['compatible_units']), $kept['parent_slug'], $kept['cooking_unit_slug']);
 
         // Le même ingrédient : rien n'est lu de plus, le verdict est donné d'avance (comme l'écriture, qui s'arrête là)
         $mergeable = $absorbedSlug !== $keptSlug;
@@ -137,14 +137,14 @@ final readonly class IngredientMergePostgreSQLLoader implements IngredientMergeL
      * slug qui n'existe pas : sans exception pour un administrateur (ADR 0028 décision 9).
      *
      * @param list<string> $slugs
-     * @return array<string, array{slug: string, name: string, creator: ?string, department_slug: string, department_name: string, unit_slug: string, unit_name: string, compatible_units: string}>
+     * @return array<string, array{slug: string, name: string, creator: ?string, department_slug: string, department_name: string, unit_slug: string, unit_name: string, compatible_units: string, parent_slug: ?string, cooking_unit_slug: string}>
      * @throws IngredientException
      */
     private function ingredientsOf(string $userId, array $slugs): array
     {
         $rows = $this->connection()->fetchAllAssociative(
             'SELECT i.slug, i.name, i.creator, i.department AS department_slug, d.name AS department_name,'
-            . ' i.default_purchase_unit AS unit_slug, u.name AS unit_name, i.compatible_units'
+            . ' i.default_purchase_unit AS unit_slug, u.name AS unit_name, i.compatible_units, i.parent_slug, i.default_cooking_unit AS cooking_unit_slug'
             . ' FROM ingredient i JOIN department d ON d.slug = i.department JOIN unit u ON u.slug = i.default_purchase_unit WHERE i.slug IN (:slugs)',
             ['slugs' => array_values(array_unique($slugs))],
             ['slugs' => ArrayParameterType::STRING],

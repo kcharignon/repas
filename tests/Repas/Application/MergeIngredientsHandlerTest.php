@@ -4,6 +4,7 @@ namespace Repas\Tests\Repas\Application;
 
 
 use DateTimeImmutable;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Drive\Application\OpenHostService\IngredientChoiceCommandOHS;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
@@ -103,7 +104,7 @@ class MergeIngredientsHandlerTest extends TestCase
     /**
      * @param list<UnitBuilder>|null $compatible les unités compatibles (le gramme et le kilo par défaut)
      */
-    private static function tomato(string $name, ?string $creator, ?string $adoptedFrom = null, ?UnitBuilder $purchase = null, ?DepartmentBuilder $department = null, ?array $compatible = null): Ingredient
+    private static function tomato(string $name, ?string $creator, ?string $adoptedFrom = null, ?UnitBuilder $purchase = null, ?DepartmentBuilder $department = null, ?array $compatible = null, ?string $parent = null, float $ratio = 1.0): Ingredient
     {
         $builder = new IngredientBuilder()
             ->withName($name)
@@ -112,6 +113,9 @@ class MergeIngredientsHandlerTest extends TestCase
             ->withDefaultPurchaseUnit($purchase ?? new UnitBuilder()->isKilo())
             ->withCreator($creator === null ? null : new UserBuilder()->withId($creator)->build(), true)
             ->withAdoptedFrom($adoptedFrom);
+        if ($parent !== null) {
+            $builder = $builder->withParent($parent, $ratio);
+        }
 
         return ($compatible === null ? $builder : $builder->withCompatibleUnits($compatible))->build();
     }
@@ -155,9 +159,12 @@ class MergeIngredientsHandlerTest extends TestCase
         $this->mergeRepository->recipes[$id] = ['author' => $author, 'version' => 3, 'rows' => array_map(static fn(string $ingredient): array => ['ingredient' => $ingredient, 'unit' => $unit], $ingredients)];
     }
 
-    private function list(string $id, array $rows = [], array $items = [], string $status = 'ACTIVE', string $owner = self::USER): void
+    /**
+     * @param array<string, string> $registry le registre des parties de la liste (ADR 0038) : `[slug de la partie => slug du parent]`
+     */
+    private function list(string $id, array $rows = [], array $items = [], string $status = 'ACTIVE', string $owner = self::USER, array $registry = []): void
     {
-        $this->mergeRepository->lists[$id] = ['owner' => $owner, 'version' => 5, 'status' => $status, 'rows' => $rows, 'items' => $items];
+        $this->mergeRepository->lists[$id] = ['owner' => $owner, 'version' => 5, 'status' => $status, 'rows' => $rows, 'items' => $items, 'registry' => $registry];
     }
 
     public function testTheAbsorbedIngredientDisappearsAndEverythingThatUsedItUsesTheKeptOne(): void
@@ -945,5 +952,221 @@ class MergeIngredientsHandlerTest extends TestCase
 
         // Then
         $this->assertSame('cereale', $this->ingredientRepository->findOneBySlug(self::KEPT)->getDepartment()->getSlug());
+    }
+
+    /**
+     * « Tomate » (gardé) et « Tomates » (absorbé), ordinaires, plus d'autres ingrédients découpés ou non que chaque test pose.
+     *
+     * @param list<Ingredient> $more
+     */
+    private function withIngredients(array $more): void
+    {
+        $this->ingredientRepository = new IngredientInMemoryRepository([self::tomato('Tomate', self::USER), self::tomato('Tomates', self::USER), ...$more]);
+        $this->handler = $this->handlerFor($this->ingredientRepository, $this->conversionRepository);
+    }
+
+    private const string EGG = 'oeufuser-id';
+    private const string LEMON = 'citronuser-id';
+
+    public function testTheKeptIngredientInheritsTheLinkOfTheAbsorbedPartAndKeepsItsRatio(): void
+    {
+        // Given : « Tomates » est une partie d'« Œuf » à raison de 2 ; « Tomate » est ordinaire
+        $this->withIngredients([self::tomato('Oeuf', self::USER)]);
+        $this->ingredientRepository->findOneBySlug(self::ABSORBED)->makePartOf(self::EGG, 2.0);
+
+        // When
+        $this->merge();
+
+        // Then : « Tomate » devient la partie d'« Œuf », au même ratio ; « Tomates » a disparu avec son lien
+        $kept = $this->ingredientRepository->findOneBySlug(self::KEPT);
+        $this->assertSame([self::EGG, 2.0], [$kept->getParentSlug(), $kept->getParentRatio()]);
+        $this->assertFalse($this->ingredientRepository->exists(self::ABSORBED));
+        $this->assertSame(['lock', 'usageOf', 'repoint', 'repointPartLinks'], array_values(array_unique($this->mergeRepository->calls)));
+    }
+
+    public function testTheKeptPartKeepsItsOwnLinkAndRatioWhateverTheAbsorbedOneHad(): void
+    {
+        // Given : les deux sont des parties du même parent, avec deux ratios
+        $this->withIngredients([self::tomato('Oeuf', self::USER)]);
+        $this->ingredientRepository->findOneBySlug(self::KEPT)->makePartOf(self::EGG, 1.0);
+        $this->ingredientRepository->findOneBySlug(self::ABSORBED)->makePartOf(self::EGG, 4.0);
+
+        // When
+        $this->merge();
+
+        // Then : le gardé garde son ratio, rien n'est transporté
+        $kept = $this->ingredientRepository->findOneBySlug(self::KEPT);
+        $this->assertSame([self::EGG, 1.0], [$kept->getParentSlug(), $kept->getParentRatio()]);
+        $this->assertFalse($this->ingredientRepository->exists(self::ABSORBED));
+        $this->assertSame(['lock', 'usageOf', 'repoint'], $this->mergeRepository->calls);
+    }
+
+    public function testThePartsOfTheAbsorbedParentBecomeThoseOfTheKeptParent(): void
+    {
+        // Given : « Tomate » est le parent d'une partie, « Tomates » celui de deux autres, de ratios 2 et 1
+        $this->withIngredients([
+            self::tomato('Jaune', self::USER, parent: self::KEPT, ratio: 1.0),
+            self::tomato('Jaunes', self::USER, parent: self::ABSORBED, ratio: 2.0),
+            self::tomato('Blanc', self::USER, parent: self::ABSORBED, ratio: 1.0),
+            self::tomato('Zeste', self::USER, parent: self::LEMON, ratio: 3.0),
+            self::tomato('Citron', self::USER),
+        ]);
+
+        // When
+        $this->merge();
+
+        // Then : les trois parties sont celles du gardé, avec leurs ratios ; la partie d'un autre parent n'est pas touchée
+        $parents = [];
+        foreach (['jauneuser-id', 'jaunesuser-id', 'blancuser-id', 'zesteuser-id'] as $slug) {
+            $part = $this->ingredientRepository->findOneBySlug($slug);
+            $parents[$slug] = [$part->getParentSlug(), $part->getParentRatio()];
+        }
+        $this->assertSame([
+            'jauneuser-id' => [self::KEPT, 1.0],
+            'jaunesuser-id' => [self::KEPT, 2.0],
+            'blancuser-id' => [self::KEPT, 1.0],
+            'zesteuser-id' => [self::LEMON, 3.0],
+        ], $parents);
+        $this->assertFalse($this->ingredientRepository->hasParts(self::ABSORBED));
+        $this->assertFalse($this->ingredientRepository->exists(self::ABSORBED));
+    }
+
+    /**
+     * @return iterable<string, array{list<Ingredient>, array<string, string>, IngredientException}>
+     */
+    public static function refusedPartMerges(): iterable
+    {
+        $kept = 'tomateuser-id';
+        $absorbed = 'tomatesuser-id';
+        $conflict = IngredientException::mergePartConflict();
+        $inList = IngredientException::mergePartInList();
+        $parent = static fn(string $name, ?string $of = null, float $ratio = 1.0): Ingredient => self::tomato($name, self::USER, parent: $of, ratio: $ratio);
+
+        yield 'deux parties de deux parents différents' => [
+            [self::tomato('Oeuf', self::USER), self::tomato('Citron', self::USER)],
+            [$kept => self::EGG, $absorbed => self::LEMON],
+            $conflict,
+        ];
+        yield 'le parent absorbé dans l\'une de ses parties' => [[], [$kept => $absorbed], $conflict];
+        yield 'une partie absorbée dans son parent' => [[], [$absorbed => $kept], $conflict];
+        yield 'un parent qui a des parties absorbé dans une partie : une chaîne' => [
+            [self::tomato('Oeuf', self::USER), $parent('Jaune', $absorbed)],
+            [$kept => self::EGG],
+            $conflict,
+        ];
+        yield 'une partie absorbée dans un parent qui a des parties : une chaîne' => [
+            [self::tomato('Oeuf', self::USER), $parent('Jaune', $kept)],
+            [$absorbed => self::EGG],
+            $conflict,
+        ];
+        yield 'le gardé dépasserait dix parties' => [
+            [...array_map(static fn(int $i): Ingredient => self::tomato("Gauche $i", self::USER, parent: $kept), range(1, 6)), ...array_map(static fn(int $i): Ingredient => self::tomato("Droite $i", self::USER, parent: $absorbed), range(1, 5))],
+            [],
+            $conflict,
+        ];
+        yield 'un lien hérité d\'une autre unité d\'achat' => [
+            [self::tomato('Oeuf', self::USER)],
+            [$absorbed => self::EGG, 'purchase' => 'gramme'],
+            $conflict,
+        ];
+        yield 'le registre d\'une liste en cours nomme l\'absorbé comme partie' => [[], ['registry-part' => $absorbed], $inList];
+        yield 'le registre d\'une liste en cours nomme le gardé comme parent' => [[$parent('Jaune', $kept)], ['registry-parent' => $kept], $inList];
+        yield 'une ligne en cours et un gardé qui hériterait d\'un lien' => [[self::tomato('Oeuf', self::USER)], [$absorbed => self::EGG, 'open-line' => $absorbed], $inList];
+    }
+
+    /**
+     * @param list<Ingredient> $more
+     * @param array<string, string> $setup `[slug d'un ingrédient => slug de son parent]` ; `registry-part` / `registry-parent` : une liste en cours dont le registre
+     *        nomme ce slug ; `open-line` : une liste en cours qui a une ligne de ce slug ; `purchase` : l'unité d'achat de l'absorbé
+     */
+    #[DataProvider('refusedPartMerges')]
+    public function testAMergeThatWouldBreakTheSplitIsRefusedBeforeAnyWrite(array $more, array $setup, IngredientException $expected): void
+    {
+        // Given
+        $absorbedPurchase = ($setup['purchase'] ?? null) === 'gramme' ? new UnitBuilder()->isGramme() : null;
+        $this->ingredientRepository = new IngredientInMemoryRepository([self::tomato('Tomate', self::USER), self::tomato('Tomates', self::USER, purchase: $absorbedPurchase), ...$more]);
+        $this->handler = $this->handlerFor($this->ingredientRepository, $this->conversionRepository);
+        foreach ($setup as $key => $value) {
+            match (true) {
+                $key === 'registry-part' => $this->list('registry', [self::row('x0', self::KEPT, 1.0)], registry: [$value => 'quelconque']),
+                $key === 'registry-parent' => $this->list('registry', [self::row('x0', $value, 1.0)], registry: ['jauneuser-id' => $value]),
+                $key === 'open-line' => $this->list('open', [self::row('x1', $value, 1.0)]),
+                $key === 'purchase' => null,
+                default => $this->ingredientRepository->findOneBySlug($key)->makePartOf($value, 1.0),
+            };
+        }
+        $this->recipe('r1', [self::ABSORBED]);
+        $recipesBefore = $this->mergeRepository->recipes;
+        $listsBefore = $this->mergeRepository->lists;
+        $links = $this->links();
+
+        try {
+            // When
+            $this->merge();
+            $this->fail('la fusion devait être refusée');
+        } catch (IngredientException $exception) {
+            // Then : le bon refus, et rien n'a été écrit (ni les recettes, ni les listes, ni les liens, ni les alias, ni le drive, ni l'ingrédient)
+            $this->assertSame([$expected->getMessage(), $expected->getCode()], [$exception->getMessage(), $exception->getCode()]);
+            $this->assertSame(['lock', 'usageOf'], $this->mergeRepository->calls);
+            $this->assertSame($recipesBefore, $this->mergeRepository->recipes);
+            $this->assertSame($listsBefore, $this->mergeRepository->lists);
+            $this->assertSame($links, $this->links());
+            $this->assertSame([], $this->aliasRepository->all());
+            $this->assertSame([], $this->driveReferences->mergeCalls);
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+            $this->assertTrue($this->ingredientRepository->exists(self::ABSORBED));
+        }
+    }
+
+    /**
+     * @return array<string, array{?string, ?float}> le lien de chaque ingrédient
+     */
+    private function links(): array
+    {
+        $links = [];
+        foreach ($this->ingredientRepository->findAll() as $ingredient) {
+            /** @var Ingredient $ingredient */
+            $links[$ingredient->getSlug()] = [$ingredient->getParentSlug(), $ingredient->getParentRatio()];
+        }
+        ksort($links);
+
+        return $links;
+    }
+
+    public function testTheRegistryOfAFinishedListDoesNotStopTheMerge(): void
+    {
+        // Given : une liste TERMINÉE dont le registre nomme encore « Tomates » (un registre qu'une liste terminée garde, inoffensif)
+        $this->list('done', status: 'COMPLETED', registry: [self::ABSORBED => self::KEPT]);
+
+        // When
+        $this->merge();
+
+        // Then
+        $this->assertFalse($this->ingredientRepository->exists(self::ABSORBED));
+    }
+
+    public function testTheRegistryIsNeverRewrittenByAMerge(): void
+    {
+        // Given : un registre qui nomme un autre ingrédient que les deux
+        $this->list('l1', [self::row('x1', self::ABSORBED, 2.0)], registry: ['jauneuser-id' => 'oeufuser-id']);
+
+        // When
+        $this->merge();
+
+        // Then
+        $this->assertSame(['jauneuser-id' => 'oeufuser-id'], $this->mergeRepository->lists['l1']['registry']);
+    }
+
+    public function testAnAccountWithoutAnyPartMergesWithTheSameCallsAsBefore(): void
+    {
+        // Given
+        $this->recipe('r1', [self::ABSORBED]);
+        $this->list('l1', [self::row('x1', self::ABSORBED, 2.0)]);
+
+        // When
+        $this->merge();
+
+        // Then : ni refus, ni instruction de découpage de plus
+        $this->assertSame(['lock', 'usageOf', 'repoint'], $this->mergeRepository->calls);
     }
 }

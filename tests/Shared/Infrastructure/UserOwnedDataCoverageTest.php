@@ -61,6 +61,26 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
         AccessGrant::class => ['userId'],
     ];
 
+    public function testTheSplitIntoPartsAddsNoTableAndItsColumnsLiveOnRowsThatAreErasedWithTheUser(): void
+    {
+        // Given : les colonnes du découpage en parties (ADR 0038 décision 26, SUB-004) et le registre des parties d'une liste
+        $holders = [];
+        foreach ($this->entityManager->getMetadataFactory()->getAllMetadata() as $metadata) {
+            foreach (['parentSlug', 'parentRatio', 'partShares'] as $field) {
+                if ($metadata->hasField($field)) {
+                    $holders[$field][] = $metadata->getName();
+                }
+            }
+        }
+        ksort($holders);
+
+        // Then : aucune table à part, rien à ajouter à la purge d'un compte : le parent et le ratio sont sur la ligne de l'ingrédient, le registre sur la
+        // ligne de la liste, deux entités que la suppression d'un compte efface déjà
+        $this->assertSame(['parentRatio' => [Ingredient::class], 'parentSlug' => [Ingredient::class], 'partShares' => [ShoppingList::class]], $holders);
+        $this->assertArrayHasKey(Ingredient::class, self::ERASED_WITH_THE_USER);
+        $this->assertArrayHasKey(ShoppingList::class, self::ERASED_WITH_THE_USER);
+    }
+
     public function testEveryColumnThatPointsToAUserIsErasedWithHim(): void
     {
         // Given

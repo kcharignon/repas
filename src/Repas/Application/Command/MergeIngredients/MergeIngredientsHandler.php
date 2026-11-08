@@ -34,12 +34,15 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *     faire) ou un ingrédient inconnu (`404`) ;
  *  2. l'utilisateur est le propriétaire des DEUX, sans exception pour un administrateur : l'ingrédient d'un autre est inconnu (`404`),
  *     le même ingrédient est refusé (`422`) ; une liste envoyée au drive qui utilise l'un des deux, une ligne d'un
- *     autre utilisateur sur `B` ou une unité de `B` qui, MÊME APRÈS la récupération des conversions de `B` (étape 3), ne se convertit
+ *     autre utilisateur sur `B`, un découpage que la fusion casserait (`PART_CONFLICT`), un registre de parties qu'une liste non terminée porte
+ *     (`PART_IN_LIST`) ou une unité de `B` qui, MÊME APRÈS la récupération des conversions de `B` (étape 3), ne se convertit
  *     pas par `A` arrêtent la fusion avant la première écriture (`IngredientMergePlanner`, le même verdict que l'aperçu) ;
  *  3. `A` récupère les conversions propres de `B` qui lui manquent (une seule copie en masse, `A` garde les siennes en cas de conflit) et
  *     les unités compatibles de `B` que ses lignes de recette déplacées utilisent ;
  *  4. les lignes de recettes, de listes et les choix du drive passent sur `A` (versions +1), les alias et les phrases apprises à Alexa suivent (`SpokenPhraseChoiceRepository::repoint`), `B` et ses conversions
- *     propres sont supprimés (celles qui ont été copiées restent sur `A`) ;
+ *     propres sont supprimés (celles qui ont été copiées restent sur `A`). Le découpage suit (ADR 0038 décision 25) : `A` hérite du lien de `B` s'il
+ *     n'en a pas et les parties de `B` deviennent celles de `A`, en une instruction, seulement s'il y a un lien à transporter ; le registre des parties
+ *     d'une liste n'est JAMAIS réécrit (une liste non terminée qui le mentionne a refusé la fusion à l'étape 2) ;
  *  5. `IngredientRemovedEvent` si `B` n'est pas une adoption (la statistique « ingrédients créés » : une adoption n'a jamais compté).
  *
  * Les recettes et les listes ne sont pas hydratées (SQL en masse) : un nombre de requêtes constant, quel que soit leur nombre. Une
@@ -109,7 +112,7 @@ readonly class MergeIngredientsHandler
         // utilisent)
         $this->recover($absorbed, $kept, $plan);
 
-        $this->mergeRepository->repoint($command->userId, $absorbed->getSlug(), $kept->getSlug(), $kept->getDefaultPurchaseUnit()->getSlug(), $plan->factors);
+        $this->mergeRepository->repoint($command->userId, $absorbed->getSlug(), $kept->getSlug(), $kept->getDefaultPurchaseUnit()->getSlug(), $plan->factors, $plan->repointsPartLinks);
         $this->driveChoices->merge($command->userId, $absorbed->getSlug(), $kept->getSlug());
         $this->aliasRepository->mergeInto($command->userId, $absorbed->getSlug(), $kept->getSlug(), $this->clock->now());
         // Les « Pas le même » qui nommaient l'absorbé n'ont plus d'objet (et ne doivent pas être hérités par un ingrédient qui reprendrait son slug)

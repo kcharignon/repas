@@ -21,6 +21,12 @@ final readonly class IngredientMergeUsage
      *        `B`, une recette qui utilise les deux comptée une fois
      * @param int $resultListCount ses listes DISTINCTES qui utiliseront `A` après la fusion (même union, une ligne ou un ajout à la main)
      * @param list<MergeConversion> $absorbedConversions les conversions PROPRES de `B`, que `A` peut récupérer (`IngredientMergePlanner`)
+     * @param int $absorbedPartCount combien de parties a `B` (ADR 0038), onze au plus : le plafond de dix est dépassé dès la onzième
+     * @param int $keptPartCount combien de parties a `A`, onze au plus
+     * @param bool $partRegistryMentioned le registre des parties d'une liste NON TERMINÉE nomme `A` ou `B`, en partie ou en parent : la fusion ne
+     *        réécrit jamais ce registre (`MergeBlock::PART_IN_LIST`)
+     * @param bool $openListLine `A` ou `B` a une ligne dans une liste non terminée : si le gardé est une partie après la fusion, une partie serait
+     *        une ligne de liste en cours, ce qu'elle n'est jamais (`MergeBlock::PART_IN_LIST`)
      */
     public function __construct(
         public int $recipeCount = 0,
@@ -32,6 +38,10 @@ final readonly class IngredientMergeUsage
         public int $resultRecipeCount = 0,
         public int $resultListCount = 0,
         public array $absorbedConversions = [],
+        public int $absorbedPartCount = 0,
+        public int $keptPartCount = 0,
+        public bool $partRegistryMentioned = false,
+        public bool $openListLine = false,
     ) {
     }
 }

@@ -18,6 +18,7 @@ use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
 use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
 use Repas\Repas\Infrastructure\Entity\ShoppingListIngredient;
 use Repas\Repas\Infrastructure\Entity\ShoppingListRow;
+use Repas\Repas\Infrastructure\Merge\PartRegistrySql;
 use Repas\Shared\Domain\Tool\Tab;
 
 readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository implements ShoppingListRepository
@@ -301,14 +302,13 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
 
     public function isIngredientUsed(string $ingredientSlug): bool
     {
-        return $this->entityManager->createQueryBuilder()
-            ->select('sli.shoppingListId')
-            ->from(ShoppingListIngredient::class, 'sli')
-            ->where('sli.ingredientSlug = :ingredient')
-            ->setParameter('ingredient', $ingredientSlug)
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getOneOrNullResult() !== null;
+        // UNE requête : un produit ajouté à la main dans une liste, OU le registre des parties d'une liste NON TERMINÉE qui nomme l'ingrédient, en partie
+        // ou en parent (ADR 0038 décisions 6 et 26 : le registre n'est jamais réécrit, il ne doit pas désigner un ingrédient supprimé)
+        return (bool) $this->entityManager->getConnection()->fetchOne(
+            'SELECT EXISTS (SELECT 1 FROM shopping_list_ingredient WHERE ingredient = :slug)'
+            . " OR EXISTS (SELECT 1 FROM shopping_list l WHERE l.status <> 'COMPLETED' AND l.part_shares IS NOT NULL AND " . PartRegistrySql::mentions('l', ':slug') . ')',
+            ['slug' => $ingredientSlug],
+        );
     }
 
     public function isIngredientInOpenList(string $ingredientSlug): bool

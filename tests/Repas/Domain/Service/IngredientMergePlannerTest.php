@@ -305,6 +305,8 @@ class IngredientMergePlannerTest extends TestCase
             [MergeBlock::SAME_INGREDIENT, 'CANNOT_MERGE_INTO_ITSELF', 422],
             [MergeBlock::USED_BY_ANOTHER_USER, 'INGREDIENT_USED_BY_ANOTHER_USER', 409],
             [MergeBlock::IN_SENT_LIST, 'INGREDIENT_IN_SENT_LIST', 409],
+            [MergeBlock::PART_CONFLICT, 'MERGE_PART_CONFLICT', 422],
+            [MergeBlock::PART_IN_LIST, 'MERGE_PART_IN_LIST', 409],
             [MergeBlock::UNIT_MISSING, 'MERGE_UNIT_MISSING', 422],
         ];
         foreach ($expected as [$block, $message, $status]) {
@@ -312,5 +314,98 @@ class IngredientMergePlannerTest extends TestCase
             $this->assertSame([$message, $status], [$exception->getMessage(), $exception->getCode()], $block->name);
         }
         $this->assertCount(count(MergeBlock::cases()), $expected, 'chaque refus a son test');
+    }
+
+    public function testThePartRefusalsComeAfterTheSentListAndBeforeTheMissingUnits(): void
+    {
+        // Then : l'ordre de l'énumération est celui des refus (ADR 0038 décision 25)
+        $cases = array_map(static fn(MergeBlock $block): string => $block->name, MergeBlock::cases());
+        $this->assertSame(['SAME_INGREDIENT', 'USED_BY_ANOTHER_USER', 'IN_SENT_LIST', 'PART_CONFLICT', 'PART_IN_LIST', 'UNIT_MISSING'], $cases);
+    }
+
+    /**
+     * @return iterable<string, array{IngredientMergeUsage, MergeBlock}>
+     */
+    public static function partRefusalOrder(): iterable
+    {
+        $parts = ['recipeUnitSlugs' => ['tranche']];
+
+        yield 'une liste envoyée passe avant un conflit de parties' => [new IngredientMergeUsage(...$parts, sentListCount: 1, keptPartCount: 11), MergeBlock::IN_SENT_LIST];
+        yield 'un conflit de parties passe avant le registre d\'une liste' => [new IngredientMergeUsage(...$parts, keptPartCount: 11, partRegistryMentioned: true), MergeBlock::PART_CONFLICT];
+        yield 'le registre d\'une liste passe avant une unité qui manque' => [new IngredientMergeUsage(...$parts, partRegistryMentioned: true), MergeBlock::PART_IN_LIST];
+    }
+
+    #[DataProvider('partRefusalOrder')]
+    public function testThePartRefusalsAreOrderedBetweenTheSentListAndTheMissingUnits(IngredientMergeUsage $usage, MergeBlock $expected): void
+    {
+        // When
+        $plan = $this->planner->plan(self::absorbed(), self::kept(), self::graph(), $usage);
+
+        // Then
+        $this->assertSame($expected, $plan->block);
+        $this->assertSame(['tranche'], $plan->missingUnitSlugs, 'l\'utilisateur sait tout ce qui l\'attend');
+    }
+
+    private static function party(string $slug, ?string $parent = null, string $purchase = 'unite', string $cooking = 'unite'): MergeParty
+    {
+        return new MergeParty($slug, $purchase, [], $parent, $cooking);
+    }
+
+    /**
+     * Chaque combinaison de liens : A est le gardé, B l'absorbé (ADR 0038 décision 25). Le troisième champ dit si un lien est à transporter.
+     *
+     * @return iterable<string, array{MergeParty, MergeParty, IngredientMergeUsage, ?MergeBlock, bool}>
+     */
+    public static function partCombinations(): iterable
+    {
+        yield 'aucun lien' => [self::party('a'), self::party('b'), new IngredientMergeUsage(), null, false];
+        yield 'l\'absorbé est une partie, le gardé un ingrédient ordinaire : il en hérite' => [self::party('a'), self::party('b', 'oeuf'), new IngredientMergeUsage(), null, true];
+        yield 'le gardé est une partie, l\'absorbé un ingrédient ordinaire : le gardé garde son lien' => [self::party('a', 'oeuf'), self::party('b'), new IngredientMergeUsage(), null, false];
+        yield 'deux parties du même parent : rien à transporter' => [self::party('a', 'oeuf'), self::party('b', 'oeuf'), new IngredientMergeUsage(), null, false];
+        yield 'deux parties de deux parents différents' => [self::party('a', 'oeuf'), self::party('b', 'citron'), new IngredientMergeUsage(), MergeBlock::PART_CONFLICT, false];
+        yield 'le parent absorbe l\'une de ses parties' => [self::party('oeuf'), self::party('jaune', 'oeuf'), new IngredientMergeUsage(keptPartCount: 2), MergeBlock::PART_CONFLICT, false];
+        yield 'une partie absorbe son parent' => [self::party('jaune', 'oeuf'), self::party('oeuf'), new IngredientMergeUsage(absorbedPartCount: 2), MergeBlock::PART_CONFLICT, false];
+        yield 'le gardé serait sa propre partie même sans décompte' => [self::party('jaune', 'oeuf'), self::party('oeuf'), new IngredientMergeUsage(), MergeBlock::PART_CONFLICT, false];
+        yield 'un parent qui a des parties absorbé dans une partie : une chaîne' => [self::party('a', 'oeuf'), self::party('b'), new IngredientMergeUsage(absorbedPartCount: 2), MergeBlock::PART_CONFLICT, false];
+        yield 'une partie absorbée dans un parent qui a des parties : une chaîne' => [self::party('a'), self::party('b', 'oeuf'), new IngredientMergeUsage(keptPartCount: 2), MergeBlock::PART_CONFLICT, false];
+        yield 'un parent absorbe un autre parent : ses parties deviennent les siennes' => [self::party('a'), self::party('b'), new IngredientMergeUsage(keptPartCount: 2, absorbedPartCount: 3), null, true];
+        yield 'un parent absorbe un ingrédient ordinaire : rien à transporter' => [self::party('a'), self::party('b'), new IngredientMergeUsage(keptPartCount: 2), null, false];
+        yield 'un ingrédient ordinaire absorbe un parent' => [self::party('a'), self::party('b'), new IngredientMergeUsage(absorbedPartCount: 2), null, true];
+        yield 'dix parties en tout : le plafond est atteint, pas dépassé' => [self::party('a'), self::party('b'), new IngredientMergeUsage(keptPartCount: 5, absorbedPartCount: 5), null, true];
+        yield 'onze parties en tout : le gardé dépasserait le plafond' => [self::party('a'), self::party('b'), new IngredientMergeUsage(keptPartCount: 6, absorbedPartCount: 5), MergeBlock::PART_CONFLICT, false];
+        yield 'le lien hérité ne vaut que pour la même unité d\'achat' => [self::party('a', null, 'boite'), self::party('b', 'oeuf'), new IngredientMergeUsage(), MergeBlock::PART_CONFLICT, false];
+        yield 'une unité d\'achat différente est sans importance quand le gardé garde son lien' => [self::party('a', 'oeuf', 'boite'), self::party('b', 'oeuf'), new IngredientMergeUsage(), null, false];
+        yield 'les parties ne passent qu\'à un parent qui se cuisine dans la même unité' => [self::party('a', null, 'unite', 'boite'), self::party('b'), new IngredientMergeUsage(absorbedPartCount: 2), MergeBlock::PART_CONFLICT, false];
+        yield 'une unité de cuisine différente est sans importance sans partie à transporter' => [self::party('a', null, 'unite', 'boite'), self::party('b'), new IngredientMergeUsage(), null, false];
+        yield 'le registre d\'une liste non terminée nomme l\'un des deux' => [self::party('a'), self::party('b'), new IngredientMergeUsage(partRegistryMentioned: true), MergeBlock::PART_IN_LIST, false];
+        yield 'le registre refuse aussi deux ingrédients ordinaires' => [self::party('a'), self::party('b'), new IngredientMergeUsage(partRegistryMentioned: true, openListLine: true), MergeBlock::PART_IN_LIST, false];
+        yield 'une ligne en cours et un gardé qui serait une partie' => [self::party('a', 'oeuf'), self::party('b'), new IngredientMergeUsage(openListLine: true), MergeBlock::PART_IN_LIST, false];
+        yield 'une ligne en cours et un gardé qui hériterait d\'un lien' => [self::party('a'), self::party('b', 'oeuf'), new IngredientMergeUsage(openListLine: true), MergeBlock::PART_IN_LIST, false];
+        yield 'une ligne en cours ne gêne pas deux ingrédients sans lien' => [self::party('a'), self::party('b'), new IngredientMergeUsage(openListLine: true), null, false];
+        yield 'une ligne en cours ne gêne pas deux parents' => [self::party('a'), self::party('b'), new IngredientMergeUsage(keptPartCount: 1, absorbedPartCount: 1, openListLine: true), null, true];
+    }
+
+    #[DataProvider('partCombinations')]
+    public function testEachCombinationOfPartLinks(MergeParty $kept, MergeParty $absorbed, IngredientMergeUsage $usage, ?MergeBlock $expected, bool $repointsLinks): void
+    {
+        // When
+        $plan = $this->planner->plan($absorbed, $kept, self::graph(), $usage);
+
+        // Then
+        $this->assertSame($expected, $plan->block);
+        $this->assertSame($repointsLinks, $plan->repointsPartLinks);
+        if ($expected !== null) {
+            $this->assertFalse($plan->repointsPartLinks, 'rien n\'est transporté quand la fusion est refusée');
+        }
+    }
+
+    public function testWithoutAnyPartTheVerdictIsTheOneOfBefore(): void
+    {
+        // When : un compte sans partie, avec de quoi refuser et de quoi convertir
+        $plan = $this->planner->plan(self::absorbed(), self::kept(), self::graph(), new IngredientMergeUsage(recipeCount: 7, listCount: 2, recipeUnitSlugs: ['gramme', 'kilo', 'unite']));
+
+        // Then : possible, et aucune écriture de découpage à prévoir
+        $this->assertTrue($plan->canMerge());
+        $this->assertFalse($plan->repointsPartLinks);
     }
 }

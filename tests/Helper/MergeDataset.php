@@ -88,6 +88,60 @@ final class MergeDataset
     }
 
     /**
+     * Fait de `$part` une PARTIE de `$parent` (ADR 0038) : les deux colonnes de découpage, écrites ensemble, comme le cas d'usage.
+     */
+    public function partOf(Ingredient|string $part, Ingredient|string $parent, float $ratio = 1.0): void
+    {
+        $this->connection->update('ingredient', ['parent_slug' => $parent instanceof Ingredient ? $parent->getSlug() : $parent, 'parent_ratio' => $ratio], ['slug' => $part instanceof Ingredient ? $part->getSlug() : $part]);
+    }
+
+    /**
+     * Le lien de découpage d'un ingrédient : `[slug du parent, ratio]`, `[null, null]` pour un ingrédient ordinaire.
+     *
+     * @return array{0: ?string, 1: ?float}
+     */
+    public function linkOf(string $slug): array
+    {
+        $row = $this->connection->fetchNumeric('SELECT parent_slug, parent_ratio FROM ingredient WHERE slug = ?', [$slug]);
+
+        return [$row[0], $row[1] === null ? null : (float) $row[1]];
+    }
+
+    /**
+     * Les slugs des parties d'un parent, triés.
+     *
+     * @return list<string>
+     */
+    public function partsOf(string $parentSlug): array
+    {
+        /** @var list<string> */
+        return $this->connection->fetchFirstColumn('SELECT slug FROM ingredient WHERE parent_slug = ? ORDER BY slug', [$parentSlug]);
+    }
+
+    /**
+     * Pose le registre des parties d'une liste (ADR 0038 décision 6) : `[slug de la partie => [parent, quantité, équivalent]]`. Le registre est une
+     * colonne JSON que la fusion ne réécrit JAMAIS : le test le relit avec `registryOf()`.
+     *
+     * @param array<string, array{parent: string, quantity: float, equivalent: float}> $shares
+     */
+    public function registry(string $listId, array $shares): void
+    {
+        $this->connection->update('shopping_list', ['part_shares' => json_encode($shares, JSON_THROW_ON_ERROR)], ['id' => $listId]);
+    }
+
+    /**
+     * Le registre d'une liste tel que la base le garde, `null` quand il n'y en a pas.
+     *
+     * @return ?array<string, array<string, mixed>>
+     */
+    public function registryOf(string $listId): ?array
+    {
+        $json = $this->connection->fetchOne('SELECT part_shares FROM shopping_list WHERE id = ?', [$listId]);
+
+        return $json === null ? null : json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    /**
      * Les conversions PROPRES d'un ingrédient, `[unité de départ, unité d'arrivée, coefficient]`, triées.
      *
      * @return list<array{string, string, float}>

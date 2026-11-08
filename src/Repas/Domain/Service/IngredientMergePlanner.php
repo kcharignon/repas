@@ -3,6 +3,7 @@
 namespace Repas\Repas\Domain\Service;
 
 
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\IngredientMergePlan;
 use Repas\Repas\Domain\Model\IngredientMergeUsage;
 use Repas\Repas\Domain\Model\MergeBlock;
@@ -34,8 +35,14 @@ use Repas\Repas\Domain\Model\UnitFactor;
  * Les unités compatibles de `B` que ses lignes de recette déplacées utilisent, et que `A` n'avait pas, s'ajoutent à celles de `A` : l'éditeur
  * de recette les lui propose, et elles sont désormais jointes à son unité d'achat.
  *
- * Premier refus dans l'ordre de `MergeBlock` : le même ingrédient, une ligne d'un autre utilisateur, une liste envoyée au drive, une
- * unité qui manque. Les unités manquantes sont rendues même quand un refus plus haut les masque (une liste envoyée, par
+ * Les ingrédients découpés (ADR 0038 décision 25) : le gardé HÉRITE du lien de l'absorbé s'il n'en a pas (il devient la partie du même parent, avec
+ * le même ratio), et les parties de l'absorbé deviennent celles du gardé. Le découpage est de profondeur 1 et de dix parties au plus : une fusion
+ * qui le casserait est refusée (`PART_CONFLICT`), comme celle que le registre caché des listes en cours empêcherait d'écrire sans le réécrire
+ * (`PART_IN_LIST`). Le ratio d'une partie dit combien d'unités d'ACHAT de la partie font UNE unité de RECETTE du parent : le lien ne se transporte
+ * donc pas d'une unité d'achat à une autre, ni les parties d'une unité de recette du parent à une autre.
+ *
+ * Premier refus dans l'ordre de `MergeBlock` : le même ingrédient, une ligne d'un autre utilisateur, une liste envoyée au drive, un découpage
+ * impossible, une liste en cours qui porte le registre, une unité qui manque. Les unités manquantes sont rendues même quand un refus plus haut les masque (une liste envoyée, par
  * exemple) : l'utilisateur sait tout ce qui l'attend.
  */
 final readonly class IngredientMergePlanner
@@ -76,6 +83,8 @@ final readonly class IngredientMergePlanner
         $block = match (true) {
             $usage->usedByAnotherUser => MergeBlock::USED_BY_ANOTHER_USER,
             $usage->sentListCount > 0 => MergeBlock::IN_SENT_LIST,
+            self::partsConflict($absorbed, $kept, $usage) => MergeBlock::PART_CONFLICT,
+            self::partsInOpenList($absorbed, $kept, $usage) => MergeBlock::PART_IN_LIST,
             $missing !== [] => MergeBlock::UNIT_MISSING,
             default => null,
         };
@@ -83,7 +92,51 @@ final readonly class IngredientMergePlanner
             return new IngredientMergePlan($block, array_values($missing), $factors);
         }
 
-        return new IngredientMergePlan(null, [], $factors, $recovered, $this->compatibleUnitsToAdd($absorbed, $kept, $usage));
+        // Un lien à transporter : le gardé hérite de celui de l'absorbé, ou les parties de l'absorbé passent au gardé. Deux parties du même parent n'ont rien
+        // à transporter (l'absorbé disparaît, le parent garde le même nombre de parties).
+        $repointsPartLinks = ($absorbed->parentSlug !== null && $kept->parentSlug === null) || $usage->absorbedPartCount > 0;
+
+        return new IngredientMergePlan(null, [], $factors, $recovered, $this->compatibleUnitsToAdd($absorbed, $kept, $usage), $repointsPartLinks);
+    }
+
+    /**
+     * La fusion laisserait-elle un découpage faux ? Après elle, le gardé a le lien de l'absorbé s'il n'en avait pas, et les parties des deux.
+     */
+    private static function partsConflict(MergeParty $absorbed, MergeParty $kept, IngredientMergeUsage $usage): bool
+    {
+        // Deux parties de deux parents différents : le gardé n'a qu'un parent
+        if ($kept->parentSlug !== null && $absorbed->parentSlug !== null && $kept->parentSlug !== $absorbed->parentSlug) {
+            return true;
+        }
+        // L'un est le parent de l'autre : le gardé serait sa propre partie
+        if ($kept->parentSlug === $absorbed->slug || $absorbed->parentSlug === $kept->slug) {
+            return true;
+        }
+        // Une chaîne : le gardé serait à la fois une partie (la sienne ou l'héritée) et un parent (les parties des deux)
+        $partsAfter = $usage->keptPartCount + $usage->absorbedPartCount;
+        if (($kept->parentSlug !== null || $absorbed->parentSlug !== null) && $partsAfter > 0) {
+            return true;
+        }
+        // Dix parties au plus
+        if ($partsAfter > Ingredient::MAX_PARTS) {
+            return true;
+        }
+        // Le ratio est en unités d'achat de la partie : le lien hérité ne vaut que pour la même unité d'achat
+        if ($absorbed->parentSlug !== null && $kept->parentSlug === null && $absorbed->purchaseUnitSlug !== $kept->purchaseUnitSlug) {
+            return true;
+        }
+
+        // Le ratio des parties est en unités de recette du parent : ses parties ne passent qu'à un parent qui se cuisine dans la même unité
+        return $usage->absorbedPartCount > 0 && $absorbed->cookingUnitSlug !== $kept->cookingUnitSlug;
+    }
+
+    /**
+     * Une liste non terminée empêche-t-elle d'écrire le découpage ? Son registre nomme l'un des deux (jamais réécrit), ou le gardé sera une partie et
+     * l'un des deux a une ligne dans une liste en cours (une partie n'est jamais une ligne de liste, comme le découpage à la main le refuse).
+     */
+    private static function partsInOpenList(MergeParty $absorbed, MergeParty $kept, IngredientMergeUsage $usage): bool
+    {
+        return $usage->partRegistryMentioned || ($usage->openListLine && ($kept->parentSlug !== null || $absorbed->parentSlug !== null));
     }
 
     /**

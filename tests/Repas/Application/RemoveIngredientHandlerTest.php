@@ -3,6 +3,7 @@
 namespace Repas\Tests\Repas\Application;
 
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\RemoveIngredient\RemoveIngredientCommand;
 use Repas\Repas\Application\Command\RemoveIngredient\RemoveIngredientHandler;
@@ -16,6 +17,7 @@ use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Model\IngredientDistinctPair;
+use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
@@ -241,5 +243,122 @@ class RemoveIngredientHandlerTest extends TestCase
 
         // Act
         ($this->handler)($command);
+    }
+
+    /**
+     * « Entier » (un parent) et ses deux parties « Jaune » et « Blanc » chez l'utilisateur, plus « Zeste », partie d'un autre parent (« Citron »).
+     */
+    private function splitEggs(): void
+    {
+        $user = new UserBuilder()->withId('user-id')->build();
+        foreach ([
+            new IngredientBuilder()->isEgg()->withName('Entier')->withSlug('entier')->withCreator($user)->build(),
+            new IngredientBuilder()->isEgg()->withName('Jaune')->withSlug('jaune')->withCreator($user)->withParent('entier', 1.0)->build(),
+            new IngredientBuilder()->isEgg()->withName('Blanc')->withSlug('blanc')->withCreator($user)->withParent('entier', 2.0)->build(),
+            new IngredientBuilder()->isEgg()->withName('Citron')->withSlug('citron')->withCreator($user)->build(),
+            new IngredientBuilder()->isEgg()->withName('Zeste')->withSlug('zeste')->withCreator($user)->withParent('citron', 3.0)->build(),
+        ] as $ingredient) {
+            $this->ingredientRepository->save($ingredient);
+        }
+    }
+
+    /**
+     * Une liste dont le registre des parties nomme « Jaune » (en parent « Entier »).
+     */
+    private function listWithRegistry(ShoppingListStatus $status = ShoppingListStatus::ACTIVE): void
+    {
+        $list = new ShoppingListBuilder()->build();
+        $list->addPart('jaune', 'entier', 'unite', 2.0, 2.0);
+        if ($status !== ShoppingListStatus::ACTIVE) {
+            $list->setStatus($status);
+        }
+        $this->shoppingListRepository->save($list);
+    }
+
+    public function testRemovingAParentDetachesItsPartsWhichBecomeOrdinaryIngredients(): void
+    {
+        // Given
+        $this->splitEggs();
+
+        // When
+        ($this->handler)(new RemoveIngredientCommand('entier'));
+
+        // Then : « Entier » n'existe plus, ses deux parties sont ordinaires (ni parent ni ratio), celle d'un autre parent n'est pas touchée
+        $this->assertFalse($this->ingredientRepository->exists('entier'));
+        foreach (['jaune', 'blanc'] as $part) {
+            $ingredient = $this->ingredientRepository->findOneBySlug($part);
+            $this->assertSame([null, null], [$ingredient->getParentSlug(), $ingredient->getParentRatio()], $part);
+        }
+        $this->assertSame(['citron', 3.0], [$this->ingredientRepository->findOneBySlug('zeste')->getParentSlug(), $this->ingredientRepository->findOneBySlug('zeste')->getParentRatio()]);
+    }
+
+    public function testRemovingAPartChangesNothingElse(): void
+    {
+        // Given
+        $this->splitEggs();
+
+        // When
+        ($this->handler)(new RemoveIngredientCommand('jaune'));
+
+        // Then : le parent garde son autre partie, avec son ratio
+        $this->assertFalse($this->ingredientRepository->exists('jaune'));
+        $this->assertSame(['entier', 2.0], [$this->ingredientRepository->findOneBySlug('blanc')->getParentSlug(), $this->ingredientRepository->findOneBySlug('blanc')->getParentRatio()]);
+        $this->assertTrue($this->ingredientRepository->exists('entier'));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function namedByTheRegistry(): iterable
+    {
+        yield 'en partie (la clé du registre)' => ['jaune'];
+        yield 'en parent (le parent d\'une entrée)' => ['entier'];
+    }
+
+    #[DataProvider('namedByTheRegistry')]
+    public function testAnIngredientTheRegistryOfAnOpenListNamesIsNotRemovedAsAPartNorAsAParent(string $named): void
+    {
+        // Given : le registre d'une liste en cours nomme « Jaune » en partie d'« Entier »
+        $this->splitEggs();
+        $this->listWithRegistry();
+        $linksBefore = [$this->ingredientRepository->findOneBySlug('blanc')->getParentSlug(), $this->ingredientRepository->findOneBySlug('jaune')->getParentSlug()];
+
+        // Then : refusé comme une ligne de liste
+        $this->expectExceptionObject(IngredientException::cannotBeRemoveExistInShoppingList($named));
+
+        try {
+            // When
+            ($this->handler)(new RemoveIngredientCommand($named));
+        } finally {
+            // Then : rien n'est détaché ni supprimé
+            $this->assertTrue($this->ingredientRepository->exists($named));
+            $this->assertSame($linksBefore, [$this->ingredientRepository->findOneBySlug('blanc')->getParentSlug(), $this->ingredientRepository->findOneBySlug('jaune')->getParentSlug()]);
+        }
+    }
+
+    public function testTheRegistryOfAnIngredientThatIsNotNamedDoesNotStopTheRemoval(): void
+    {
+        // Given : le registre nomme « Jaune » et « Entier », on supprime « Blanc » (l'autre partie d'« Entier »)
+        $this->splitEggs();
+        $this->listWithRegistry();
+
+        // When
+        ($this->handler)(new RemoveIngredientCommand('blanc'));
+
+        // Then
+        $this->assertFalse($this->ingredientRepository->exists('blanc'));
+    }
+
+    public function testTheRegistryOfAFinishedListDoesNotStopTheRemoval(): void
+    {
+        // Given : une liste TERMINÉE qui garde un registre nommant « Jaune » et « Entier »
+        $this->splitEggs();
+        $this->listWithRegistry(ShoppingListStatus::COMPLETED);
+
+        // When
+        ($this->handler)(new RemoveIngredientCommand('jaune'));
+
+        // Then
+        $this->assertFalse($this->ingredientRepository->exists('jaune'));
     }
 }

@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 use Doctrine\DBAL\ArrayParameterType;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Model\AdoptionSnapshot;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Tests\Helper\AdoptionDataset;
@@ -49,6 +50,10 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
         // Les produits qu'un repas d'une recette éclatée entre plusieurs listes a posés dans sa liste (LST-005, JSON) : la fusion les repointe
         // (`IngredientMergePostgreSQLRepository::repoint`, dans l'instruction de la version des listes) ; aucune ligne n'en a avant LST-005
         'meal.placed_ingredients' => 'IngredientMergePostgreSQLRepository::repoint',
+        // Le parent d'une PARTIE (ADR 0038, SUB-001) : le slug d'un ingrédient du MÊME compte, jamais copié (une copie le refait par provenance, SUB-002). La fusion le
+        // repointe en masse (SUB-004, `IngredientMergePostgreSQLRepository::repoint`, une instruction) : les parties de l'absorbé deviennent celles du gardé, qui hérite
+        // aussi du lien de l'absorbé s'il n'en a pas ; la suppression d'un parent les détache (`IngredientRepository::detachParts`)
+        'ingredient.parent_slug' => 'IngredientMergePostgreSQLRepository::repoint',
     ];
 
     /**
@@ -58,8 +63,8 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
         'conversion.ingredient' => 'conversions PROPRES : celles du commun sont copiées avec la copie (nouveaux identifiants, `copyConversions`) ; celles de l\'utilisateur restent à lui ; la fusion supprime celles de l\'ingrédient absorbé avec lui, sans les reporter',
         'ingredient_alias.alias_slug' => 'la table de correspondance elle-même : la clé est le commun (ou l\'ingrédient absorbé par une fusion, qui y est écrit)',
         'ingredient_alias.ingredient_slug' => 'la table de correspondance elle-même : la valeur est la copie (la fusion y remplace l\'absorbé par le gardé, `IngredientAliasRepository::mergeInto`)',
-        'shopping_list.part_shares' => 'le registre CACHÉ des parties d\'une liste (ADR 0038, SUB-003, JSON) : ses clés (la partie) et ses `parent` sont des slugs d\'ingrédients du propriétaire de la liste. La fusion ne le réécrit pas : avec SUB-004 elle REFUSERA de fusionner un ingrédient que le registre d\'une liste non terminée mentionne (`MergeBlock::PART_IN_LIST`)',
-        'ingredient.parent_slug' => 'le parent d\'une PARTIE (ADR 0038, SUB-001) : le slug d\'un ingrédient du MÊME compte, posé par l\'utilisateur et jamais copié (une copie le refait par provenance, SUB-002). La fusion ne le repointe pas encore : elle le fera avec SUB-004 (le gardé hérite du lien de l\'absorbé, les parties de l\'absorbé deviennent celles du gardé, un refus `PART_CONFLICT` ou `PART_IN_LIST` sinon) ; d\'ici là cette colonne passe dans REPOINTED', 'ingredient_distinct.first_slug' => '« Pas le même » (ING-006) : les slugs des ingrédients PERSONNELS de l\'utilisateur, jamais ceux d\'un commun, que la migration ne déplace pas ; la fusion et la suppression d\'un ingrédient effacent les paires qui le nomment (`IngredientDistinctRepository::deleteByIngredientSlug`)',
+        'shopping_list.part_shares' => 'le registre CACHÉ des parties d\'une liste (ADR 0038, SUB-003, JSON) : ses clés (la partie) et ses `parent` sont des slugs d\'ingrédients du propriétaire de la liste. JAMAIS réécrit, ni par la fusion ni par la suppression (SUB-004) : elles REFUSENT d\'agir sur un ingrédient que le registre d\'une liste non terminée nomme (`MergeBlock::PART_IN_LIST`, `ShoppingListRepository::isIngredientUsed`, une seule formule : `PartRegistrySql`) ; une liste terminée garde son registre, inoffensif',
+        'ingredient_distinct.first_slug' => '« Pas le même » (ING-006) : les slugs des ingrédients PERSONNELS de l\'utilisateur, jamais ceux d\'un commun, que la migration ne déplace pas ; la fusion et la suppression d\'un ingrédient effacent les paires qui le nomment (`IngredientDistinctRepository::deleteByIngredientSlug`)',
         'ingredient_distinct.second_slug' => 'idem (l\'autre côté de la paire)',
     ];
 
@@ -183,6 +188,9 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
         $absorbed = $merge->ingredient('Tomates', $user, adoptedFrom: 'tomates');
         $merge->conversion($kept);
         $merge->conversion($absorbed);
+        // L'absorbé est le parent d'une partie (ADR 0038) : la fusion lui donne le gardé pour parent
+        $part = $merge->ingredient('Pelure', $user);
+        $merge->partOf($part, $absorbed, 2.0);
         $merge->recipe('r1', $user->getId(), [[$absorbed->getSlug(), 1.0, 'gramme']]);
         $merge->shoppingList('l1', $user->getId(), rows: [['x1', $absorbed->getSlug(), 1.0, 'kilo']], items: [['y1', $absorbed->getSlug(), 1.0, 'kilo']]);
         $merge->choice('c1', $user->getId(), $absorbed->getSlug());
@@ -194,7 +202,7 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
 
         // Then : avant, toutes les colonnes qui peuvent désigner un ingrédient le contiennent
         $this->assertSame(
-            ['conversion.ingredient', 'drive_choice.ingredient_slug', 'ingredient.slug', 'ingredient_alias.ingredient_slug', 'meal.placed_ingredients', 'recipe_row.ingredient', 'shopping_list_ingredient.ingredient', 'shopping_list_row.ingredient', 'spoken_phrase_choice.ingredient_slug'],
+            ['conversion.ingredient', 'drive_choice.ingredient_slug', 'ingredient.parent_slug', 'ingredient.slug', 'ingredient_alias.ingredient_slug', 'meal.placed_ingredients', 'recipe_row.ingredient', 'shopping_list_ingredient.ingredient', 'shopping_list_row.ingredient', 'spoken_phrase_choice.ingredient_slug'],
             $holding(),
         );
 
@@ -210,10 +218,35 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
             $this->assertContains($kept->getSlug(), $column === 'meal.placed_ingredients' ? array_merge(...array_map(static fn(string $json): array => json_decode($json, true, flags: JSON_THROW_ON_ERROR), $values)) : $values, $column);
         }
         $this->assertSame([$kept->getSlug()], json_decode($merge->connection->fetchOne("SELECT placed_ingredients FROM meal WHERE id = 'm1'"), true, flags: JSON_THROW_ON_ERROR));
+        // La partie de l'absorbé est devenue celle du gardé, avec son ratio
+        $this->assertSame([$kept->getSlug(), 2.0], $merge->linkOf($part->getSlug()));
         $this->assertSame([$kept->getSlug(), 'merge'], [
             $merge->connection->fetchOne("SELECT ingredient_slug FROM ingredient_alias WHERE alias_slug = 'tomates'"),
             $merge->connection->fetchOne("SELECT source FROM ingredient_alias WHERE alias_slug = 'tomates'"),
         ]);
+    }
+
+    public function testTheRegistryOfThePartsIsNeverRewrittenAndARegistryThatNamesTheAbsorbedIngredientRefusesTheMerge(): void
+    {
+        // Given : le registre d'une liste en cours nomme l'ingrédient absorbé (ADR 0038 décision 25)
+        $merge = new MergeDataset($this->entityManager, new DataPersister(static::getContainer()));
+        $merge->units();
+        $user = $merge->user();
+        $kept = $merge->ingredient('Tomate', $user);
+        $absorbed = $merge->ingredient('Tomates', $user);
+        $merge->shoppingList('l1', $user->getId(), rows: [['x1', $kept->getSlug(), 1.0, 'kilo']]);
+        $merge->registry('l1', [$absorbed->getSlug() => ['parent' => $kept->getSlug(), 'quantity' => 2.0, 'equivalent' => 2.0]]);
+        $hashes = $merge->tableHashes();
+
+        try {
+            // When
+            static::getContainer()->get(CommandBusInterface::class)->dispatch(new MergeIngredientsCommand($user->getId(), $absorbed->getSlug(), $kept->getSlug()));
+            $this->fail('La fusion devait être refusée : le registre d\'une liste en cours nomme l\'ingrédient absorbé.');
+        } catch (IngredientException $exception) {
+            // Then : refusée (le bus rend l'exception du domaine), et rien n'a été écrit nulle part (le registre moins que tout)
+            $this->assertSame(['MERGE_PART_IN_LIST', 409], [$exception->getMessage(), $exception->getCode()]);
+        }
+        $this->assertSame($hashes, $merge->tableHashes());
     }
 
     /**

@@ -22,6 +22,9 @@ final class IngredientException extends DomainException
     public const string INGREDIENT_IN_SENT_LIST = 'INGREDIENT_IN_SENT_LIST';
     public const string INGREDIENT_USED_BY_ANOTHER_USER = 'INGREDIENT_USED_BY_ANOTHER_USER';
     public const string INGREDIENT_MERGE_CONFLICT = 'INGREDIENT_MERGE_CONFLICT';
+    // Les deux refus de la fusion d'ingrédients découpés en parties (ADR 0038 décision 25, SUB-004)
+    public const string MERGE_PART_CONFLICT = 'MERGE_PART_CONFLICT';
+    public const string MERGE_PART_IN_LIST = 'MERGE_PART_IN_LIST';
 
     // Message du refus de poser le marqueur « de base » (ING-011) : le front le distingue d'un refus d'accès ordinaire, il ne se renomme pas
     public const string INGREDIENT_BASE_FORBIDDEN = 'INGREDIENT_BASE_FORBIDDEN';
@@ -174,6 +177,26 @@ final class IngredientException extends DomainException
     public static function mergeConflict(): self
     {
         return new self(self::INGREDIENT_MERGE_CONFLICT, 409);
+    }
+
+    /**
+     * La fusion laisserait un découpage faux (ADR 0038 décision 25, SUB-004) : deux parents différents, l'un parent de l'autre, une chaîne
+     * (une partie qui aurait des parties), plus de dix parties, ou un lien qui ne se transporte pas d'une unité à l'autre. Rien n'est écrit.
+     * Règle métier, `422`.
+     */
+    public static function mergePartConflict(): self
+    {
+        return new self(self::MERGE_PART_CONFLICT, 422);
+    }
+
+    /**
+     * Le registre des parties d'une liste non terminée nomme l'un des deux ingrédients, ou le gardé deviendrait une partie alors qu'une liste
+     * non terminée porte une ligne de l'un des deux (ADR 0038 décision 25, SUB-004) : la fusion ne réécrit pas le registre. Rien n'est écrit.
+     * Conflit avec l'état courant, `409` : on fusionne une fois la liste terminée.
+     */
+    public static function mergePartInList(): self
+    {
+        return new self(self::MERGE_PART_IN_LIST, 409);
     }
 
     /**
