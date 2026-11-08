@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 use Repas\Repas\Application\Loader\ShoppingListRowLoader;
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListRowDTO;
+use Repas\Repas\Application\Query\GetShoppingList\ShoppingListRowIncludeDTO;
 use Repas\Repas\Domain\Exception\ShoppingListRowException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
@@ -40,7 +41,7 @@ class ShoppingListRowPostgreSQLLoaderTest extends DatabaseTestCase
         $result = $this->rowLoader->get($rowId);
 
         // Then
-        $this->assertEquals(new ShoppingListRowDTO($rowId, 'Pate', 500.0, 'g', false, 'pate', 'gramme', 'cereale', 'céréale'), $result);
+        $this->assertEquals(new ShoppingListRowDTO($rowId, 'Pate', 500.0, 'g', false, 'pate', 'gramme', 'cereale', 'céréale', []), $result);
     }
 
     public function testGetReflectsATickedRow(): void
@@ -56,6 +57,36 @@ class ShoppingListRowPostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then
         $this->assertTrue($result->checked);
+    }
+
+    public function testGetSaysWhatTheLineOfAParentContains(): void
+    {
+        // Given : « Œuf 5 » dans une liste dont le registre garde 2 jaunes (ADR 0038 décision 15)
+        $owner = new UserBuilder()->build();
+        $this->persister->saveUser($owner);
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $this->persister->saveIngredient($egg);
+        $this->persister->saveIngredient(new IngredientBuilder()->isEgg()->withName("Jaune d'œuf")->withSlug('jaune')->withParent($egg->getSlug(), 1.0)->build());
+        $list = new ShoppingListBuilder()->withOwner($owner)->build();
+        $list->addRow($egg->getSlug(), 'unite', 3);
+        $list->addPart('jaune', $egg->getSlug(), 'unite', 2, 2);
+        $this->shoppingListRepository->save($list);
+
+        // When
+        $result = $this->rowLoader->get($list->getRows()->reset()->getId());
+
+        // Then : la ligne seule dit, comme le détail, ce qu'elle contient
+        $this->assertSame(5.0, $result->quantity);
+        $this->assertEquals([new ShoppingListRowIncludeDTO("Jaune d'œuf", 2.0, '')], $result->includes);
+    }
+
+    public function testGetSaysNothingForARowWhoseListHasNoPart(): void
+    {
+        // Given
+        $rowId = $this->savedRowOfPasta(quantity: 0);
+
+        // When / Then
+        $this->assertSame([], $this->rowLoader->get($rowId)->includes);
     }
 
     public function testGetFailsWhenTheRowDoesNotExist(): void

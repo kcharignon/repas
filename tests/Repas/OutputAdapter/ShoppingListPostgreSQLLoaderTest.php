@@ -10,6 +10,7 @@ use Repas\Repas\Application\Query\GetShoppingList\ShoppingListDepartmentDTO;
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListMealDTO;
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListRecipeTypeDTO;
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListRowDTO;
+use Repas\Repas\Application\Query\GetShoppingList\ShoppingListRowIncludeDTO;
 use Repas\Repas\Application\Query\ListOpenShoppingLists\OpenShoppingListDTO;
 use Repas\Repas\Application\Query\ListShoppingLists\ShoppingListDTO;
 use Repas\Repas\Domain\Exception\MealException;
@@ -421,7 +422,7 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(['Pate'], $this->ingredientNames($result->departments[1]));
         $this->assertSame(['Lait', 'Œuf'], $this->ingredientNames($result->departments[2]));
         $this->assertSame(4, $result->rowCount);
-        $this->assertEquals(new ShoppingListRowDTO($result->departments[1]->rows[0]->id, 'Pate', 500.0, 'g', false, 'pate', 'gramme', 'cereale', 'céréale'), $result->departments[1]->rows[0]);
+        $this->assertEquals(new ShoppingListRowDTO($result->departments[1]->rows[0]->id, 'Pate', 500.0, 'g', false, 'pate', 'gramme', 'cereale', 'céréale', []), $result->departments[1]->rows[0]);
         $eggRow = $result->departments[2]->rows[1];
         $this->assertSame(['Œuf', 1.0, '', true], [$eggRow->ingredientName, $eggRow->quantity, $eggRow->unitSymbol, $eggRow->checked]);
         $this->assertSame(['oeuf', 'unite'], [$eggRow->ingredientSlug, $eggRow->unitSlug]);
@@ -449,6 +450,70 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then
         $this->assertSame(['SELECT shopping_list' => 1, 'SELECT shopping_list_row' => 1, 'SELECT meal' => 1], $counter->byTable());
+    }
+
+    public function testTheRowOfAParentSaysTheCountOfPartsItContainsSortedByName(): void
+    {
+        // Given (ADR 0038 décision 15) : 3 œufs + 2 jaunes + 2 blancs = « Œuf 5 », et un autre produit qui ne contient rien
+        $owner = $this->savedUser();
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $yolk = new IngredientBuilder()->isEgg()->withName("Jaune d'œuf")->withSlug('jaune')->withParent($egg->getSlug(), 1.0)->build();
+        $white = new IngredientBuilder()->isEgg()->withName("Blanc d'œuf")->withSlug('blanc')->withParent($egg->getSlug(), 1.0)->build();
+        $pasta = new IngredientBuilder()->isPasta()->build();
+        foreach ([$egg, $yolk, $white, $pasta] as $ingredient) {
+            $this->persister->saveIngredient($ingredient);
+        }
+        $list = new ShoppingListBuilder()->withId('list-1')->withOwner($owner)->build();
+        $list->addRow($egg->getSlug(), 'unite', 3);
+        $list->addRow($pasta->getSlug(), $pasta->getDefaultPurchaseUnit()->getSlug(), 1);
+        $list->addPart('jaune', $egg->getSlug(), 'unite', 2, 2);
+        $list->addPart('blanc', $egg->getSlug(), 'unite', 2, 2);
+        $this->shoppingListRepository->save($list);
+
+        // When
+        $result = $this->shoppingListLoader->get('list-1');
+
+        // Then : le parent est une ligne « Œuf 5 » qui dit ce qu'elle contient, triée par nom ; la partie n'est jamais une ligne
+        $rows = array_merge(...array_map(static fn(ShoppingListDepartmentDTO $department): array => $department->rows, $result->departments));
+        $byName = array_column($rows, null, 'ingredientName');
+        $this->assertEqualsCanonicalizing(['Pate', 'Œuf'], array_keys($byName));
+        $this->assertSame(5.0, $byName['Œuf']->quantity);
+        $this->assertEquals([new ShoppingListRowIncludeDTO("Blanc d'œuf", 2.0, ''), new ShoppingListRowIncludeDTO("Jaune d'œuf", 2.0, '')], $byName['Œuf']->includes);
+        $this->assertSame([], $byName['Pate']->includes);
+        $this->assertSame(2, $result->rowCount);
+    }
+
+    public function testThePartsOfTheRegistryCostOneReadWhateverTheirNumber(): void
+    {
+        // Given : un parent à une seule partie, puis à trois (ADR 0038 décision 15 : une lecture, et seulement si le registre n'est pas vide)
+        $owner = $this->savedUser();
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $this->persister->saveIngredient($egg);
+        $slugs = ['jaune', 'blanc', 'coquille'];
+        foreach ($slugs as $slug) {
+            $this->persister->saveIngredient(new IngredientBuilder()->isEgg()->withName(ucfirst($slug))->withSlug($slug)->withParent($egg->getSlug(), 1.0)->build());
+        }
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $measure = function (string $id, int $parts) use ($owner, $egg, $slugs, $counter): int {
+            $list = new ShoppingListBuilder()->withId($id)->withOwner($owner)->build();
+            for ($i = 0; $i < $parts; $i++) {
+                $list->addPart($slugs[$i], $egg->getSlug(), 'unite', 1, 1);
+            }
+            $this->shoppingListRepository->save($list);
+            static::getContainer()->get('doctrine')->getManager()->clear();
+            $counter->reset();
+            $detail = $this->shoppingListLoader->get($id);
+            $this->assertCount($parts, $detail->departments[0]->rows[0]->includes);
+
+            return $counter->count();
+        };
+
+        // When
+        $one = $measure('list-1', 1);
+        $three = $measure('list-3', 3);
+
+        // Then : la liste, le registre des parties (un de plus), les lignes, les repas : quatre lectures dans les deux cas
+        $this->assertSame([4, 4], [$one, $three]);
     }
 
     public function testGetGroupsTheMealsByRecipeTypeInDisplayOrder(): void

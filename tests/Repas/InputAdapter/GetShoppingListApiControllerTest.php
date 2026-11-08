@@ -7,6 +7,7 @@ use Repas\Repas\Application\Query\GetShoppingList\GetShoppingListQuery;
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListDepartmentDTO;
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListMealDTO;
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListRecipeTypeDTO;
+use Repas\Repas\Application\Query\GetShoppingList\ShoppingListRowIncludeDTO;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Tests\Helper\Builder\DTO\ShoppingListDetailDTOBuilder;
 use Repas\Tests\Helper\Builder\DTO\ShoppingListRowDTOBuilder;
@@ -25,7 +26,7 @@ class GetShoppingListApiControllerTest extends QueryBusWebTestCase
             ->withStatus(ShoppingListStatus::PAUSED)
             ->withVersion(7)
             ->withDepartment(new ShoppingListDepartmentDTO('divers', 'divers', 'images/divers.svg', [
-                new ShoppingListRowDTOBuilder()->withId('row-egg')->withIngredientName('œuf')->withIngredientSlug('oeuf')->withUnitSlug('unite')->withQuantity(6)->checked()->build(),
+                new ShoppingListRowDTOBuilder()->withId('row-egg')->withIngredientName('œuf')->withIngredientSlug('oeuf')->withUnitSlug('unite')->withQuantity(6)->withIncludes(new ShoppingListRowIncludeDTO("Jaune d'œuf", 2, ''))->checked()->build(),
             ]))
             ->withRecipeType(new ShoppingListRecipeTypeDTO('plat', 'plat', 'images/plat.svg', [
                 new ShoppingListMealDTO('meal-1', 'recipe-1', 'omelette', 4),
@@ -59,7 +60,7 @@ class GetShoppingListApiControllerTest extends QueryBusWebTestCase
                 'slug' => 'divers',
                 'name' => 'divers',
                 'image' => 'images/divers.svg',
-                'rows' => [['id' => 'row-egg', 'ingredientName' => 'œuf', 'quantity' => 6, 'unitSymbol' => '', 'checked' => true, 'ingredientSlug' => 'oeuf', 'unitSlug' => 'unite', 'departmentSlug' => 'divers', 'departmentName' => 'divers']],
+                'rows' => [['id' => 'row-egg', 'ingredientName' => 'œuf', 'quantity' => 6, 'unitSymbol' => '', 'checked' => true, 'ingredientSlug' => 'oeuf', 'unitSlug' => 'unite', 'departmentSlug' => 'divers', 'departmentName' => 'divers', 'includes' => [['name' => "Jaune d'œuf", 'quantity' => 2, 'unitSymbol' => '']]]],
             ]],
             'recipeTypes' => [[
                 'slug' => 'plat',

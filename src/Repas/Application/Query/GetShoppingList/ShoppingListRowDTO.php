@@ -2,10 +2,14 @@
 
 namespace Repas\Repas\Application\Query\GetShoppingList;
 
+use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 
 final readonly class ShoppingListRowDTO
 {
+    /**
+     * @param list<ShoppingListRowIncludeDTO> $includes
+     */
     public function __construct(
         #[OA\Property(description: 'Identifiant de la ligne', example: 'b2d1c0aa-52e4-4c8f-9d0e-0a6f0c5d7e11')]
         public string $id,
@@ -25,6 +29,8 @@ final readonly class ShoppingListRowDTO
         public string $departmentSlug,
         #[OA\Property(description: 'Nom du rayon de l\'ingrédient', example: 'Surgelé')]
         public string $departmentName,
+        #[OA\Property(description: 'Les parties d\'ingrédient que cette ligne contient (ADR 0038) : « Comprend 2 jaunes d\'œuf et 2 blancs d\'œuf » pour une ligne « Œuf 5 ». Triées par nom, `[]` quand la ligne ne contient aucune partie (clé toujours écrite)', type: 'array', items: new OA\Items(ref: new Model(type: ShoppingListRowIncludeDTO::class)))]
+        public array $includes,
     ) {
     }
 }
