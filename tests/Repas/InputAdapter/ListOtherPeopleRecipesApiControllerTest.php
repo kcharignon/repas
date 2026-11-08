@@ -16,8 +16,8 @@ class ListOtherPeopleRecipesApiControllerTest extends QueryBusWebTestCase
         // Given
         $user = $this->savedUser();
         $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([
-            new OtherPeopleRecipeDTO('recipe-1', 'pâtes carbonara', 'plat', 'plat'),
-            new OtherPeopleRecipeDTO('recipe-2', 'tarte au citron', 'dessert', 'dessert'),
+            new OtherPeopleRecipeDTO('recipe-1', 'pâtes carbonara', 'plat', 'plat', false),
+            new OtherPeopleRecipeDTO('recipe-2', 'tarte au citron', 'dessert', 'dessert', true),
         ], 2));
 
         // When
@@ -30,8 +30,8 @@ class ListOtherPeopleRecipesApiControllerTest extends QueryBusWebTestCase
         $this->assertSame([$user->getId(), 200, 0, null], [$query->userId, $query->limit, $query->offset, $query->search]);
         $this->assertSame([
             'member' => [
-                ['id' => 'recipe-1', 'name' => 'pâtes carbonara', 'typeName' => 'plat', 'typeSlug' => 'plat'],
-                ['id' => 'recipe-2', 'name' => 'tarte au citron', 'typeName' => 'dessert', 'typeSlug' => 'dessert'],
+                ['id' => 'recipe-1', 'name' => 'pâtes carbonara', 'typeName' => 'plat', 'typeSlug' => 'plat', 'fromMarmiton' => false],
+                ['id' => 'recipe-2', 'name' => 'tarte au citron', 'typeName' => 'dessert', 'typeSlug' => 'dessert', 'fromMarmiton' => true],
             ],
             'totalItems' => 2,
         ], $this->jsonBody());
@@ -40,7 +40,7 @@ class ListOtherPeopleRecipesApiControllerTest extends QueryBusWebTestCase
     public function testTotalItemsIsTheRealTotalEvenWhenThePageIsShorter(): void
     {
         // Given
-        $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([new OtherPeopleRecipeDTO('recipe-1', 'omelette', 'plat', 'plat')], 1234));
+        $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([new OtherPeopleRecipeDTO('recipe-1', 'omelette', 'plat', 'plat', false)], 1234));
 
         // When
         $this->client->request('GET', '/api/v1/recipes/other-people', server: $this->bearerFor($this->savedUser()));

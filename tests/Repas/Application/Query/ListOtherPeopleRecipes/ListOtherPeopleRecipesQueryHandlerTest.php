@@ -16,7 +16,7 @@ class ListOtherPeopleRecipesQueryHandlerTest extends TestCase
     public function testReturnsWhatTheLoaderReturns(): void
     {
         // Given
-        $recipes = new OtherPeopleRecipesDTO([new OtherPeopleRecipeDTO('recipe-1', 'omelette', 'plat', 'plat')], 1);
+        $recipes = new OtherPeopleRecipesDTO([new OtherPeopleRecipeDTO('recipe-1', 'omelette', 'plat', 'plat', false)], 1);
         $handler = new ListOtherPeopleRecipesQueryHandler(new RecipeInMemoryLoader(otherPeopleRecipes: $recipes));
 
         // When

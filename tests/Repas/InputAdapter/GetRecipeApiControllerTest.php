@@ -55,7 +55,21 @@ class GetRecipeApiControllerTest extends QueryBusWebTestCase
                 'departmentName' => 'épicerie',
             ]],
             'version' => 3,
+            'sourceUrl' => null,
         ], $this->jsonBody());
+    }
+
+    public function testTheLinkOfOriginIsAlwaysWrittenAndRendersAsGiven(): void
+    {
+        // Given
+        $id = UuidGenerator::new();
+        $this->queryBus->willReturn(GetRecipeQuery::class, new RecipeDTOBuilder()->withId($id)->withSourceUrl('https://www.marmiton.org/recettes/recette_tarte_22082.aspx')->build());
+
+        // When
+        $this->client->request('GET', "/api/v1/recipes/$id", server: $this->bearerFor($this->savedUser()));
+
+        // Then
+        $this->assertSame('https://www.marmiton.org/recettes/recette_tarte_22082.aspx', $this->jsonBody()['sourceUrl']);
     }
 
     public function testTheSecretFlagIsAlwaysWrittenAndTrueForASecretRecipe(): void

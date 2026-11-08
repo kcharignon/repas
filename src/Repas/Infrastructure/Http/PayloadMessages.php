@@ -15,6 +15,7 @@ final readonly class PayloadMessages
     public const string SERVING = 'Le nombre de personnes doit être un nombre entier de 1 à 100.';
     public const string SECRET = 'Le choix « recette secrète » doit être vrai ou faux.';
     public const string FAVORITE = 'Le choix « recette favorite » doit être vrai ou faux.';
+    public const string MARMITON_URL = 'Le lien de la recette Marmiton doit être un texte de 2 000 caractères au plus.';
     public const string LIST_TYPE_NAME = 'Le nom du type de liste doit faire de 1 à 40 caractères.';
     public const string LIST_TYPE_DEPARTMENTS = 'Les rayons du type de liste sont une liste de 200 identifiants de rayon au plus.';
     public const string LIST_TYPE_ID = 'Le type de la liste est un identifiant de type de liste, ou absent pour la liste principale.';

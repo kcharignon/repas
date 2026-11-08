@@ -461,7 +461,7 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         // Then : toutes les recettes tiennent dans la page, le total en est déduit sans seconde requête
         $this->assertEquals(
             new OtherPeopleRecipesDTO(
-                [new OtherPeopleRecipeDTO($kept1->getId(), 'aaa carbonara', 'plat', 'plat'), new OtherPeopleRecipeDTO($kept2->getId(), 'zzz tarte', 'dessert', 'dessert')],
+                [new OtherPeopleRecipeDTO($kept1->getId(), 'aaa carbonara', 'plat', 'plat', false), new OtherPeopleRecipeDTO($kept2->getId(), 'zzz tarte', 'dessert', 'dessert', false)],
                 2,
             ),
             $result,
@@ -564,9 +564,9 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         // Then : l'ordre n'est pas celui des catégories (entrée, plat, dessert) et chaque recette porte la sienne
         $this->assertEquals(
             [
-                new OtherPeopleRecipeDTO($exact->getId(), 'tarte', 'entree', 'entrée'),
-                new OtherPeopleRecipeDTO($short->getId(), 'tartelette', 'plat', 'plat'),
-                new OtherPeopleRecipeDTO($long->getId(), 'tarte tatin caramélisée', 'dessert', 'dessert'),
+                new OtherPeopleRecipeDTO($exact->getId(), 'tarte', 'entree', 'entrée', false),
+                new OtherPeopleRecipeDTO($short->getId(), 'tartelette', 'plat', 'plat', false),
+                new OtherPeopleRecipeDTO($long->getId(), 'tarte tatin caramélisée', 'dessert', 'dessert', false),
             ],
             $result->member,
         );

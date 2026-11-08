@@ -19,6 +19,7 @@ class RecipeDTOBuilder implements Builder
     private int $version = 1;
     private bool $secret = false;
     private bool $favorite = false;
+    private ?string $sourceUrl = null;
 
     public function withId(string $id): self
     {
@@ -63,6 +64,12 @@ class RecipeDTOBuilder implements Builder
         return $this;
     }
 
+    public function withSourceUrl(?string $sourceUrl): self
+    {
+        $this->sourceUrl = $sourceUrl;
+        return $this;
+    }
+
     public function withRow(RecipeRowDTO $row): self
     {
         $this->rows[] = $row;
@@ -71,6 +78,6 @@ class RecipeDTOBuilder implements Builder
 
     public function build(): RecipeDTO
     {
-        return new RecipeDTO($this->id, $this->name, $this->serving, $this->typeSlug, $this->typeName, $this->secret, $this->favorite, $this->rows, $this->version);
+        return new RecipeDTO($this->id, $this->name, $this->serving, $this->typeSlug, $this->typeName, $this->secret, $this->favorite, $this->rows, $this->version, $this->sourceUrl);
     }
 }

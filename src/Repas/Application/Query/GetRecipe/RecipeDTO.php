@@ -29,6 +29,8 @@ final readonly class RecipeDTO
         public array $rows,
         #[OA\Property(description: 'Version de la recette, aussi renvoyée dans l\'en-tête `ETag` : à renvoyer dans `If-Match` pour modifier ou supprimer sans écraser le travail d\'un autre', example: 3)]
         public int $version,
+        #[OA\Property(description: "L'adresse de la page Marmiton dont la recette vient (ADR 0037 décision 10), reprise par chacune de ses copies, copies de copies comprises ; `null` pour toute autre recette. Toujours écrit. Le front en fait un bouton « Voir sur Marmiton » (texte et icône de lien externe, ouvert dans un nouvel onglet avec `rel=\"noopener noreferrer\"`) seulement pour une adresse de la forme `https://www.marmiton.org/recettes/recette_{nom}_{id}.aspx`. Jamais écrite par un corps de requête", nullable: true, example: 'https://www.marmiton.org/recettes/recette_tarte-au-citron-meringuee_22082.aspx')]
+        public ?string $sourceUrl,
     ) {
     }
 }
