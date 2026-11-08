@@ -18,7 +18,7 @@ class RecipeComponentRulesCopyTest extends TestCase
     private const string COPIER = 'copier-id';
 
     /**
-     * @return iterable<string, array{bool, string, bool, string, bool, bool}> original secret, copieur, recette utilisée secrète, auteur de la recette utilisée, gardée ?
+     * @return iterable<string, array{bool, string, bool, string, bool}> original secret, copieur, recette utilisée secrète, auteur de la recette utilisée, gardée ?
      */
     public static function cases(): iterable
     {
