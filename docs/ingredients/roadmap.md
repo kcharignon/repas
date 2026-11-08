@@ -22,6 +22,7 @@ Un agent d'implémentation travaille **un ticket = une PR** ([`../drive/consigne
 | [`fusion.md`](fusion.md) | Fusion de deux ingrédients : règles, API, doublons possibles, **interface** (textes exacts), tests |
 | [`sans-commun.md`](sans-commun.md) | **Amendement du 2026-10-20** : le modèle sans ingrédient commun, la règle d'amorçage transitoire, l'ordre exact des sorties et des opérations, les contrôles SQL (avant, après, retour arrière), l'inventaire de ce qui change et de ce qui meurt, les risques |
 | [`base-ingredients.tsv`](base-ingredients.tsv) | Le classement validé des 261 anciens communs : 151 « de base », 110 « spécifiques » (donnée de la passation). **Deux lignes de plus à la fin (SUB-001, ADR 0038) : `jaune-d-oeuf` et `blanc-d-oeuf`, les deux PARTIES d'« Œuf »** — des données de développement, de base, qui ne font pas partie des 261 ni de leurs sommes de contrôle (les tests de la passation les écartent) ; elles donnent les valeurs « jaune d'œuf » et « blanc d'œuf » au type `INGREDIENT` du skill Alexa |
+| [`sous-ingredients-exploitation.md`](sous-ingredients-exploitation.md) | **SUB-006 (ADR 0038)** : le pas à pas du propriétaire pour créer « Jaune d'œuf » et « Blanc d'œuf », le rattrapage des comptes déjà amorcés **compte par compte**, la recette à trois comptes (3 + 2 + 2 = 5, 2 + 3 = 3, retrait, drive, Alexa), le retour arrière en quatre niveaux, l'ordre avec Marmiton ; gardé par `DocsSubIngredientsTest` |
 | [`experiments/`](experiments/) | Script d'essai jetable (`evaluate.php`), générateur et jeu de **vérité terrain** synthétique (`ground-truth.json`), résultats rejouables (`resultats.md`) |
 | [`tickets/ING-*.md`](tickets/) | Un ticket par fichier |
 
@@ -75,8 +76,8 @@ Une partie (« Jaune d'œuf ») est un ingrédient du compte relié à un parent
 - [x] [SUB-003](tickets/SUB-003-calcul-dans-la-liste.md) (PR #446) back · L · **xhigh** · Le total du parent dans la liste (`part_shares`, `addPart|subtractPart`, handlers, détail), drive prouvé · dépend de : 001
 - [x] [SUB-004](tickets/SUB-004-fusion-suppression-et-registre.md) (PR #452) back · M · **xhigh** · Fusion, suppression, couverture du schéma · dépend de : 001, 003
 - [x] [SUB-005](tickets/SUB-005-voix.md) (PR #454) back · M · **high** · Alexa : ajouter, retirer, demander une partie · dépend de : 003
-- [ ] [SUB-006](tickets/SUB-006-donnees-de-reference-et-exploitation.md) back (documents) + opérations de l'humain · S · **xhigh** · Jaune et blanc d'œuf du catalogue, rattrapage des comptes, recette · dépend de : 001 à 004 en production
-- [ ] [SUB-007](tickets/SUB-007-front-decouper-un-ingredient.md) **front** · L · **high** · Découper un ingrédient, « 5 œufs » et ce qu'ils contiennent (maquette du designer d'abord) · dépend de : 001 et 003 en production
+- [ ] [SUB-006](tickets/SUB-006-donnees-de-reference-et-exploitation.md) (document livré : [`sous-ingredients-exploitation.md`](sous-ingredients-exploitation.md), PR #NNN ; **reste les opérations de l'humain**) back (documents) + opérations de l'humain · S · **xhigh** · Jaune et blanc d'œuf du catalogue, rattrapage des comptes **compte par compte**, recette · dépend de : 001 à 004 en production
+- [x] [SUB-007](tickets/SUB-007-front-decouper-un-ingredient.md) (front PR #329, en production : site v1.23.0) **front** · L · **high** · Découper un ingrédient, « 5 œufs » et ce qu'ils contiennent (maquette validée par le propriétaire le 2026-11-08) · dépend de : 001 et 003 en production
 
 Ordre : `MAR-003 ► SUB-001 ► (SUB-002 ‖ SUB-003) ► SUB-004 ► SUB-005`, puis release du back, `SUB-006` (humain), `SUB-007` et release du site. Deux agents du back en même temps touchent `migrations/`, `budgets.php` et `openapi.json` : SUB-002 et SUB-003 se rebasent l'un sur l'autre.
 
