@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Effort recommandé pour l'agent** : **xhigh** (migration, invariants, règle secrète/ordinaire sans passe-droit, contrat d'API)
 - **Dépend de** : — (SUB-001 à SUB-007 et MAR-001 à 005 sont dans `main`) ; **un agent à la fois** sur le chantier (`Recipe`, `RecipePostgreSQLRepository`, `docs/api/openapi.json`, `budgets.php`, `migrations/`)
-- **Statut** : fait (2026-11-08)
+- **Statut** : fait (2026-11-08, PR #461)
 - **Lire d'abord** : [ADR 0040](../../adr/0040-recettes-utilisees-dans-d-autres-recettes.md) décisions 1 à 10, 19 à 21, 25, 38 à 42 ; [ADR 0033](../../adr/0033-recette-secrete.md) ; [ADR 0013](../../adr/0013-agregats-references-par-identifiant.md) ; [`../../ingredients/tickets/SUB-001-modele-et-decoupage.md`](../../ingredients/tickets/SUB-001-modele-et-decoupage.md) (le modèle de forme) ; `CLAUDE.md` (puces « Recette secrète », « Copier une recette depuis Marmiton », « Contextes étanches ») ; skill `repas-dev` ; issue #435 (l'étude d'impact complète).
 
 ## But

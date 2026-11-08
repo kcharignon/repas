@@ -40,7 +40,7 @@ Taille : S (quelques heures), M (une journée), L (plusieurs jours). Effort : le
 
 ### I9 — Recettes utilisées dans d'autres recettes (ADR 0040, demande du propriétaire du 2026-11-08, issue #435)
 
-- [x] [COMP-001](tickets/COMP-001-modele-table-et-lecture-des-composants.md) back · L · **xhigh** · Modèle `RecipeComponent`, table `recipe_component`, `recipe.component_count`, règles de base, lecture `components`, chargement en lot · dépend de : —
+- [x] [COMP-001](tickets/COMP-001-modele-table-et-lecture-des-composants.md) (PR #461) back · L · **xhigh** · Modèle `RecipeComponent`, table `recipe_component`, `recipe.component_count`, règles de base, lecture `components`, chargement en lot · dépend de : —
 - [ ] [COMP-004](tickets/COMP-004-aplatir-a-la-planification.md) back · L · **xhigh** · `RecipeFlattener`, planifier / retirer / changer les personnes, voix (conversion manquante nommée), budgets · dépend de : 001 · **à livrer avant ou avec 002**
 - [ ] [COMP-002](tickets/COMP-002-ecrire-les-composants-et-leurs-refus.md) back · L · **xhigh** · `components` au `POST`/`PUT` (absent = inchangé), les neuf refus, bascules du secret, suppression refusée, `usable` et `used-in`, suppression de compte · dépend de : 001, **004**
 - [ ] [COMP-003](tickets/COMP-003-copier-une-recette-composee.md) back · M · **xhigh** · Copier une recette composée : ses recettes utilisées aussi, un seul rapprochement d'ingrédients, plafond sur « compte + à créer » · dépend de : 001 (002 recommandé)
