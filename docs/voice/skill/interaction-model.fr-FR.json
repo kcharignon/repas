@@ -1051,6 +1051,11 @@
             },
             {
               "name": {
+                "value": "blanc d'œuf"
+              }
+            },
+            {
+              "name": {
                 "value": "blanquette de veau"
               }
             },
@@ -1577,6 +1582,11 @@
             {
               "name": {
                 "value": "jambon cru"
+              }
+            },
+            {
+              "name": {
+                "value": "jaune d'œuf"
               }
             },
             {

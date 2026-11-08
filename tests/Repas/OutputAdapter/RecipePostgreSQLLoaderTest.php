@@ -57,9 +57,9 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         // L'ordre est celui de la saisie (colonne `position`), pas l'ordre alphabétique
         $this->assertEquals(
             [
-                new RecipeRowDTO('zzz-sucre', 'zzz sucre', 'images/sucre.png', 2.0, 'unite', '', 'unité', 'unite', 'unité', true, 'conserve', 'conserve'),
+                new RecipeRowDTO('zzz-sucre', 'zzz sucre', 'images/sucre.png', 2.0, 'unite', '', 'unité', 'unite', 'unité', true, 'conserve', 'conserve', null),
                 // Le gramme ne se convertit pas en l'unité d'achat (l'unité) de cet ingrédient : aucune conversion ne les relie
-                new RecipeRowDTO('aaa-farine', 'aaa farine', '', 250.0, 'gramme', 'g', 'gramme', 'unite', 'unité', false, 'conserve', 'conserve'),
+                new RecipeRowDTO('aaa-farine', 'aaa farine', '', 250.0, 'gramme', 'g', 'gramme', 'unite', 'unité', false, 'conserve', 'conserve', null),
             ],
             $result->rows,
         );
@@ -82,6 +82,44 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(['petits-pois-a', 'petits-pois-b'], array_map(static fn(RecipeRowDTO $row): string => $row->ingredientSlug, $rows));
         $this->assertSame(['Petits pois', 'Petits pois'], array_map(static fn(RecipeRowDTO $row): string => $row->ingredientName, $rows));
         $this->assertSame([['cereale', 'céréale'], ['viande', 'viande']], array_map(static fn(RecipeRowDTO $row): array => [$row->departmentSlug, $row->departmentName], $rows));
+    }
+
+    public function testGetSaysTheParentOfAnIngredientThatIsAPartInTheSameStatementAsTheRows(): void
+    {
+        // Given : « Jaune d'œuf » est une partie d'« Œuf » (ADR 0038), le sucre est ordinaire
+        $author = $this->savedUser();
+        $egg = new IngredientBuilder()->withName('Œuf')->withCreator($author, true)->build();
+        $this->persister->saveIngredient($egg);
+        $yolk = new IngredientBuilder()->withName("Jaune d'œuf")->withCreator($author, true)->withParent($egg->getSlug(), 1.0);
+        $recipe = new RecipeBuilder()->withAuthor($author)->withName('zzz mousse')->withRecipeType(new RecipeTypeBuilder()->isDessert())
+            ->addRow(new RecipeRowBuilder()->withIngredient($yolk)->withUnit(new UnitBuilder()->isUnite())->withQuantity(3))
+            ->addRow(new RecipeRowBuilder()->withIngredient(new IngredientBuilder()->withName('Sucre')->withCreator($author, true))->withUnit(new UnitBuilder()->isUnite())->withQuantity(1))
+            ->build();
+        $this->persister->saveRecipe($recipe);
+        $ordinary = new RecipeBuilder()->withAuthor($author)->withName('zzz compote')->withRecipeType(new RecipeTypeBuilder()->isDessert())
+            ->addRow(new RecipeRowBuilder()->withIngredient(new IngredientBuilder()->withName('Pomme')->withCreator($author, true))->withUnit(new UnitBuilder()->isUnite())->withQuantity(4))
+            ->build();
+        $this->persister->saveRecipe($ordinary);
+
+        // When
+        $this->entityManager->clear();
+        $rows = $this->recipeLoader->get($recipe->getId(), $recipe->getAuthorId())->rows;
+
+        // Then : la partie nomme son parent, l'ingrédient ordinaire `null`
+        $this->assertSame(["Œuf", null], array_map(static fn(RecipeRowDTO $row): ?string => $row->partOfName, $rows));
+        $this->assertSame(['Jaune d\'œuf', 'Sucre'], array_map(static fn(RecipeRowDTO $row): string => $row->ingredientName, $rows));
+        // et le parent est lu avec les lignes : la recette qui a une partie coûte autant de requêtes que celle qui n'en a pas
+        $this->assertSame($this->queryCountOfGet($ordinary), $this->queryCountOfGet($recipe));
+    }
+
+    private function queryCountOfGet(Recipe $recipe): int
+    {
+        $this->entityManager->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+        $this->recipeLoader->get($recipe->getId(), $recipe->getAuthorId());
+
+        return $counter->count();
     }
 
     public function testGetSaysWhichRowsConvertToThePurchaseUnitOfTheirIngredient(): void

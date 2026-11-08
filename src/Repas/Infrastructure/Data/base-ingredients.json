@@ -259,5 +259,7 @@
 {"slug":"la-laitiere","name":"la laitière","department":"yaourt","base":false},
 {"slug":"perle-de-lait","name":"perle de lait","department":"yaourt","base":false},
 {"slug":"veloute","name":"velouté","department":"yaourt","base":false},
-{"slug":"yaourt-nature","name":"yaourt nature","department":"yaourt","base":true}
+{"slug":"yaourt-nature","name":"yaourt nature","department":"yaourt","base":true},
+{"slug":"jaune-d-oeuf","name":"jaune d'œuf","department":"divers","base":true},
+{"slug":"blanc-d-oeuf","name":"blanc d'œuf","department":"divers","base":true}
 ]

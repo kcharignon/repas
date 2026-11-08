@@ -5,6 +5,8 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 use Repas\Repas\Application\Loader\IngredientLoader;
 use Repas\Repas\Application\Query\GetIngredient\IngredientDTO;
+use Repas\Repas\Application\Query\GetIngredient\IngredientPartDTO;
+use Repas\Repas\Application\Query\GetIngredient\IngredientPartOfDTO;
 use Repas\Repas\Application\Query\GetIngredient\ListDestinationDTO;
 use Repas\Repas\Application\Query\ListCompatibleUnits\CompatibleUnitDTO;
 use Repas\Repas\Application\Query\ListAvailableIngredients\IngredientOptionDTO;
@@ -154,6 +156,8 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
             isBase: false,
             canSetBase: false,
             listDestination: new ListDestinationDTO(ListDestinationDTO::DEFAULT, null, null),
+            parts: [],
+            partOf: null,
         ), $result);
     }
 
@@ -390,7 +394,7 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then
         $this->assertEquals(
-            [new IngredientOptionDTO($own->getSlug(), 'aaa farine', 'conserve', 'conserve'), new IngredientOptionDTO($salt->getSlug(), 'mmm sel', 'conserve', 'conserve')],
+            [new IngredientOptionDTO($own->getSlug(), 'aaa farine', 'conserve', 'conserve', null, null), new IngredientOptionDTO($salt->getSlug(), 'mmm sel', 'conserve', 'conserve', null, null)],
             $result,
         );
     }
@@ -411,10 +415,10 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then : les siens, jamais ceux d'un autre, toujours triés par nom
         $this->assertEquals(
-            [new IngredientOptionDTO($ownCream->getSlug(), 'aaa crème maison', 'conserve', 'conserve'), new IngredientOptionDTO($cream->getSlug(), 'zzz Crème fraîche', 'conserve', 'conserve')],
+            [new IngredientOptionDTO($ownCream->getSlug(), 'aaa crème maison', 'conserve', 'conserve', null, null), new IngredientOptionDTO($cream->getSlug(), 'zzz Crème fraîche', 'conserve', 'conserve', null, null)],
             $byAccentedText,
         );
-        $this->assertEquals([new IngredientOptionDTO($cream->getSlug(), 'zzz Crème fraîche', 'conserve', 'conserve')], $byPartOfTwoWords);
+        $this->assertEquals([new IngredientOptionDTO($cream->getSlug(), 'zzz Crème fraîche', 'conserve', 'conserve', null, null)], $byPartOfTwoWords);
     }
 
     public function testListAvailableWithABlankSearchKeepsEverything(): void
@@ -454,8 +458,8 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         // Then
         $this->assertEquals(
             [
-                new IngredientSearchResultDTO($exact->getSlug(), 'Riz', '', true, 'cereale', 'céréale', new DepartmentBuilder()->isCereal()->build()->getImage()),
-                new IngredientSearchResultDTO($longer->getSlug(), 'Riz basmati', '', true, 'boulangerie', 'boulangerie', new DepartmentBuilder()->isBakery()->build()->getImage()),
+                new IngredientSearchResultDTO($exact->getSlug(), 'Riz', '', true, 'cereale', 'céréale', new DepartmentBuilder()->isCereal()->build()->getImage(), null, null),
+                new IngredientSearchResultDTO($longer->getSlug(), 'Riz basmati', '', true, 'boulangerie', 'boulangerie', new DepartmentBuilder()->isBakery()->build()->getImage(), null, null),
             ],
             $result,
         );
@@ -765,5 +769,143 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
 
         // When
         $this->ingredientLoader->get($theirs->getSlug(), $owner->getId());
+    }
+
+    // --- Les parties d'un ingrédient (ADR 0038, SUB-001) : la fiche, les choix et la recherche disent le lien
+
+    /**
+     * @return array{User, Ingredient, Ingredient, Ingredient}
+     */
+    private function eggWithYolkAndWhite(): array
+    {
+        $viewer = $this->savedUser();
+        $egg = $this->savedIngredient(new IngredientBuilder()->withName('Œuf')->withCreator($viewer, true));
+        // Créés dans l'ordre inverse du tri : le tri est celui du nom, pas celui de la création
+        $yolk = $this->savedIngredient(new IngredientBuilder()->withName("Jaune d'œuf")->withCreator($viewer, true)->withParent($egg->getSlug(), 1.0));
+        $white = $this->savedIngredient(new IngredientBuilder()->withName("Blanc d'œuf")->withCreator($viewer, true)->withParent($egg->getSlug(), 0.5));
+
+        return [$viewer, $egg, $yolk, $white];
+    }
+
+    public function testGetTellsTheParentItsPartsSortedByNameAndThePartItsParent(): void
+    {
+        // Given
+        [$viewer, $egg, $yolk, $white] = $this->eggWithYolkAndWhite();
+
+        // When
+        $parent = $this->ingredientLoader->get($egg->getSlug(), $viewer->getId());
+        $part = $this->ingredientLoader->get($yolk->getSlug(), $viewer->getId());
+
+        // Then : le parent liste ses parties par nom puis identifiant (avec l'unité d'achat de chacune), et n'est le parent de personne
+        $this->assertEquals(
+            [new IngredientPartDTO($white->getSlug(), "Blanc d'œuf", 0.5, 'unité'), new IngredientPartDTO($yolk->getSlug(), "Jaune d'œuf", 1.0, 'unité')],
+            $parent->parts,
+        );
+        $this->assertNull($parent->partOf);
+        // la partie dit son parent et son ratio, et n'a pas de partie
+        $this->assertEquals(new IngredientPartOfDTO($egg->getSlug(), 'Œuf', 1.0), $part->partOf);
+        $this->assertSame([], $part->parts);
+    }
+
+    public function testGetOfAnOrdinaryIngredientHasNoPartsAndNoParent(): void
+    {
+        // Given
+        $viewer = $this->savedUser();
+        $plain = $this->savedIngredient(new IngredientBuilder()->withName('Riz')->withCreator($viewer, true));
+
+        // When
+        $result = $this->ingredientLoader->get($plain->getSlug(), $viewer->getId());
+
+        // Then : les deux clés sont toujours là
+        $this->assertSame([], $result->parts);
+        $this->assertNull($result->partOf);
+    }
+
+    public function testGetNeverShowsThePartsOrTheParentOfAnotherAccountNorLeaksTheirNames(): void
+    {
+        // Given : un autre compte a un œuf et un jaune ; le lecteur a un jaune à lui qui, par une donnée sale, désigne l'œuf de l'autre, et un œuf sans partie
+        [$viewer, $egg] = $this->eggWithYolkAndWhite();
+        $other = $this->savedUser();
+        $theirEgg = $this->savedIngredient(new IngredientBuilder()->withName('Œuf')->withCreator($other, true));
+        $this->savedIngredient(new IngredientBuilder()->withName('Jaune d\'œuf')->withCreator($other, true)->withParent($egg->getSlug(), 1.0));
+        $strayYolk = $this->savedIngredient(new IngredientBuilder()->withName('Jaune errant')->withCreator($viewer, true)->withParent($theirEgg->getSlug(), 1.0));
+
+        // When
+        $parent = $this->ingredientLoader->get($egg->getSlug(), $viewer->getId());
+        $stray = $this->ingredientLoader->get($strayYolk->getSlug(), $viewer->getId());
+
+        // Then : seules les parties du lecteur sont lues, et le parent d'un autre compte n'est jamais nommé
+        $this->assertCount(2, $parent->parts);
+        $this->assertNull($stray->partOf);
+    }
+
+    public function testGetCostsExactlyOneMoreStatementThanBeforeWhateverTheNumberOfParts(): void
+    {
+        // Given : un parent à deux parties, un autre à neuf, un ingrédient ordinaire
+        [$viewer, $egg] = $this->eggWithYolkAndWhite();
+        $vanilla = $this->savedIngredient(new IngredientBuilder()->withName('Vanille')->withCreator($viewer, true));
+        foreach (range(1, 9) as $i) {
+            $this->savedIngredient(new IngredientBuilder()->withName("Partie $i")->withCreator($viewer, true)->withParent($vanilla->getSlug(), 1.0));
+        }
+        $plain = $this->savedIngredient(new IngredientBuilder()->withName('Riz')->withCreator($viewer, true));
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $measure = function (Ingredient $ingredient) use ($viewer, $counter): int {
+            $this->entityManager->clear();
+            $counter->reset();
+            $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId());
+
+            return $counter->count();
+        };
+
+        // When
+        $counts = [$measure($plain), $measure($egg), $measure($vanilla)];
+
+        // Then : quatre requêtes avec zéro, deux ou neuf parties (la fiche d'avant en coûtait trois : la seule de plus lit les parties ; le parent
+        // d'une partie est lu dans la requête de la fiche)
+        $this->assertSame([4, 4, 4], $counts);
+    }
+
+    public function testListAvailableSaysThePartOfOfEachPartInTheSameStatement(): void
+    {
+        // Given
+        [$viewer, $egg, $yolk, $white] = $this->eggWithYolkAndWhite();
+        $plain = $this->savedIngredient(new IngredientBuilder()->withName('Riz')->withCreator($viewer, true));
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $result = $this->ingredientLoader->listAvailable($viewer->getId());
+
+        // Then : une seule instruction ; l'ordre est celui d'avant (nom normalisé), les ordinaires disent `null`
+        $this->assertSame(1, $counter->count());
+        $this->assertEquals(
+            [
+                new IngredientOptionDTO($white->getSlug(), "Blanc d'œuf", 'conserve', 'conserve', $egg->getSlug(), 'Œuf'),
+                new IngredientOptionDTO($yolk->getSlug(), "Jaune d'œuf", 'conserve', 'conserve', $egg->getSlug(), 'Œuf'),
+                new IngredientOptionDTO($egg->getSlug(), 'Œuf', 'conserve', 'conserve', null, null),
+                new IngredientOptionDTO($plain->getSlug(), 'Riz', 'conserve', 'conserve', null, null),
+            ],
+            $result,
+        );
+    }
+
+    public function testSearchSaysThePartOfOfEachPartInTheSameStatement(): void
+    {
+        // Given
+        [$viewer, $egg, $yolk] = $this->eggWithYolkAndWhite();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $result = $this->ingredientLoader->search('jaune', $viewer->getId());
+
+        // Then : une seule instruction, la partie nomme son parent
+        $this->assertSame(1, $counter->count());
+        $this->assertCount(1, $result);
+        $this->assertSame([$yolk->getSlug(), $egg->getSlug(), 'Œuf'], [$result[0]->slug, $result[0]->partOfSlug, $result[0]->partOfName]);
+        // et le parent lui-même, trouvé par son nom, n'est la partie de personne
+        $byName = array_column(array_map(static fn(IngredientSearchResultDTO $found): array => [$found->slug, $found->partOfSlug], $this->ingredientLoader->search('oeuf', $viewer->getId())), 1, 0);
+        $this->assertArrayHasKey($egg->getSlug(), $byName);
+        $this->assertNull($byName[$egg->getSlug()]);
     }
 }

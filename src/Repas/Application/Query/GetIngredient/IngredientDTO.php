@@ -2,6 +2,7 @@
 
 namespace Repas\Repas\Application\Query\GetIngredient;
 
+use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 
 final readonly class IngredientDTO
@@ -45,6 +46,11 @@ final readonly class IngredientDTO
         public bool $canSetBase,
         #[OA\Property(description: "La liste de courses où va ce produit (ADR 0036) : le choix de l'utilisateur sur le produit (« produit à part »). Clé toujours écrite ; un compte sans type de liste lit toujours `DEFAULT`")]
         public ListDestinationDTO $listDestination,
+        /** @var list<IngredientPartDTO> */
+        #[OA\Property(description: "Les PARTIES de l'ingrédient (ADR 0038 : « Jaune d'œuf » et « Blanc d'œuf » pour « Œuf »), triées par nom puis identifiant ; `[]` pour un ingrédient sans partie. Clé toujours écrite. Une partie n'est jamais une ligne de la liste de courses : elle se plie dans son parent", type: 'array', items: new OA\Items(ref: new Model(type: IngredientPartDTO::class)))]
+        public array $parts,
+        #[OA\Property(description: "Le parent de l'ingrédient quand c'est une PARTIE d'un autre ; `null` pour un ingrédient ordinaire. Clé toujours écrite")]
+        public ?IngredientPartOfDTO $partOf,
     ) {
     }
 }

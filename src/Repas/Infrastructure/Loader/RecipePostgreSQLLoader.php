@@ -65,10 +65,12 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
                 'i.slug AS ingredientSlug', 'i.name AS ingredientName', 'i.image AS ingredientImage',
                 'rr.quantity AS quantity', 'u.slug AS unitSlug', 'u.symbol AS unitSymbol', 'u.name AS unitName',
                 'pu.slug AS purchaseUnitSlug', 'pu.name AS purchaseUnitName',
-                'd.slug AS departmentSlug', 'd.name AS departmentName',
+                'd.slug AS departmentSlug', 'd.name AS departmentName', 'p.name AS partOfName',
             )
             ->from(RecipeRow::class, 'rr')
             ->innerJoin(Ingredient::class, 'i', Join::WITH, 'i.slug = rr.ingredientSlug')
+            // Le parent de l'ingrédient quand c'est une partie (ADR 0038) : dans la même instruction, aucune requête de plus
+            ->leftJoin(Ingredient::class, 'p', Join::WITH, 'p.slug = i.parentSlug AND p.creatorId = i.creatorId')
             ->innerJoin(Department::class, 'd', Join::WITH, 'd.slug = i.departmentSlug')
             ->innerJoin(Unit::class, 'u', Join::WITH, 'u.slug = rr.unitSlug')
             ->innerJoin(Unit::class, 'pu', Join::WITH, 'pu.slug = i.defaultPurchaseUnitSlug')
@@ -95,7 +97,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
                     $row['ingredientSlug'], $row['ingredientName'], $row['ingredientImage'], (float) $row['quantity'], $row['unitSlug'], $row['unitSymbol'],
                     $row['unitName'], $row['purchaseUnitSlug'], $row['purchaseUnitName'],
                     $graphs[$row['ingredientSlug']]->connects($row['unitSlug'], $row['purchaseUnitSlug']),
-                    $row['departmentSlug'], $row['departmentName'],
+                    $row['departmentSlug'], $row['departmentName'], $row['partOfName'],
                 ),
                 $rows,
             ),

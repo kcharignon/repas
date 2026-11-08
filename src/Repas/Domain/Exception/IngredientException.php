@@ -35,6 +35,13 @@ final class IngredientException extends DomainException
     // Message du cas « Pas le même » (ING-006)
     public const string CANNOT_BE_DISTINCT_FROM_ITSELF = 'CANNOT_BE_DISTINCT_FROM_ITSELF';
 
+    // Messages du découpage d'un ingrédient en parties (ADR 0038 décision 29, SUB-001) : le front les distingue, ils ne se renomment pas
+    public const string PART_OF_ITSELF = 'INGREDIENT_PART_OF_ITSELF';
+    public const string PART_CHAIN = 'INGREDIENT_PART_CHAIN';
+    public const string PART_LIMIT_REACHED = 'INGREDIENT_PART_LIMIT_REACHED';
+    public const string PART_RATIO_INVALID = 'INGREDIENT_PART_RATIO_INVALID';
+    public const string PART_IN_LIST = 'INGREDIENT_PART_IN_LIST';
+
     public static function notFound(string $slug): static
     {
         return new static(sprintf("Ingredient '%s' not found", $slug), 404);
@@ -184,5 +191,47 @@ final class IngredientException extends DomainException
     public static function cannotBeDistinctFromItself(): self
     {
         return new self(self::CANNOT_BE_DISTINCT_FROM_ITSELF, 422);
+    }
+
+    /**
+     * Un ingrédient n'est pas sa propre partie (ADR 0038 décision 2). Règle métier, `422`.
+     */
+    public static function partOfItself(): self
+    {
+        return new self(self::PART_OF_ITSELF, 422);
+    }
+
+    /**
+     * Profondeur 1 (ADR 0038 décision 2) : le parent choisi est déjà une partie, ou l'ingrédient qu'on découpe a déjà des parties. Une partie
+     * n'a pas de partie. Règle métier, `422`.
+     */
+    public static function partChain(): self
+    {
+        return new self(self::PART_CHAIN, 422);
+    }
+
+    /**
+     * Le parent a déjà `Ingredient::MAX_PARTS` parties (ADR 0038 décision 2). Règle métier, `422`.
+     */
+    public static function partLimitReached(): self
+    {
+        return new self(self::PART_LIMIT_REACHED, 422);
+    }
+
+    /**
+     * Le ratio d'une partie doit être un nombre fini de 0,000001 à 1 000 000 (`QuantityBounds`, ADR 0038 décision 3). `422`.
+     */
+    public static function partRatioInvalid(): self
+    {
+        return new self(self::PART_RATIO_INVALID, 422);
+    }
+
+    /**
+     * L'ingrédient a une ligne dans une liste de courses non terminée : le découper laisserait une partie en ligne de liste, ce qu'une partie
+     * n'est jamais (ADR 0038 décision 6). Conflit avec l'état courant, `409` : on le découpe une fois la liste terminée ou la ligne retirée.
+     */
+    public static function partInOpenList(): self
+    {
+        return new self(self::PART_IN_LIST, 409);
     }
 }

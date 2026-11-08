@@ -185,7 +185,11 @@ class DuplicateIngredientFinderTest extends TestCase
     public function testTheReferenceCatalogueOwnedByOneUserHasNoDuplicate(): void
     {
         // Given
-        $commons = json_decode((string) file_get_contents(dirname(__DIR__, 4) . '/src/Repas/Infrastructure/DataFixture/Data/ingredient.json'), true, flags: JSON_THROW_ON_ERROR);
+        // Les 256 communs du jeu de référence, sans les deux PARTIES d'« Œuf » ajoutées après (ADR 0038 : « Blanc d'œuf » est un vrai ingrédient du catalogue de développement, la vérité terrain le donne pour « aucun lien »)
+        $commons = array_values(array_filter(
+            json_decode((string) file_get_contents(dirname(__DIR__, 4) . '/src/Repas/Infrastructure/DataFixture/Data/ingredient.json'), true, flags: JSON_THROW_ON_ERROR),
+            static fn(array $common): bool => !isset($common['parent']),
+        ));
         $candidates = array_map(static fn(array $common): IngredientCandidate => self::own($common['slug'], $common['name'], $common['department']), $commons);
 
         // When / Then
@@ -369,7 +373,11 @@ class DuplicateIngredientFinderTest extends TestCase
         static $cache = null;
         if ($cache === null) {
             $cache = [];
-            $commons = json_decode((string) file_get_contents(dirname(__DIR__, 4) . '/src/Repas/Infrastructure/DataFixture/Data/ingredient.json'), true, flags: JSON_THROW_ON_ERROR);
+            // Les 256 communs du jeu de référence, sans les deux PARTIES d'« Œuf » ajoutées après (ADR 0038 : « Blanc d'œuf » est un vrai ingrédient du catalogue de développement, la vérité terrain le donne pour « aucun lien »)
+        $commons = array_values(array_filter(
+            json_decode((string) file_get_contents(dirname(__DIR__, 4) . '/src/Repas/Infrastructure/DataFixture/Data/ingredient.json'), true, flags: JSON_THROW_ON_ERROR),
+            static fn(array $common): bool => !isset($common['parent']),
+        ));
             foreach ($commons as $common) {
                 $cache[$common['department']][] = self::own($common['slug'], $common['name'], $common['department']);
             }

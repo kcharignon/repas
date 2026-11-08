@@ -2304,6 +2304,32 @@
     ]
   },
   {
+    "slug": "jaune-d-oeuf",
+    "name": "Jaune d'œuf",
+    "image": "",
+    "department": "divers",
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite",
+    "compatible_units": [
+      "unite"
+    ],
+    "parent": "oeuf",
+    "parent_ratio": 1
+  },
+  {
+    "slug": "blanc-d-oeuf",
+    "name": "Blanc d'œuf",
+    "image": "",
+    "department": "divers",
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite",
+    "compatible_units": [
+      "unite"
+    ],
+    "parent": "oeuf",
+    "parent_ratio": 1
+  },
+  {
     "slug": "pain",
     "name": "Pain",
     "image": "",

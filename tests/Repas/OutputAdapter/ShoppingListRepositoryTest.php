@@ -16,6 +16,7 @@ use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\ControlledUuidGenerator;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
+use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Domain\Model\User;
 
@@ -184,6 +185,32 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         // Act & Assert
         $this->assertTrue($this->shoppingListRepository->isIngredientUsed($pasta->getSlug()));
         $this->assertFalse($this->shoppingListRepository->isIngredientUsed($egg->getSlug()));
+    }
+
+    public function testIsIngredientInOpenListSeesARowInAnyListThatIsNotCompleted(): void
+    {
+        // Arrange : chaque statut porte une ligne d'un ingrédient différent, plus un ingrédient qu'aucune liste ne porte
+        $user = $this->savedUser();
+        $bySlug = [];
+        foreach ([ShoppingListStatus::ACTIVE, ShoppingListStatus::PAUSED, ShoppingListStatus::SENT, ShoppingListStatus::COMPLETED] as $status) {
+            $ingredient = new IngredientBuilder()->withName('Ingrédient ' . $status->value)->build();
+            $this->persister->saveIngredient($ingredient);
+            $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->withStatus($status)->addIngredient($ingredient)->build());
+            $bySlug[$status->value] = $ingredient->getSlug();
+        }
+        $none = new IngredientBuilder()->isEgg()->build();
+        $this->persister->saveIngredient($none);
+        $this->entityManager->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // Act
+        $answers = array_map(fn(string $slug): bool => $this->shoppingListRepository->isIngredientInOpenList($slug), $bySlug);
+
+        // Assert : une liste terminée ne compte plus, une envoyée au drive compte ; une question = une instruction, aucune liste hydratée
+        $this->assertSame(['ACTIVE' => true, 'PAUSED' => true, 'SENT' => true, 'COMPLETED' => false], $answers);
+        $this->assertSame(['SELECT shopping_list_row' => 4], $counter->byTable());
+        $this->assertFalse($this->shoppingListRepository->isIngredientInOpenList($none->getSlug()));
     }
 
     public function testFindIdsByOwnerAndStatus(): void

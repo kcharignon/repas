@@ -25,7 +25,11 @@ class IngredientNameMatcherTest extends TestCase
     protected function setUp(): void
     {
         $this->matcher = new IngredientNameMatcher();
-        $commons = json_decode((string) file_get_contents(dirname(__DIR__, 4) . '/src/Repas/Infrastructure/DataFixture/Data/ingredient.json'), true, flags: JSON_THROW_ON_ERROR);
+        // Les 256 communs du jeu de référence, sans les deux PARTIES d'« Œuf » ajoutées après (ADR 0038 : « Blanc d'œuf » est un vrai ingrédient du catalogue de développement, la vérité terrain le donne pour « aucun lien »)
+        $commons = array_values(array_filter(
+            json_decode((string) file_get_contents(dirname(__DIR__, 4) . '/src/Repas/Infrastructure/DataFixture/Data/ingredient.json'), true, flags: JSON_THROW_ON_ERROR),
+            static fn(array $common): bool => !isset($common['parent']),
+        ));
         foreach ($commons as $common) {
             $candidate = new IngredientCandidate($common['slug'], $common['name'], $common['department'], $common['default_purchase_unit'], $common['compatible_units']);
             $this->byDepartment[$common['department']][] = $candidate;

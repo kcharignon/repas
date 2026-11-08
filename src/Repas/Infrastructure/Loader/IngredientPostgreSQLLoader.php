@@ -6,6 +6,8 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr\Join;
 use Repas\Repas\Application\Loader\IngredientLoader;
 use Repas\Repas\Application\Query\GetIngredient\IngredientDTO;
+use Repas\Repas\Application\Query\GetIngredient\IngredientPartDTO;
+use Repas\Repas\Application\Query\GetIngredient\IngredientPartOfDTO;
 use Repas\Repas\Application\Query\GetIngredient\ListDestinationDTO;
 use Repas\Repas\Application\Query\ListAvailableIngredients\IngredientOptionDTO;
 use Repas\Repas\Application\Query\ListCompatibleUnits\CompatibleUnitDTO;
@@ -92,6 +94,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
         $ingredient = $this->entityManager->createQueryBuilder()
             ->select(
                 'i.slug AS slug', 'i.name AS name', 'i.image AS image', 'i.creatorId AS creatorId', 'i.isBase AS isBase', 'i.listDestination AS listDestination',
+                'i.parentRatio AS parentRatio', 'p.slug AS parentSlug', 'p.name AS parentName',
                 'd.slug AS departmentSlug', 'd.name AS departmentName', 't.id AS listTypeId', 't.name AS listTypeName',
                 'cu.slug AS cookingUnitSlug', 'cu.name AS cookingUnitName',
                 'pu.slug AS purchaseUnitSlug', 'pu.name AS purchaseUnitName', 'pu.symbol AS purchaseUnitSymbol',
@@ -102,6 +105,8 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
             ->innerJoin(Unit::class, 'pu', Join::WITH, 'pu.slug = i.defaultPurchaseUnitSlug')
             // Le type de liste choisi, s'il existe encore ET s'il est au lecteur (sinon le choix se lit « comme son rayon », ADR 0036)
             ->leftJoin(ShoppingListType::class, 't', Join::WITH, 't.id = i.listDestination AND t.ownerId = :viewer')
+            // Le parent, si l'ingrédient est une partie (ADR 0038) : dans la même instruction, et seulement un ingrédient du même propriétaire
+            ->leftJoin(Ingredient::class, 'p', Join::WITH, 'p.slug = i.parentSlug AND p.creatorId = i.creatorId')
             ->where('i.slug = :slug')
             ->setParameter('slug', $slug)
             ->setParameter('viewer', $viewerId)
@@ -144,6 +149,36 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
             isBase: $isBase,
             canSetBase: $canSetBase,
             listDestination: ListDestinationDTO::of($ingredient['listDestination'], $ingredient['listTypeId'], $ingredient['listTypeName']),
+            parts: $this->partsOf($slug, $viewerId),
+            partOf: $ingredient['parentSlug'] === null || $ingredient['parentRatio'] === null
+                ? null
+                : new IngredientPartOfDTO($ingredient['parentSlug'], $ingredient['parentName'], (float) $ingredient['parentRatio']),
+        );
+    }
+
+    /**
+     * Les parties de l'ingrédient (ADR 0038), triées par nom puis identifiant : une seule lecture, sur l'index partiel des parties.
+     *
+     * @return list<IngredientPartDTO>
+     */
+    private function partsOf(string $slug, string $viewerId): array
+    {
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('c.slug AS slug', 'c.name AS name', 'c.parentRatio AS ratio', 'pu.name AS unitName')
+            ->from(Ingredient::class, 'c')
+            ->innerJoin(Unit::class, 'pu', Join::WITH, 'pu.slug = c.defaultPurchaseUnitSlug')
+            ->where('c.parentSlug = :slug')
+            ->andWhere('c.creatorId = :viewer')
+            ->setParameter('slug', $slug)
+            ->setParameter('viewer', $viewerId)
+            ->orderBy('c.sluggedName', 'ASC')
+            ->addOrderBy('c.slug', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_map(
+            static fn(array $row): IngredientPartDTO => new IngredientPartDTO($row['slug'], $row['name'], (float) $row['ratio'], $row['unitName']),
+            $rows,
         );
     }
 
@@ -189,9 +224,11 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
     public function listAvailable(string $userId, ?string $search = null): array
     {
         $query = $this->entityManager->createQueryBuilder()
-            ->select('i.slug AS slug', 'i.name AS name', 'd.slug AS departmentSlug', 'd.name AS departmentName')
+            ->select('i.slug AS slug', 'i.name AS name', 'd.slug AS departmentSlug', 'd.name AS departmentName', 'p.slug AS partOfSlug', 'p.name AS partOfName')
             ->from(Ingredient::class, 'i')
             ->innerJoin(Department::class, 'd', Join::WITH, 'd.slug = i.departmentSlug')
+            // Le parent d'une partie (ADR 0038) : dans la même instruction, aucune requête de plus
+            ->leftJoin(Ingredient::class, 'p', Join::WITH, 'p.slug = i.parentSlug AND p.creatorId = i.creatorId')
             ->where(IngredientVisibility::visibleBy('i', 'user'))
             ->setParameter('user', $userId)
             ->orderBy('i.sluggedName', 'ASC')
@@ -205,7 +242,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
 
         $rows = $query->getQuery()->getArrayResult();
 
-        return array_map(static fn(array $row): IngredientOptionDTO => new IngredientOptionDTO($row['slug'], $row['name'], $row['departmentSlug'], $row['departmentName']), $rows);
+        return array_map(static fn(array $row): IngredientOptionDTO => new IngredientOptionDTO($row['slug'], $row['name'], $row['departmentSlug'], $row['departmentName'], $row['partOfSlug'], $row['partOfName']), $rows);
     }
 
     public function search(string $search, string $viewerId): array
@@ -222,10 +259,13 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
                 'i.slug AS slug', 'i.name AS name', 'i.sluggedName AS sluggedName',
                 'u.symbol AS purchaseUnitSymbol',
                 'd.slug AS departmentSlug', 'd.name AS departmentName', 'd.image AS departmentImage',
+                'p.slug AS partOfSlug', 'p.name AS partOfName',
             )
             ->from(Ingredient::class, 'i')
             ->innerJoin(Unit::class, 'u', Join::WITH, 'u.slug = i.defaultPurchaseUnitSlug')
             ->innerJoin(Department::class, 'd', Join::WITH, 'd.slug = i.departmentSlug')
+            // Le parent d'une partie (ADR 0038) : dans la même instruction, aucune requête de plus
+            ->leftJoin(Ingredient::class, 'p', Join::WITH, 'p.slug = i.parentSlug AND p.creatorId = i.creatorId')
             ->where(IngredientVisibility::visibleBy('i', 'viewer'))
             ->setParameter('viewer', $viewerId)
             ->getQuery()
@@ -251,6 +291,8 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
                 departmentSlug: $match['row']['departmentSlug'],
                 departmentName: $match['row']['departmentName'],
                 departmentImage: $match['row']['departmentImage'],
+                partOfSlug: $match['row']['partOfSlug'],
+                partOfName: $match['row']['partOfName'],
             ),
             array_slice($scored, 0, self::SEARCH_LIMIT),
         );

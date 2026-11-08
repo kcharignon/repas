@@ -9,6 +9,7 @@ use Repas\Repas\Domain\Model\Unit as UnitModel;
 #[ORM\Entity]
 #[ORM\Table(name: 'ingredient')]
 #[ORM\Index(name: 'idx_ingredient_creator', columns: ['creator', 'slugged_name'])]
+#[ORM\Index(name: 'idx_ingredient_parent', columns: ['creator', 'parent_slug'], options: ['where' => '(parent_slug IS NOT NULL)'])]
 class Ingredient
 {
     #[ORM\Id]
@@ -59,6 +60,17 @@ class Ingredient
     private ?string $listDestination = null;
 
     /**
+     * Le parent de cet ingrédient quand c'est une PARTIE (ADR 0038 : « Jaune d'œuf » est une partie d'« Œuf »), `NULL` pour tout ingrédient
+     * ordinaire. Jamais copié avec l'ingrédient (le lien se refait par provenance, SUB-002) ; posé avec `parent_ratio` ou pas du tout.
+     */
+    #[ORM\Column(name: 'parent_slug', length: 255, nullable: true)]
+    private ?string $parentSlug = null;
+
+    /** Combien d'unités par défaut de la partie font UNE unité de recette du parent : `NULL` sans parent. */
+    #[ORM\Column(name: 'parent_ratio', type: 'float', nullable: true)]
+    private ?float $parentRatio = null;
+
+    /**
      * @param array<string> $compatibleUnitSlugs
      */
     public function __construct(
@@ -74,6 +86,8 @@ class Ingredient
         ?string $adoptedFrom = null,
         bool $isBase = false,
         ?string $listDestination = null,
+        ?string $parentSlug = null,
+        ?float $parentRatio = null,
     ) {
         $this->slug = $slug;
         $this->name = $name;
@@ -87,6 +101,8 @@ class Ingredient
         $this->adoptedFrom = $adoptedFrom;
         $this->isBase = $isBase;
         $this->listDestination = $listDestination;
+        $this->parentSlug = $parentSlug;
+        $this->parentRatio = $parentRatio;
     }
 
 
@@ -214,6 +230,23 @@ class Ingredient
         return $this;
     }
 
+    public function getParentSlug(): ?string
+    {
+        return $this->parentSlug;
+    }
+
+    public function getParentRatio(): ?float
+    {
+        return $this->parentRatio;
+    }
+
+    public function setParent(?string $parentSlug, ?float $parentRatio): Ingredient
+    {
+        $this->parentSlug = $parentSlug;
+        $this->parentRatio = $parentRatio;
+        return $this;
+    }
+
     public static function fromModel(IngredientModel $ingredient): static
     {
         return new static(
@@ -229,6 +262,8 @@ class Ingredient
             adoptedFrom: $ingredient->getAdoptedFrom(),
             isBase: $ingredient->isBase(),
             listDestination: $ingredient->getListDestination(),
+            parentSlug: $ingredient->getParentSlug(),
+            parentRatio: $ingredient->getParentRatio(),
         );
     }
 }

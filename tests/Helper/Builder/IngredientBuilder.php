@@ -30,6 +30,8 @@ class IngredientBuilder implements Builder
     private ?string $adoptedFrom = null;
     private bool $isBase = false;
     private ?string $listDestination = null;
+    private ?string $parentSlug = null;
+    private ?float $parentRatio = null;
     private bool $withoutCreator = false;
     private ?string $creatorId = null;
     /** @var Tab<Unit>  */
@@ -95,6 +97,8 @@ class IngredientBuilder implements Builder
             'adopted_from' => $this->adoptedFrom,
             'is_base' => $this->isBase,
             'list_destination' => $this->listDestination,
+            'parent_slug' => $this->parentSlug,
+            'parent_ratio' => $this->parentRatio,
         ]);
     }
 
@@ -273,6 +277,14 @@ class IngredientBuilder implements Builder
     public function withListDestination(?string $listDestination): self
     {
         $this->listDestination = $listDestination;
+        return $this;
+    }
+
+    /** Une PARTIE d'un autre ingrédient (ADR 0038) : son parent et le nombre d'unités d'elle qui font une unité de recette du parent. */
+    public function withParent(string $parentSlug, float $ratio = 1.0): self
+    {
+        $this->parentSlug = $parentSlug;
+        $this->parentRatio = $ratio;
         return $this;
     }
 

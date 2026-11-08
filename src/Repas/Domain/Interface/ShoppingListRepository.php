@@ -97,6 +97,13 @@ interface ShoppingListRepository
     public function isIngredientUsed(string $ingredientSlug): bool;
 
     /**
+     * Une ligne (`shopping_list_row`) de cet ingrédient est-elle dans une liste NON TERMINÉE (en cours, en pause ou envoyée au drive) ? Une
+     * requête, aucun agrégat hydraté : un ingrédient qui y est ne se découpe pas, une partie n'est jamais une ligne de liste (ADR 0038
+     * décision 6).
+     */
+    public function isIngredientInOpenList(string $ingredientSlug): bool;
+
+    /**
      * Un repas d'une liste de courses est-il planifié avec cette recette ?
      */
     public function isRecipePlanned(string $recipeId): bool;

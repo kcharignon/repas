@@ -15,8 +15,8 @@ class SearchIngredientsQueryHandlerTest extends TestCase
     {
         // Given
         $results = [
-            new IngredientSearchResultDTO('tomate', 'tomate', 'g', false, 'fruits-et-legumes', 'Fruits et légumes', 'images/department/fruits.png'),
-            new IngredientSearchResultDTO('sauce-tomate', 'sauce tomate', '', true, 'epicerie', 'Épicerie', 'images/department/epicerie.png'),
+            new IngredientSearchResultDTO('tomate', 'tomate', 'g', false, 'fruits-et-legumes', 'Fruits et légumes', 'images/department/fruits.png', null, null),
+            new IngredientSearchResultDTO('sauce-tomate', 'sauce tomate', '', true, 'epicerie', 'Épicerie', 'images/department/epicerie.png', null, null),
         ];
         $handler = new SearchIngredientsQueryHandler(new IngredientInMemoryLoader(searchResults: $results));
 

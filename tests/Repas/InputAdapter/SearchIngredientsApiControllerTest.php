@@ -14,8 +14,8 @@ class SearchIngredientsApiControllerTest extends QueryBusWebTestCase
         // Given
         $user = $this->savedUser();
         $this->queryBus->willReturn(SearchIngredientsQuery::class, [
-            new IngredientSearchResultDTO('tomate', 'tomate', 'g', false, 'fruits-et-legumes', 'Fruits et légumes', 'images/department/fruits.png'),
-            new IngredientSearchResultDTO('sauce-tomate', 'sauce tomate', '', true, 'epicerie', 'Épicerie', 'images/department/epicerie.png'),
+            new IngredientSearchResultDTO('tomate', 'tomate', 'g', false, 'fruits-et-legumes', 'Fruits et légumes', 'images/department/fruits.png', null, null),
+            new IngredientSearchResultDTO('pelure', 'pelure de tomate', '', true, 'epicerie', 'Épicerie', 'images/department/epicerie.png', 'tomate', 'tomate'),
         ]);
 
         // When
@@ -29,10 +29,12 @@ class SearchIngredientsApiControllerTest extends QueryBusWebTestCase
                 [
                     'slug' => 'tomate', 'name' => 'tomate', 'purchaseUnitSymbol' => 'g', 'canEdit' => false,
                     'departmentSlug' => 'fruits-et-legumes', 'departmentName' => 'Fruits et légumes', 'departmentImage' => 'images/department/fruits.png',
+                    'partOfSlug' => null, 'partOfName' => null,
                 ],
                 [
-                    'slug' => 'sauce-tomate', 'name' => 'sauce tomate', 'purchaseUnitSymbol' => '', 'canEdit' => true,
+                    'slug' => 'pelure', 'name' => 'pelure de tomate', 'purchaseUnitSymbol' => '', 'canEdit' => true,
                     'departmentSlug' => 'epicerie', 'departmentName' => 'Épicerie', 'departmentImage' => 'images/department/epicerie.png',
+                    'partOfSlug' => 'tomate', 'partOfName' => 'tomate',
                 ],
             ],
             'totalItems' => 2,

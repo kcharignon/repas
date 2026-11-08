@@ -116,6 +116,26 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
         $this->models = $this->models->filter(fn(Ingredient $ingredient) => $ingredient->getCreatorId() !== $creatorId);
     }
 
+    public function partsHaveAtLeast(string $parentSlug, int $count): bool
+    {
+        return $this->models->filter(fn(Ingredient $ingredient) => $ingredient->getParentSlug() === $parentSlug)->count() >= $count;
+    }
+
+    public function hasParts(string $slug): bool
+    {
+        return $this->partsHaveAtLeast($slug, 1);
+    }
+
+    public function detachParts(string $parentSlug): void
+    {
+        foreach ($this->models as $ingredient) {
+            /** @var Ingredient $ingredient */
+            if ($ingredient->getParentSlug() === $parentSlug) {
+                $ingredient->detachFromParent();
+            }
+        }
+    }
+
     public function clearListDestination(string $creatorId, string $destination): void
     {
         foreach ($this->models as $ingredient) {

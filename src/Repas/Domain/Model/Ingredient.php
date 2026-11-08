@@ -21,6 +21,12 @@ final class Ingredient implements ModelInterface
     public const int MAX_PER_CREATOR = 2000;
 
     /**
+     * Nombre de parties qu'un même ingrédient peut avoir (ADR 0038 décision 2) : un œuf a un jaune et un blanc, personne n'a demandé plus de
+     * dix. Le contrôle est un test d'existence de la dixième partie (`IngredientRepository::partsHaveAtLeast`) : si elle existe, le parent est plein ; jamais un décompte.
+     */
+    public const int MAX_PARTS = 10;
+
+    /**
      * @param Tab<Unit> $compatibleUnits
      */
     public function __construct(
@@ -36,6 +42,8 @@ final class Ingredient implements ModelInterface
         private ?string    $adoptedFrom = null,
         private bool       $isBase = false,
         private ?string    $listDestination = null,
+        private ?string    $parentSlug = null,
+        private ?float     $parentRatio = null,
     ) {
     }
 
@@ -218,6 +226,63 @@ final class Ingredient implements ModelInterface
         return $this;
     }
 
+    /**
+     * Le slug de l'ingrédient dont celui-ci est une PARTIE (ADR 0038 : « Jaune d'œuf » est une partie d'« Œuf »), `null` pour un ingrédient
+     * ordinaire. Un seul parent, profondeur 1 : un parent n'est pas une partie. Un choix PERSONNEL de l'utilisateur : une copie de
+     * l'ingrédient (copie de recette, amorçage d'un compte) ne le porte jamais, le lien se refait par provenance (SUB-002).
+     */
+    public function getParentSlug(): ?string
+    {
+        return $this->parentSlug;
+    }
+
+    /**
+     * Combien d'unités par défaut de cette partie font UNE unité de recette du parent (1 œuf = 1 jaune : `1` ; une gousse de vanille = deux
+     * demi-gousses : `2`). `null` si l'ingrédient n'est pas une partie : le parent et le ratio sont posés ensemble ou pas du tout.
+     */
+    public function getParentRatio(): ?float
+    {
+        return $this->parentRatio;
+    }
+
+    public function isPart(): bool
+    {
+        return $this->parentSlug !== null;
+    }
+
+    /**
+     * Fait de cet ingrédient une partie de `$parentSlug` (ou change son parent ou son ratio). Ne juge que ce que l'ingrédient sait seul : pas
+     * lui-même, un ratio fini de 0,000001 à 1 000 000. Ce qui suppose d'autres ingrédients (le parent est à l'utilisateur, n'est pas une
+     * partie, la partie n'a pas de partie, le plafond de dix, les listes en cours) est jugé par le cas d'usage AVANT cet appel.
+     *
+     * @throws IngredientException `partOfItself()` ou `partRatioInvalid()`
+     */
+    public function makePartOf(string $parentSlug, float $ratio): Ingredient
+    {
+        if ($parentSlug === $this->slug) {
+            throw IngredientException::partOfItself();
+        }
+        if (!QuantityBounds::isCoefficient($ratio)) {
+            throw IngredientException::partRatioInvalid();
+        }
+
+        $this->parentSlug = $parentSlug;
+        $this->parentRatio = $ratio;
+
+        return $this;
+    }
+
+    /**
+     * L'ingrédient redevient ordinaire : ni parent ni ratio (toujours ensemble).
+     */
+    public function detachFromParent(): Ingredient
+    {
+        $this->parentSlug = null;
+        $this->parentRatio = null;
+
+        return $this;
+    }
+
     public function hasSameUnitInCookingAndPurchase(): bool
     {
         return $this->defaultCookingUnit->isEqual($this->defaultPurchaseUnit);
@@ -290,6 +355,9 @@ final class Ingredient implements ModelInterface
      * La provenance voyage, pour TOUTE copie (ADR 0028, amendement, D7) : la copie d'une copie garde l'origine de l'original (`adopted_from`),
      * et la copie d'un ingrédient qui n'a pas d'origine le retient lui-même (son slug). Une copie retient donc toujours une origine : elle
      * n'est jamais une création (`isAdoption()`), la statistique « ingrédients créés » ne la compte pas.
+     *
+     * Une copie ne recopie JAMAIS `parent_slug` ni `parent_ratio` (ADR 0038 décision 5) : le slug du parent de l'original est celui d'un
+     * ingrédient d'un AUTRE compte. Le lien se refait par provenance (SUB-002), ou n'existe pas.
      */
     public static function copyFromOriginal(Ingredient $ingredient, string $authorId, string $slug): self
     {
@@ -332,6 +400,8 @@ final class Ingredient implements ModelInterface
             adoptedFrom: $datas['adopted_from'],
             isBase: $datas['is_base'] ?? false,
             listDestination: $datas['list_destination'] ?? null,
+            parentSlug: $datas['parent_slug'] ?? null,
+            parentRatio: $datas['parent_ratio'] ?? null,
         );
     }
 

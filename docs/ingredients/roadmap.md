@@ -21,7 +21,7 @@ Un agent d'implémentation travaille **un ticket = une PR** ([`../drive/consigne
 | [`rapprochement.md`](rapprochement.md) | Algorithme de rapprochement à la copie d'une recette, **expérience chiffrée du seuil**, recommandation |
 | [`fusion.md`](fusion.md) | Fusion de deux ingrédients : règles, API, doublons possibles, **interface** (textes exacts), tests |
 | [`sans-commun.md`](sans-commun.md) | **Amendement du 2026-10-20** : le modèle sans ingrédient commun, la règle d'amorçage transitoire, l'ordre exact des sorties et des opérations, les contrôles SQL (avant, après, retour arrière), l'inventaire de ce qui change et de ce qui meurt, les risques |
-| [`base-ingredients.tsv`](base-ingredients.tsv) | Le classement validé des 261 anciens communs : 151 « de base », 110 « spécifiques » (donnée de la passation) |
+| [`base-ingredients.tsv`](base-ingredients.tsv) | Le classement validé des 261 anciens communs : 151 « de base », 110 « spécifiques » (donnée de la passation). **Deux lignes de plus à la fin (SUB-001, ADR 0038) : `jaune-d-oeuf` et `blanc-d-oeuf`, les deux PARTIES d'« Œuf »** — des données de développement, de base, qui ne font pas partie des 261 ni de leurs sommes de contrôle (les tests de la passation les écartent) ; elles donnent les valeurs « jaune d'œuf » et « blanc d'œuf » au type `INGREDIENT` du skill Alexa |
 | [`experiments/`](experiments/) | Script d'essai jetable (`evaluate.php`), générateur et jeu de **vérité terrain** synthétique (`ground-truth.json`), résultats rejouables (`resultats.md`) |
 | [`tickets/ING-*.md`](tickets/) | Un ticket par fichier |
 
@@ -70,7 +70,7 @@ Taille : S (quelques heures), M (une journée), L (plusieurs jours). Effort : le
 
 Une partie (« Jaune d'œuf ») est un ingrédient du compte relié à un parent (« Œuf ») par un ratio, jamais une ligne de liste : le total du parent est `quantité directe + max(équivalent des parties)`. **L'implémentation passe après l'import Marmiton (MAR-003)** ; MAR-003 ne change pas.
 
-- [ ] [SUB-001](tickets/SUB-001-modele-et-decoupage.md) back · L · **xhigh** · Modèle (`parent_slug`, `parent_ratio`), découpage `PUT|DELETE /ingredients/{slug}/parent`, lectures · dépend de : MAR-003
+- [x] [SUB-001](tickets/SUB-001-modele-et-decoupage.md) (PR #445) back · L · **xhigh** · Modèle (`parent_slug`, `parent_ratio`), découpage `PUT|DELETE /ingredients/{slug}/parent`, lectures · dépend de : MAR-003
 - [ ] [SUB-002](tickets/SUB-002-copie-aux-comptes.md) back · M · **xhigh** · Le découpage voyage : amorçage, copie de recette, rattrapage `seed --complete` · dépend de : 001
 - [ ] [SUB-003](tickets/SUB-003-calcul-dans-la-liste.md) back · L · **xhigh** · Le total du parent dans la liste (`part_shares`, `addPart|subtractPart`, handlers, détail), drive prouvé · dépend de : 001
 - [ ] [SUB-004](tickets/SUB-004-fusion-suppression-et-registre.md) back · M · **xhigh** · Fusion, suppression, couverture du schéma · dépend de : 001, 003

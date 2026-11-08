@@ -408,7 +408,11 @@ class IngredientDuplicateLoaderTest extends DatabaseTestCase
         foreach (json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/src/Repas/Infrastructure/DataFixture/Data/department.json'), true, flags: JSON_THROW_ON_ERROR) as $department) {
             $this->department($department['slug'], $department['name']);
         }
-        $commons = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/src/Repas/Infrastructure/DataFixture/Data/ingredient.json'), true, flags: JSON_THROW_ON_ERROR);
+        // Les 256 communs du jeu de référence, sans les deux PARTIES d'« Œuf » ajoutées après (ADR 0038 : « Blanc d'œuf » est un vrai ingrédient du catalogue de développement, la vérité terrain le donne pour « aucun lien »)
+        $commons = array_values(array_filter(
+            json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/src/Repas/Infrastructure/DataFixture/Data/ingredient.json'), true, flags: JSON_THROW_ON_ERROR),
+            static fn(array $common): bool => !isset($common['parent']),
+        ));
         $suffixed = ['pate', 'oeuf', 'sel', 'sucre', 'farine', 'beurre', 'lait'];
 
         $adopted = 0;

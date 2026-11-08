@@ -37,6 +37,10 @@ use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredi
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListHandler;
 use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredientCommand;
 use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredientHandler;
+use Repas\Repas\Application\Command\RemoveIngredientParent\RemoveIngredientParentCommand;
+use Repas\Repas\Application\Command\RemoveIngredientParent\RemoveIngredientParentHandler;
+use Repas\Repas\Application\Command\SetIngredientParent\SetIngredientParentCommand;
+use Repas\Repas\Application\Command\SetIngredientParent\SetIngredientParentHandler;
 use Repas\Repas\Application\Command\UpdateConversion\UpdateConversionCommand;
 use Repas\Repas\Application\Command\UpdateIngredientConversion\UpdateIngredientConversionCommand;
 use Repas\Repas\Application\Command\UpdateIngredientConversion\UpdateIngredientConversionHandler;
@@ -90,6 +94,9 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
         CreateIngredientConversionCommand::class => CreateIngredientConversionHandler::class,
         UpdateIngredientConversionCommand::class => UpdateIngredientConversionHandler::class,
         DeleteIngredientConversionCommand::class => DeleteIngredientConversionHandler::class,
+        // Le découpage en parties (ADR 0038, SUB-001) : la partie ET son parent sont traduits par les alias
+        SetIngredientParentCommand::class => SetIngredientParentHandler::class,
+        RemoveIngredientParentCommand::class => RemoveIngredientParentHandler::class,
     ];
 
     /**

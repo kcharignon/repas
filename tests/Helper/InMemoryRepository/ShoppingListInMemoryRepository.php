@@ -176,6 +176,18 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
         return false;
     }
 
+    public function isIngredientInOpenList(string $ingredientSlug): bool
+    {
+        /** @var ShoppingList $shoppingList */
+        foreach ($this->models as $shoppingList) {
+            if (!$shoppingList->isCompleted() && $shoppingList->findRow($ingredientSlug) !== null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function deleteByOwner(string $ownerId): void
     {
         foreach ($this->findIdsByOwner($ownerId) as $shoppingListId) {

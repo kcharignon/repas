@@ -11,7 +11,7 @@ parameters:
         - tests/
         - quality-rules/Phpstan/
     treatPhpDocTypesAsCertain: false
-    # La migration-garde d'ING-014, la migration des conversions universelles, celles des votes de rayons, celle des index, celle des comptes en attente, celle des majuscules des noms et celle des valeurs observées par les comptes du drive, celle de la largeur des identifiants de magasin, celle de l'identifiant d'offre et celle de la préférence d'enseigne, celle de l'icône d'un rayon, celle de la recette secrète, celle des recettes favorites, celle des types de liste de courses et celle de la répartition d'un repas éclaté et celle du prix commun du drive (DRV-770) et celle des recettes Marmiton (MAR-003) sont chargées par un test (les migrations ne sont pas autoloadées)
+    # La migration-garde d'ING-014, la migration des conversions universelles, celles des votes de rayons, celle des index, celle des comptes en attente, celle des majuscules des noms et celle des valeurs observées par les comptes du drive, celle de la largeur des identifiants de magasin, celle de l'identifiant d'offre et celle de la préférence d'enseigne, celle de l'icône d'un rayon, celle de la recette secrète, celle des recettes favorites, celle des types de liste de courses et celle de la répartition d'un repas éclaté et celle du prix commun du drive (DRV-770) et celle des recettes Marmiton (MAR-003) et celle des sous-ingrédients (SUB-001) sont chargées par un test (les migrations ne sont pas autoloadées)
     scanFiles:
         - migrations/Version20261024120000.php
         - migrations/Version20261027100000.php
@@ -32,6 +32,7 @@ parameters:
         - migrations/Version20261031160000.php
         - migrations/Version20261105100000.php
         - migrations/Version20261108100000.php
+        - migrations/Version20261108140000.php
 
 services:
     -
