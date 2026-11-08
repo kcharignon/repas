@@ -8,6 +8,8 @@ use Repas\Repas\Domain\Exception\MarmitonImportException;
 use Repas\Repas\Domain\Interface\MarmitonPageReader;
 use Repas\Repas\Domain\Model\MarmitonRecipePage;
 use Repas\Repas\Domain\Model\MarmitonUrl;
+use Repas\Repas\Infrastructure\Network\HostAddressResolver;
+use Repas\Repas\Infrastructure\Network\PublicAddress;
 use Symfony\Component\HttpClient\Exception\TransportException;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface as HttpClientException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -87,27 +89,13 @@ final readonly class MarmitonHttpPageReader implements MarmitonPageReader
         }
 
         foreach ($addresses as $address) {
-            if (!$this->isPublic($address)) {
+            // Seules des adresses IPv4 publiques : une adresse IPv6 n'est jamais celle à laquelle on se connecte (ADR 0037)
+            if (filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false || !PublicAddress::isPublic($address)) {
                 throw $this->unavailable('le nom se résout vers une adresse non publique');
             }
         }
 
         return $addresses[0];
-    }
-
-    /**
-     * Une adresse IPv4 routable sur l'Internet public : ni privée, ni loopback, ni lien local, ni partagée (100.64/10), ni réservée, ni de
-     * documentation (`FILTER_FLAG_GLOBAL_RANGE`), ni multicast (224/4, que ce filtre laisse passer).
-     */
-    private function isPublic(string $address): bool
-    {
-        if (filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_GLOBAL_RANGE) === false) {
-            return false;
-        }
-
-        $long = ip2long($address);
-
-        return $long !== false && ($long & 0xF0000000) !== 0xE0000000;
     }
 
     /**

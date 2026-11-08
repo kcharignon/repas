@@ -12,6 +12,10 @@ parameters:
     # Magasin des verrous (config/packages/lock.yaml, .env) ; en mémoire en test (bloc `when@test` plus bas)
     repas.lock_dsn: '%env(LOCK_DSN)%'
 
+    # Racine publique du back, dont le sous-dossier `images/uploads` reçoit les images envoyées par l'administrateur (ADR 0039) : le volume Docker
+    # `uploads` en production, un dossier jetable en test (bloc `when@test` plus bas)
+    repas.images.public_directory: '%kernel.project_dir%/public'
+
     # Les enseignes du registre du drive (DRV-702) : `DRIVE_RETAILERS` n'allume que celles-là, un identifiant inconnu est ignoré et journalisé.
     # La liste vient du registre lui-même (`Shared` ne nomme aucune enseigne) ; ce fichier de configuration n'en nomme aucune non plus.
     repas.drive.known_retailers: !php/const Repas\Drive\Domain\Model\Retailer::IDS
@@ -93,6 +97,16 @@ services:
         alias: Repas\Repas\Infrastructure\Marmiton\MarmitonHttpPageReader
         public: true
 
+    # Images envoyées par l'administrateur (ADR 0039) : le téléchargement par lien (hôte quelconque, adresses publiques seulement) et le disque. Publics
+    # pour qu'un test de bout en bout les remplace par des doubles : aucun test automatique ne télécharge ni n'écrit dans `public/`.
+    Repas\Repas\Domain\Interface\ImageFetcher:
+        alias: Repas\Repas\Infrastructure\Image\HttpImageFetcher
+        public: true
+
+    Repas\Repas\Domain\Interface\ImageStorage:
+        alias: Repas\Repas\Infrastructure\Image\FilesystemImageStorage
+        public: true
+
     # Propriétaire du catalogue d'ingrédients (ADR 0028, amendement du 2026-10-20) : le compte protégé, ou, en développement seulement, celui
     # que désigne `INGREDIENT_CATALOG_OWNER_EMAIL` (vide dans `.env`, jamais posée en production). Les deux Open Host Services (écriture et
     # lecture, ADR 0035) lisent la même variable.
@@ -143,6 +157,8 @@ when@test:
         # Un seul processus par test de base : les verrous restent en mémoire (tests/Shared/Infrastructure/RateLimiter prouve le vrai
         # magasin avec plusieurs processus)
         repas.lock_dsn: 'in-memory'
+        # Les images envoyées vont dans un dossier jetable, un par processus de test (ParaTest) : jamais dans `public/`
+        repas.images.public_directory: '%kernel.project_dir%/var/test-public%env(default::TEST_TOKEN)%'
 
     services:
         # Fixtures de développement, chargées aussi par les tests de `DevelopmentFixturesTest` (voir l'exclusion de `Repas\` plus haut)
