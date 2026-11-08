@@ -10,6 +10,7 @@ use Repas\Repas\Application\Port\SeedingAccountCommandPort;
 use Repas\Repas\Application\Service\AdoptionVerifier;
 use Repas\Repas\Domain\Exception\IngredientAdoptionException;
 use Repas\Repas\Domain\Interface\IngredientAdoptionBulkRepository;
+use Repas\Repas\Domain\Interface\IngredientPartLinkRepository;
 use Repas\Repas\Domain\Model\IngredientToSeed;
 use Repas\Repas\Domain\Service\IngredientSlugPolicy;
 use Repas\Repas\Application\Port\DriveChoicesCommandPort;
@@ -29,6 +30,10 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * 2. empreinte d'AVANT (Repas et drive) ; les listes envoyées au drive qui seraient modifiées exigent `acceptSent` ;
  * 3. les alias d'abord (ils arbitrent une activation simultanée), puis les copies et leurs conversions propres, en lots ;
  * 4. repointage des lignes de ses recettes et de ses listes (versions +1), puis de ses choix du drive : jamais l'un sans l'autre ;
+ * 4 bis. la LIAISON des sous-ingrédients (ADR 0038 décisions 5 et 21) : une copie ne recopie jamais `parent_slug`, UNE instruction relie les
+ *    copies du compte entre elles par provenance (« Jaune d'œuf » à « Œuf » quand le catalogue les lie), APRÈS le repointage (une copie qui
+ *    porte une ligne d'une liste en cours reste ordinaire) et sans jamais écraser un lien que le compte a déjà. `complete` la joue aussi
+ *    quand il n'y a plus rien à copier (le rattrapage d'un compte qui a déjà ses copies) ;
  * 5. empreinte d'APRÈS comparée à celle d'avant : à la moindre différence, `IngredientAdoptionException`, donc ANNULATION de tout ce qui
  *    précède pour ce compte (la transaction n'est pas validée) — et, lancé par l'activation, de l'activation elle-même (décision D6).
  *
@@ -43,6 +48,7 @@ readonly class SeedUserIngredientsHandler
 
     public function __construct(
         private IngredientAdoptionBulkRepository $bulkRepository,
+        private IngredientPartLinkRepository $partLinks,
         private CatalogOwnerCommandPort $catalogOwner,
         private SeedingAccountCommandPort $accounts,
         private DriveChoicesCommandPort $driveChoices,
@@ -90,7 +96,7 @@ readonly class SeedUserIngredientsHandler
         // d'un vieil onglet) est repointé sur sa copie, comme le fait la migration d'ING-003 quand on la rejoue
         $adoptedOrigins = $command->complete ? array_keys($this->bulkRepository->adoptions($userId)) : [];
         if ($toSeed === [] && $adoptedOrigins === []) {
-            return SeedResult::of(SeedOutcome::NOTHING_TO_ADD);
+            return $this->nothingToAdd($userId, $command->complete);
         }
 
         $sourceSlugs = array_values(array_unique([...array_map(static fn(IngredientToSeed $ingredient): string => $ingredient->slug, $toSeed), ...$adoptedOrigins]));
@@ -98,7 +104,7 @@ readonly class SeedUserIngredientsHandler
         $statisticsBefore = $this->accounts->statisticsFingerprint($userId);
         $driveBefore = $this->driveChoices->fingerprint($userId);
         if ($toSeed === [] && $before->watchedRows() === 0 && array_intersect($driveBefore->ingredientSlugByChoice, $adoptedOrigins) === []) {
-            return SeedResult::of(SeedOutcome::NOTHING_TO_ADD);
+            return $this->nothingToAdd($userId, $command->complete);
         }
 
         $sentLists = $before->sentShoppingListsToRepoint();
@@ -145,6 +151,9 @@ readonly class SeedUserIngredientsHandler
         $repointed = $this->bulkRepository->repointToCopies($userId);
         $driveChoices = $this->driveChoices->repoint($userId, $adoptions);
 
+        // La liaison des sous-ingrédients, après tout le reste : les copies existent, leurs lignes sont repointées, la règle voit l'état final
+        $partsLinked = $this->partLinks->linkCopies($userId);
+
         // Les vérifications, DANS la transaction : un défaut annule tout pour ce compte (et l'activation qui l'a demandé)
         $after = $this->bulkRepository->snapshot($userId, $sourceSlugs);
         $statisticsAfter = $this->accounts->statisticsFingerprint($userId);
@@ -175,6 +184,16 @@ readonly class SeedUserIngredientsHandler
             driveChoicesRepointed: $driveChoices,
             sentShoppingListsRepointed: $sentLists,
             fingerprint: $after->contentFingerprint(),
+            partsLinked: $partsLinked,
         );
+    }
+
+    /**
+     * Rien à copier. Le rattrapage (`complete`) relie quand même : le catalogue a pu découper ses ingrédients après que le compte a reçu ses
+     * copies (les deux copies sont là, elles attendent leur lien). Sans `complete`, un compte qui n'a rien à recevoir n'est pas touché.
+     */
+    private function nothingToAdd(string $userId, bool $complete): SeedResult
+    {
+        return new SeedResult(SeedOutcome::NOTHING_TO_ADD, partsLinked: $complete ? $this->partLinks->linkCopies($userId) : 0);
     }
 }

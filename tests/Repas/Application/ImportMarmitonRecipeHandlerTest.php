@@ -38,6 +38,7 @@ use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\DepartmentInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\IngredientPartLinkInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientMatchCandidatesInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeTypeInMemoryRepository;
@@ -69,6 +70,7 @@ class ImportMarmitonRecipeHandlerTest extends TestCase
     private IngredientInMemoryRepository $ingredients;
     private ConversionInMemoryRepository $conversions;
     private IngredientAliasInMemoryRepository $aliases;
+    private IngredientPartLinkInMemoryRepository $partLinks;
     private MarmitonInMemoryPageReader $reader;
     private MarmitonImportLimiterInMemory $limiter;
     private MarmitonImportLockSpy $lock;
@@ -97,6 +99,7 @@ class ImportMarmitonRecipeHandlerTest extends TestCase
         $this->ingredients = new IngredientInMemoryRepository($ingredients);
         $this->recipes = new RecipeInMemoryRepository($recipes);
         $this->aliases = new IngredientAliasInMemoryRepository($aliases);
+        $this->partLinks = new IngredientPartLinkInMemoryRepository();
         $this->conversions = new ConversionInMemoryRepository([new ConversionBuilder()->isKiloToGramme()->build(), ...$conversions]);
         $this->events = new SpyEventDispatcher();
         $this->reader = new MarmitonInMemoryPageReader()->willRead('22082', $this->page());
@@ -118,6 +121,7 @@ class ImportMarmitonRecipeHandlerTest extends TestCase
             new IngredientNameMatcher(),
             new IngredientSlugPolicy(),
             $conversionService,
+            $this->partLinks,
             new UuidGenerator(),
             $this->events,
         );
@@ -750,6 +754,45 @@ class ImportMarmitonRecipeHandlerTest extends TestCase
         $this->assertSame($usersSugar->getSlug(), $slugs[1]);
         $after = $this->ingredients->findAll()->filter(static fn(Ingredient $ingredient): bool => $ingredient->getCreatorId() === self::USER)->count();
         $this->assertSame($before + 1, $after, 'Un seul ingrédient copié pour l\'utilisateur : « Oeufs ».');
+    }
+
+    public function testAnIngredientOfTheNeutralNeverHasAParentAndTheUsersCopyFindsHisOwnPartByOrigin(): void
+    {
+        // Given : le catalogue a « Œuf » et sa partie « Jaune d'œuf » (de base, ratio 1) ; l'utilisateur a reçu les deux à son activation, reliés
+        $egg = new IngredientBuilder()->isEgg()->withCreatorId(self::CATALOG)->withBase()->build();
+        $yolk = new IngredientBuilder()->isEgg()->withName("Jaune d'œuf")->withSlug('jaune-d-oeuf')->withCreatorId(self::CATALOG)->withBase()->withParent($egg->getSlug(), 1.0)->build();
+        $usersEgg = Ingredient::copyFromOriginal($egg, self::USER, $egg->getSlug() . self::USER);
+        $usersYolk = Ingredient::copyFromOriginal($yolk, self::USER, $yolk->getSlug() . self::USER)->makePartOf($usersEgg->getSlug(), 1.0);
+        $now = new \DateTimeImmutable();
+        $this->assemble(
+            [$egg, $yolk, $usersEgg, $usersYolk],
+            aliases: [
+                IngredientAlias::create(self::USER, $egg->getSlug(), $usersEgg->getSlug(), AliasKind::ADOPTION, 'activation', $now),
+                IngredientAlias::create(self::USER, $yolk->getSlug(), $usersYolk->getSlug(), AliasKind::ADOPTION, 'activation', $now),
+            ],
+        );
+        $this->reader->willRead('22082', $this->page(["2 jaunes d'oeuf", '3 oeufs']));
+
+        // When
+        $this->import();
+
+        // Then : les ingrédients de la neutre sont des copies ordinaires du propriétaire réservé, sans parent (la copie du catalogue ne recopie jamais le lien)
+        foreach ($this->neutral()->getRows() as $row) {
+            $this->assertSame(self::OWNER, $row->getIngredient()->getCreatorId());
+            $this->assertNull($row->getIngredient()->getParentSlug(), $row->getIngredient()->getName());
+        }
+        $this->assertSame(
+            [$yolk->getSlug(), $egg->getSlug()],
+            array_map(static fn(RecipeRow $row): ?string => $row->getIngredient()->getAdoptedFrom(), $this->neutral()->getRows()->toArray()),
+            'les deux ingrédients de la neutre sont bien des copies du catalogue, dont le jaune est une partie là-bas',
+        );
+        $this->assertNotContains(self::OWNER, $this->partLinks->linkedUsers, 'le propriétaire réservé des recettes Marmiton n\'est jamais relié');
+
+        // And : la copie de l'utilisateur retrouve SES ingrédients par provenance (il garde son lien), rien n'est copié, rien à relier
+        $slugs = array_map(static fn(RecipeRow $row): string => $row->getIngredient()->getSlug(), $this->recipes->findOneById('copy-id')->getRows()->toArray());
+        $this->assertSame([$usersYolk->getSlug(), $usersEgg->getSlug()], $slugs);
+        $this->assertSame($usersEgg->getSlug(), $this->ingredients->findOneBySlug($usersYolk->getSlug())->getParentSlug());
+        $this->assertSame([], $this->partLinks->linkedUsers);
     }
 
     public function testTheNeutralIsNeverRewrittenByAnImportOfAKnownLink(): void

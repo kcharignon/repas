@@ -32,6 +32,11 @@ use Throwable;
  * supprimé, un compte déjà amorcé n'est jamais touché (sauf `--complete`, sur demande explicite pour un compte). Une transaction par
  * compte, rejouable. Elle marche interrupteur coupé : l'interrupteur ne commande que l'amorçage automatique à l'activation.
  *
+ * Les sous-ingrédients (ADR 0038 décisions 21 et 22, SUB-002) : une copie ne recopie jamais le parent, la liaison se refait chez chaque compte par
+ * provenance, après les copies. L'écriture la fait pour tout compte qu'elle traite ; `--complete` copie les parties qui manquent PUIS relie, et
+ * relie même quand il n'y a plus rien à copier. Le rapport dit, par compte, le nombre de liens qu'`--apply` poserait (« à relier ») et la requête
+ * de santé (`--check`) compte les copies qui attendent leur lien, tous comptes confondus.
+ *
  * Ici, seulement la boucle et l'affichage : le travail d'un compte est la commande applicative `SeedUserIngredients` (bus transactionnel),
  * le rapport est la requête `GetSeedingReport`. La sortie n'a jamais d'adresse e-mail, d'identifiant de compte ni de nom d'ingrédient
  * personnel : les comptes sont numérotés et désignés par une référence courte (SHA-256).
@@ -152,7 +157,7 @@ final class SeedIngredientsCommand extends Command
         }
 
         if ($report->isConform()) {
-            $io->success('Rien à faire : 0 à copier, 0 à repointer, la requête de santé est verte. Rien n\'a été modifié.');
+            $io->success('Rien à faire : 0 à copier, 0 à repointer, 0 à relier, la requête de santé est verte. Rien n\'a été modifié.');
 
             return Command::SUCCESS;
         }
@@ -191,10 +196,12 @@ final class SeedIngredientsCommand extends Command
         $failed = 0;
         $processed = 0;
         $changed = [];
+        /** @var array<string, string> $unmeasured l'empreinte d'avant des comptes dont le lancement n'a posé que des liens, par identifiant */
+        $unmeasured = [];
         $started = hrtime(true);
         foreach ($report->selected() as $user) {
             if ($user->isNothingToDo()) {
-                $io->text(sprintf('Compte n°%d [%s] : 0 à copier, 0 à repointer, rien à faire.', $user->rank, $user->reference));
+                $io->text(sprintf('Compte n°%d [%s] : 0 à copier, 0 à repointer, 0 à relier, rien à faire.', $user->rank, $user->reference));
                 continue;
             }
 
@@ -224,13 +231,21 @@ final class SeedIngredientsCommand extends Command
 
             ++$processed;
             $io->text($this->describe($user, $result));
-            if ($result->fingerprint !== $user->fingerprint) {
+            if ($result->fingerprint === '') {
+                // Rien à copier ni à repointer, seulement des liens : le handler n'a pas relu le contenu, c'est le rapport d'après qui le compare
+                $unmeasured[$user->userId] = $user->fingerprint;
+            } elseif ($result->fingerprint !== $user->fingerprint) {
                 $changed[] = $user->rank;
             }
         }
 
-        // Vérification d'après lancement : le même rapport, relu. Plus rien à copier ni à repointer, et la requête de santé.
+        // Vérification d'après lancement : le même rapport, relu. Plus rien à copier, à repointer ni à relier, et la requête de santé.
         $after = $this->report($input);
+        foreach ($after->users as $afterUser) {
+            if (isset($unmeasured[$afterUser->userId]) && $afterUser->selected && $afterUser->fingerprint !== $unmeasured[$afterUser->userId]) {
+                $changed[] = $afterUser->rank;
+            }
+        }
         $io->newLine();
         $io->section('Vérification d\'après lancement');
         $this->render($io, $after, true);
@@ -248,7 +263,7 @@ final class SeedIngredientsCommand extends Command
 
             return Command::FAILURE;
         }
-        $io->success('Rien à faire : 0 à copier, 0 à repointer, empreintes identiques à celles d\'avant.');
+        $io->success('Rien à faire : 0 à copier, 0 à repointer, 0 à relier, empreintes identiques à celles d\'avant.');
         if (!$after->health->isHealthy()) {
             // Le travail demandé est fait ; la santé est une porte à part (--check), que le script d'exploitation rejoue en dernier. Un compte en
             // attente ou désactivé qui a des lignes sur le catalogue, par exemple, n'est servi que sur demande (--user) : il rend la santé rouge.
@@ -261,7 +276,7 @@ final class SeedIngredientsCommand extends Command
     private function describe(SeedingUserReportDTO $user, SeedResult $result): string
     {
         return sprintf(
-            'Compte n°%d [%s] : %d copie(s) créée(s) (dont %d à slug suffixé, %d demandée(s) par ses lignes) et %d déjà présente(s) désignée(s), %d conversion(s) copiée(s) ; repointé : %d ligne(s) de %d recette(s), %d ligne(s) + %d ingrédient(s) de %d liste(s) dont %d envoyée(s), %d choix du drive ; empreinte %s identique.',
+            'Compte n°%d [%s] : %d copie(s) créée(s) (dont %d à slug suffixé, %d demandée(s) par ses lignes) et %d déjà présente(s) désignée(s), %d conversion(s) copiée(s) ; repointé : %d ligne(s) de %d recette(s), %d ligne(s) + %d ingrédient(s) de %d liste(s) dont %d envoyée(s), %d choix du drive ; %d lien(s) posé(s) entre sous-ingrédients ; empreinte %s identique.',
             $user->rank,
             $user->reference,
             $result->seeded,
@@ -276,7 +291,9 @@ final class SeedIngredientsCommand extends Command
             $result->repointed->shoppingLists,
             $result->sentShoppingListsRepointed,
             $result->driveChoicesRepointed,
-            $result->fingerprint,
+            $result->partsLinked,
+            // Des liens seulement : le contenu n'a pas été touché, la vérification d'après le prouve
+            $result->fingerprint !== '' ? $result->fingerprint : $user->fingerprint,
         );
     }
 
@@ -300,18 +317,19 @@ final class SeedIngredientsCommand extends Command
         ));
         $io->newLine();
 
-        $totals = ['seed' => 0, 'collisions' => 0, 'conversions' => 0, 'recipeRows' => 0, 'listRows' => 0, 'listIngredients' => 0, 'sent' => 0, 'choices' => 0];
+        $totals = ['seed' => 0, 'collisions' => 0, 'conversions' => 0, 'recipeRows' => 0, 'listRows' => 0, 'listIngredients' => 0, 'sent' => 0, 'choices' => 0, 'links' => 0];
         foreach ($report->users as $user) {
             if ($compact) {
                 // Après lancement : une ligne par compte retenu, ce qui reste à faire et l'empreinte
                 if ($user->selected) {
                     $io->text(sprintf(
-                        'Compte n°%d [%s] : %d à copier, %d ligne(s) et %d choix du drive à repointer, empreinte du contenu %s.',
+                        'Compte n°%d [%s] : %d à copier, %d ligne(s) et %d choix du drive à repointer, %d à relier, empreinte du contenu %s.',
                         $user->rank,
                         $user->reference,
                         $user->toSeed,
                         $user->linesToRepoint(),
                         $user->driveChoicesToRepoint,
+                        $user->linksToCreate,
                         $user->fingerprint,
                     ));
                     foreach ($user->blockingAnomalies as $anomaly) {
@@ -346,6 +364,7 @@ final class SeedIngredientsCommand extends Command
                 $user->driveChoices,
                 $user->driveProducts,
             ));
+            $io->text(sprintf('    à relier : %d copie(s) à leur parent, entre sous-ingrédients (ADR 0038)', $user->linksToCreate));
             $io->text(sprintf('    empreinte du contenu (identique avant et après) : %s', $user->fingerprint));
             foreach ($user->blockingAnomalies as $anomaly) {
                 $io->text('    ANOMALIE BLOQUANTE : ' . $anomaly);
@@ -359,12 +378,13 @@ final class SeedIngredientsCommand extends Command
             $totals['listIngredients'] += $user->shoppingListIngredientsToRepoint;
             $totals['sent'] += $user->sentShoppingListsToRepoint;
             $totals['choices'] += $user->driveChoicesToRepoint;
+            $totals['links'] += $user->linksToCreate;
         }
 
         if (!$compact) {
             $io->newLine();
             $io->text(sprintf(
-                'Totaux : %d copie(s) à créer (dont %d à slug suffixé), %d conversion(s) à copier ; à repointer : %d ligne(s) de recettes, %d ligne(s) et %d ingrédient(s) de listes (dont %d liste(s) envoyée(s)), %d choix du drive.',
+                'Totaux : %d copie(s) à créer (dont %d à slug suffixé), %d conversion(s) à copier ; à repointer : %d ligne(s) de recettes, %d ligne(s) et %d ingrédient(s) de listes (dont %d liste(s) envoyée(s)), %d choix du drive ; %d lien(s) de sous-ingrédients à poser.',
                 $totals['seed'],
                 $totals['collisions'],
                 $totals['conversions'],
@@ -373,6 +393,7 @@ final class SeedIngredientsCommand extends Command
                 $totals['listIngredients'],
                 $totals['sent'],
                 $totals['choices'],
+                $totals['links'],
             ));
         }
         $this->renderHealth($io, $report->health);
@@ -390,6 +411,7 @@ final class SeedIngredientsCommand extends Command
             ? sprintf('    lignes du propriétaire sur un ingrédient qui n\'est pas à lui : sans objet (pas de propriétaire du catalogue)')
             : sprintf('    lignes du propriétaire sur un ingrédient qui n\'est pas à lui : %s', $lines($health->ownerForeignLines)));
         $io->text(sprintf('    ingrédients sans propriétaire existant : %d', $health->ingredientsWithoutCreator));
+        $io->text(sprintf('    copies à relier (sous-ingrédients, tous comptes) : %d', $health->partsToLink));
         $io->text('    verdict : ' . ($health->isHealthy() ? 'VERT' : 'ROUGE'));
     }
 

@@ -31,6 +31,7 @@ use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientMatchCandidatesInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\IngredientPartLinkInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
@@ -54,6 +55,7 @@ class CopyRecipeHandlerTest extends TestCase
     private ConversionInMemoryRepository $conversions;
     private IngredientAliasInMemoryRepository $aliases;
     private IngredientMatchCandidatesInMemoryRepository $candidates;
+    private IngredientPartLinkInMemoryRepository $partLinks;
     private SpyEventDispatcher $events;
 
     protected function setUp(): void
@@ -72,6 +74,7 @@ class CopyRecipeHandlerTest extends TestCase
         $this->conversions = new ConversionInMemoryRepository($conversions);
         $this->recipes = new RecipeInMemoryRepository($recipes);
         $this->candidates = new IngredientMatchCandidatesInMemoryRepository($this->ingredients);
+        $this->partLinks = new IngredientPartLinkInMemoryRepository();
         $this->events = new SpyEventDispatcher();
         $units = new UnitInMemoryRepository([
             new UnitBuilder()->isUnite()->build(),
@@ -90,6 +93,7 @@ class CopyRecipeHandlerTest extends TestCase
                 new IngredientNameMatcher(),
                 new IngredientSlugPolicy(),
                 new ConversionService($this->conversions, $units),
+                $this->partLinks,
                 new UuidGenerator(),
                 $this->events,
             ),
@@ -180,6 +184,86 @@ class CopyRecipeHandlerTest extends TestCase
         $this->assertSame([], $this->createdSlugs());
         // et aucun alias n'est écrit
         $this->assertSame([], $this->aliases->all());
+    }
+
+    // --- Les sous-ingrédients voyagent avec les copies (ADR 0038 décisions 5 et 20, SUB-002) -----------------------------------------
+
+    public function testACopiedPartOfTheAuthorIsLinkedOnceAfterTheCopyAndNoParentIsEverCopied(): void
+    {
+        // Given : l'auteur a un « Œuf » et son « Jaune », partie de l'œuf ; la recette utilise le jaune et le copieur n'a ni l'un ni l'autre
+        [$egg, $yolk] = $this->eggAndYolk(self::AUTHOR);
+        $this->assemble([$egg, $yolk], recipes: [$this->recipe([$yolk])]);
+
+        // When
+        ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
+
+        // Then : seul le jaune est copié (jamais l'œuf « pour compléter », jamais le slug du parent de l'auteur), puis la liaison, une fois, pour le copieur
+        $this->assertSame(['jaune-d-oeuf' . self::COPIER], $this->slugsOfCopy());
+        $this->assertFalse($this->ingredients->exists('oeuf' . self::COPIER));
+        $this->assertNull($this->ingredients->findOneBySlug('jaune-d-oeuf' . self::COPIER)->getParentSlug(), 'la copie ne recopie jamais parent_slug');
+        $this->assertSame([self::COPIER], $this->partLinks->linkedUsers);
+    }
+
+    public function testACopyWithoutAnyPartCostsNoLinkingAtAll(): void
+    {
+        // Given : des ingrédients ordinaires que le copieur n'a pas (ils sont copiés)
+        $cheese = $this->personal('fromage', $this->cheese(), $this->unit()->isBox(), self::AUTHOR);
+        $this->assemble([$cheese], recipes: [$this->recipe([$cheese], unit: $this->unit()->isBox())]);
+
+        // When
+        ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
+
+        // Then : une copie a eu lieu, aucune liaison n'est demandée (zéro requête de plus pour qui n'a pas de découpage)
+        $this->assertSame(['fromage' . self::COPIER], $this->slugsOfCopy());
+        $this->assertSame([], $this->partLinks->linkedUsers);
+    }
+
+    public function testAPartThatTheCopierAlreadyHasIsRetainedAndNothingIsLinked(): void
+    {
+        // Given : le copieur a reçu à son activation une copie du jaune (et son alias) ; la recette de l'auteur utilise le jaune
+        [$egg, $yolk] = $this->eggAndYolk(self::AUTHOR);
+        $copy = Ingredient::copyFromOriginal($yolk, self::COPIER, 'jaune-d-oeuf' . self::COPIER);
+        $this->assemble([$egg, $yolk, $copy], aliases: [$this->alias($yolk->getSlug(), $copy->getSlug())], recipes: [$this->recipe([$yolk])]);
+
+        // When
+        ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
+
+        // Then : sa copie est retenue (rien de copié, donc rien à relier)
+        $this->assertSame([$copy->getSlug()], $this->slugsOfCopy());
+        $this->assertSame([], $this->partLinks->linkedUsers);
+    }
+
+    public function testAFailureOfTheLinkingFailsTheCopyBeforeTheRecipeIsSaved(): void
+    {
+        // Given
+        [$egg, $yolk] = $this->eggAndYolk(self::AUTHOR);
+        $this->assemble([$egg, $yolk], recipes: [$this->recipe([$yolk])]);
+        $this->partLinks->failure = new \RuntimeException('liaison impossible');
+
+        // When
+        try {
+            ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
+            $this->fail('La liaison a échoué : la copie ne doit pas aboutir.');
+        } catch (\RuntimeException $exception) {
+            // Then : le bus transactionnel annule tout ; ici la recette n'est pas enregistrée et rien n'est annoncé aux statistiques
+            $this->assertSame('liaison impossible', $exception->getMessage());
+        }
+        $this->assertCount(0, $this->recipes->findByAuthor(self::COPIER));
+        $this->assertSame([], $this->events->eventDispatched);
+    }
+
+    /**
+     * « Œuf » et sa partie « Jaune d'œuf » (ratio 1), tous deux à `$creatorId`.
+     *
+     * @return array{0: Ingredient, 1: Ingredient}
+     */
+    private function eggAndYolk(string $creatorId): array
+    {
+        $egg = $this->personal('oeuf', $this->cheese(), $this->unit()->isUnite(), $creatorId);
+        $yolk = $this->builder("jaune d'oeuf", $this->cheese(), $this->unit()->isUnite())->withSlug('jaune-d-oeuf' . $creatorId)
+            ->withCreator(new UserBuilder()->withId($creatorId)->build())->withParent($egg->getSlug(), 1.0)->build();
+
+        return [$egg, $yolk];
     }
 
     // --- La première lettre des noms copiés est en majuscule (ADR 0030) --------------------------------------------------------------

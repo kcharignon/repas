@@ -98,8 +98,14 @@ class DevelopmentFixturesTest extends DatabaseTestCase
         foreach (['user@repas.fr', 'admin@repas.fr'] as $email) {
             $id = $connection->fetchOne('SELECT id FROM "user" WHERE email = ?', [$email]);
             $this->assertSame($catalogSize, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ?', [$id]), "copies de $email");
-            // Une copie ne recopie jamais le parent de l'original (ADR 0038 décision 5) : le lien se refait par provenance (SUB-002)
-            $this->assertSame(0, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ? AND (parent_slug IS NOT NULL OR parent_ratio IS NOT NULL)', [$id]), "parents recopiés chez $email");
+            // Une copie ne recopie jamais le parent de l'original (ADR 0038 décision 5) : le lien se REFAIT par provenance à l'amorçage (SUB-002).
+            // Jaune et blanc d'œuf sont les deux parties du catalogue : chez chaque compte, elles sont reliées à SA copie d'« Œuf », jamais à celle du catalogue
+            $this->assertSame(
+                ['blanc-d-oeuf' => 'oeuf' . $id, 'jaune-d-oeuf' => 'oeuf' . $id],
+                $connection->fetchAllKeyValue('SELECT adopted_from, parent_slug FROM ingredient WHERE creator = ? AND parent_slug IS NOT NULL ORDER BY adopted_from', [$id]),
+                "liens refaits chez $email",
+            );
+            $this->assertSame('oeuf', $connection->fetchOne("SELECT adopted_from FROM ingredient WHERE slug = 'oeuf' || ?", [$id]), "la copie d'œuf de $email");
             $this->assertSame(
                 0,
                 (int) $connection->fetchOne('SELECT count(*) FROM recipe_row x JOIN recipe r ON r.id = x.recipe JOIN ingredient i ON i.slug = x.ingredient WHERE r.author = ? AND i.creator <> r.author', [$id]),

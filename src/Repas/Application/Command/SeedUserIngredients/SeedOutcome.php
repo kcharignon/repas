@@ -19,6 +19,6 @@ enum SeedOutcome: string
      * le compte reste non amorcé, donc servi par un rattrapage plus tard.
      */
     case NO_CATALOG = 'no-catalog';
-    /** `complete` : le compte a déjà tout ce que le catalogue lui doit. Rien n'est écrit. */
+    /** `complete` : le compte a déjà tout ce que le catalogue lui doit. Aucune copie n'est écrite (des liens de sous-ingrédients peuvent l'être, `SeedResult::$partsLinked`). */
     case NOTHING_TO_ADD = 'nothing-to-add';
 }
