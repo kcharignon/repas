@@ -160,6 +160,30 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
         return null;
     }
 
+    /** Lectures « quelles copies de l'auteur peuvent servir de recette utilisée ? » : de quoi prouver qu'elles sont faites EN LOT, et seulement pour une recette composée. */
+    public int $usableCopyReads = 0;
+
+    /**
+     * Comme le vrai dépôt : la copie de l'auteur de chaque recette demandée, sans composants et non secrète, la plus ancienne d'abord (par identifiant) ;
+     * une recette sans telle copie est absente.
+     */
+    public function findUsableCopyIdsOf(array $originalIds, string $authorId): array
+    {
+        $this->usableCopyReads++;
+        $copies = [];
+        /** @var Recipe $recipe */
+        foreach ($this->models as $recipe) {
+            if ($recipe->getAuthorId() === $authorId && in_array($recipe->getOriginalId(), $originalIds, true) && !$recipe->isSecret() && !$recipe->hasComponents()) {
+                $existing = $copies[$recipe->getOriginalId()] ?? null;
+                if ($existing === null || strcmp($recipe->getId(), $existing) < 0) {
+                    $copies[$recipe->getOriginalId()] = $recipe->getId();
+                }
+            }
+        }
+
+        return $copies;
+    }
+
     public function authorHasAtLeast(string $authorId, int $count): bool
     {
         return $this->findByAuthor($authorId)->count() >= $count;

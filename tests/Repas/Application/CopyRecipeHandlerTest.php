@@ -17,6 +17,7 @@ use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Repas\Domain\Service\IngredientNameMatcher;
 use Repas\Repas\Domain\Service\IngredientSlugPolicy;
+use Repas\Repas\Domain\Service\RecipeComponentRules;
 use Repas\Shared\Domain\Event\RecipesOrIngredientsCreatedEvent;
 use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Shared\Domain\Tool\UuidGenerator;
@@ -35,6 +36,7 @@ use Repas\Tests\Helper\InMemoryRepository\IngredientPartLinkInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
+use Repas\Tests\Helper\RecipeComponentLockSpy;
 use Repas\Tests\Helper\RepasAssert;
 
 /**
@@ -56,6 +58,7 @@ class CopyRecipeHandlerTest extends TestCase
     private IngredientAliasInMemoryRepository $aliases;
     private IngredientMatchCandidatesInMemoryRepository $candidates;
     private IngredientPartLinkInMemoryRepository $partLinks;
+    private RecipeComponentLockSpy $lock;
     private SpyEventDispatcher $events;
 
     protected function setUp(): void
@@ -75,6 +78,7 @@ class CopyRecipeHandlerTest extends TestCase
         $this->recipes = new RecipeInMemoryRepository($recipes);
         $this->candidates = new IngredientMatchCandidatesInMemoryRepository($this->ingredients);
         $this->partLinks = new IngredientPartLinkInMemoryRepository();
+        $this->lock = new RecipeComponentLockSpy();
         $this->events = new SpyEventDispatcher();
         $units = new UnitInMemoryRepository([
             new UnitBuilder()->isUnite()->build(),
@@ -94,6 +98,8 @@ class CopyRecipeHandlerTest extends TestCase
                 new IngredientSlugPolicy(),
                 new ConversionService($this->conversions, $units),
                 $this->partLinks,
+                $this->lock,
+                new RecipeComponentRules(),
                 new UuidGenerator(),
                 $this->events,
             ),

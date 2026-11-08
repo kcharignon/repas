@@ -540,6 +540,36 @@ class RecipeRepositoryTest extends DatabaseTestCase
         $this->assertFalse($this->recipeRepository->hasSecretComponent('unknown-id'));
     }
 
+    public function testTheUsableCopiesOfSeveralRecipesAreFoundInOneQueryAndSkipTheOnesThatCannotServe(): void
+    {
+        // Arrange : trois recettes de l'auteur ; le copieur a copié la première trois fois (la plus ancienne est secrète, la suivante a des composants, la
+        // dernière est utilisable), la deuxième une fois (utilisable), la troisième jamais ; un autre compte a copié la troisième
+        $author = $this->savedUser();
+        $copier = $this->savedUser();
+        $other = $this->savedUser();
+        $first = $this->savedRecipe(new RecipeBuilder()->isBasqueCake()->withAuthor($author)->withName('Première'));
+        $second = $this->savedRecipe(new RecipeBuilder()->isSoftBoiledEggs()->withAuthor($author)->withName('Deuxième'));
+        $third = $this->savedRecipe(new RecipeBuilder()->isPastaCarbonara()->withAuthor($author)->withName('Troisième'));
+        $this->savedRecipe(new RecipeBuilder()->isBasqueCake()->withId('00000000-0000-4000-8000-000000000001')->withAuthor($copier)->withOriginalId($first->getId())->asSecret());
+        $this->savedRecipe(new RecipeBuilder()->isBasqueCake()->withId('00000000-0000-4000-8000-000000000002')->withAuthor($copier)->withOriginalId($first->getId())->withComponent($second));
+        $usableCopy = $this->savedRecipe(new RecipeBuilder()->isBasqueCake()->withId('00000000-0000-4000-8000-000000000003')->withAuthor($copier)->withOriginalId($first->getId()));
+        $this->savedRecipe(new RecipeBuilder()->isBasqueCake()->withId('00000000-0000-4000-8000-000000000004')->withAuthor($copier)->withOriginalId($first->getId()));
+        $secondCopy = $this->savedRecipe(new RecipeBuilder()->isSoftBoiledEggs()->withAuthor($copier)->withOriginalId($second->getId()));
+        $this->savedRecipe(new RecipeBuilder()->isPastaCarbonara()->withAuthor($other)->withOriginalId($third->getId()));
+        $this->entityManager->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // Act
+        $copies = $this->recipeRepository->findUsableCopyIdsOf([$first->getId(), $second->getId(), $third->getId(), 'unknown-id'], $copier->getId());
+
+        // Assert : la copie utilisable la plus ancienne (ni la secrète, ni celle qui a des composants), une par recette, rien pour les autres, en UNE requête
+        $this->assertSame([$first->getId() => $usableCopy->getId(), $second->getId() => $secondCopy->getId()], $copies);
+        $this->assertSame(1, $counter->count());
+        $this->assertSame([], $this->recipeRepository->findUsableCopyIdsOf([], $copier->getId()));
+        $this->assertSame([], $this->recipeRepository->findUsableCopyIdsOf([$third->getId()], $copier->getId()), 'la copie d\'un autre compte ne compte pas');
+    }
+
     public function testAnEdgeWhoseComposedRecipeNoLongerExistsDoesNotCountAsAnOrdinaryUse(): void
     {
         // Arrange : la recette composée a disparu (aucune clé étrangère), l'arête reste

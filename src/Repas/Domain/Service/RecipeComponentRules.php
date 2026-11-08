@@ -93,6 +93,23 @@ final readonly class RecipeComponentRules
     }
 
     /**
+     * La copie de `$original` par `$copierId` garde-t-elle cette recette utilisée (ADR 0040 décisions 21 et 33) ? Une arête qui ne respecterait pas les
+     * règles de l'écriture est IGNORÉE à la copie, jamais copiée, jamais une erreur : un orphelin n'arrive pas ici (la recette utilisée est absente du
+     * lot lu), et une recette illisible du copieur, d'un autre auteur ou secrète sous une copie ordinaire ne peut venir que d'une donnée que l'écriture
+     * refuse. Trois conditions :
+     *  - la recette utilisée est de l'auteur de l'original (décision 7) ;
+     *  - elle est lisible du copieur (décision 8, sans passe-droit : la secrète d'un autre n'existe pas pour lui) ;
+     *  - la copie n'est ordinaire que si elle l'est (décision 8 : l'auteur qui copie sa propre secrète en fait une copie secrète, qui peut en utiliser).
+     * C'est ce qui garantit qu'une copie ne montre jamais, par ses composants, une recette secrète.
+     */
+    public function isKeptByCopy(Recipe $original, Recipe $used, string $copierId): bool
+    {
+        return $used->getAuthorId() === $original->getAuthorId()
+            && $used->isVisibleTo($copierId)
+            && ($original->isSecretWhenCopiedBy($copierId) || !$used->isSecret());
+    }
+
+    /**
      * Une recette contient quelque chose (décision 9) : au moins une ligne ou une recette utilisée, sur l'état final. Faite seulement de recettes
      * utilisées, elle est permise.
      *

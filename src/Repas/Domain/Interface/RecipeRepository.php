@@ -55,6 +55,19 @@ interface RecipeRepository
     public function findCopyIdOf(string $originalId, string $authorId): ?string;
 
     /**
+     * Pour chacune de ces recettes, l'identifiant de la copie que cet auteur en a faite (`original_id`) ET qui peut servir de recette utilisée à une
+     * copie ORDINAIRE (ADR 0040 décision 34) : sans composants (profondeur 1) et non secrète (une ordinaire n'utilise que des ordinaires). Une recette
+     * dont l'auteur n'a pas de telle copie est absente du résultat. S'il y en a plusieurs, la plus ancienne (comme `findCopyIdOf` : la même réponse à
+     * chaque appel). Une seule requête, quel que soit le nombre de recettes demandées, sans hydrater de recette.
+     *
+     * Jugé dans la requête et non après coup : une copie qui a des composants ou qui est secrète ne doit pas cacher une autre, utilisable.
+     *
+     * @param list<string> $originalIds
+     * @return array<string, string> l'identifiant de la copie utilisable, par identifiant de la recette copiée
+     */
+    public function findUsableCopyIdsOf(array $originalIds, string $authorId): array;
+
+    /**
      * L'auteur a-t-il au moins `$count` recettes ? La lecture s'arrête à la `$count`-ième : jamais un décompte complet (plafond de recettes,
      * `Recipe::MAX_PER_AUTHOR`).
      */

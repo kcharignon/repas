@@ -95,6 +95,7 @@ Comme aujourd'hui : un ingrédient au nom du copieur, mêmes nom, rayon, unités
 | L'auteur est un **administrateur** | ses ingrédients sont des communs : arbre de l'étape 0 |
 | Le copieur est un **administrateur** | il voit tous les communs, aucun n'est caché pour lui : il se branche sur le commun |
 | Le candidat exact est un commun encore visible | on se branche sur le commun ; si le copieur est adoptant, le commun est adopté à la volée d'abord |
+| La recette copiée est **composée** (elle utilise d'autres recettes, [ADR 0040](../adr/0040-recettes-utilisees-dans-d-autres-recettes.md)) | le rapprochement porte sur l'**union** des lignes de la recette et de ses recettes utilisées **à copier** : un ingrédient présent dans plusieurs est rapproché ou copié **une** fois et ses unités sont fusionnées avant le contrôle de l'étape 5 ; une copie du copieur qui sert déjà de recette utilisée n'apporte aucune ligne |
 
 ## 6. L'expérience : méthode
 

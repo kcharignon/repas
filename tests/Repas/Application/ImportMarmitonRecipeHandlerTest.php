@@ -18,6 +18,7 @@ use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Model\MarmitonRecipePage;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
+use Repas\Repas\Domain\Service\RecipeComponentRules;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Repas\Domain\Service\IngredientNameMatcher;
 use Repas\Repas\Domain\Service\IngredientSlugPolicy;
@@ -26,6 +27,7 @@ use Repas\Repas\Infrastructure\Acl\CatalogOwnerCommandAdapter;
 use Repas\Shared\Domain\Event\RecipesOrIngredientsCreatedEvent;
 use Repas\Shared\Domain\Exception\RateLimitedException;
 use Repas\Shared\Domain\Tool\UuidGenerator;
+use Repas\Tests\Helper\RecipeComponentLockSpy;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -122,6 +124,8 @@ class ImportMarmitonRecipeHandlerTest extends TestCase
             new IngredientSlugPolicy(),
             $conversionService,
             $this->partLinks,
+            new RecipeComponentLockSpy(),
+            new RecipeComponentRules(),
             new UuidGenerator(),
             $this->events,
         );

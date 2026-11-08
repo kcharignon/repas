@@ -5,7 +5,7 @@
 - **Taille** : M
 - **Effort recommandé pour l'agent** : **xhigh** (règle de visibilité de la recette secrète à la copie, plafond de compte, rapprochement des ingrédients)
 - **Dépend de** : COMP-001 (modèle, `findByIds`, arêtes) ; COMP-002 recommandé (les règles d'écriture, pour construire les composants de la copie) ; **un agent à la fois**
-- **Statut** : à faire
+- **Statut** : fait (2026-11-09, PR #464)
 - **Lire d'abord** : [ADR 0040](../../adr/0040-recettes-utilisees-dans-d-autres-recettes.md) décisions 33 à 36 ; [ADR 0028](../../adr/0028-ingredients-propres-a-chaque-utilisateur.md) décision 8 ; [`../../ingredients/rapprochement.md`](../../ingredients/rapprochement.md) ; [ADR 0033](../../adr/0033-recette-secrete.md) ; [ADR 0037](../../adr/0037-copier-une-recette-depuis-marmiton.md) (le point d'entrée unique `RecipeCopier::copy`) ; [ADR 0038](../../adr/0038-sous-ingredients.md) décisions 20 et 24 (la liaison des parties) ; `CLAUDE.md`.
 
 ## But
@@ -41,6 +41,18 @@ Copier la recette composée d'un autre copie **aussi ses recettes utilisées** (
 
 ## Critères d'acceptation
 
-- [ ] `make test`, `make quality`, `make openapi-check` verts ; aucune dépendance entre contextes de plus.
-- [ ] Copier une recette sans composant : mêmes requêtes qu'avant (budgets inchangés).
-- [ ] PR vers `main` (**À relire** : le plafond jugé sur « compte + à créer », la réutilisation d'une copie existante, le partage des composants par l'auteur).
+- [x] `make test`, `make quality`, `make openapi-check` verts ; aucune dépendance entre contextes de plus.
+- [x] Copier une recette sans composant : mêmes requêtes qu'avant (budgets inchangés).
+- [x] PR vers `main` (**À relire** : le plafond jugé sur « compte + à créer », la réutilisation d'une copie existante, le partage des composants par l'auteur).
+
+## Réalisation (2026-11-09)
+
+- **Le point d'entrée** : `RecipeCopier::copy()` décide d'abord (`planComponents` → `CopiedComponents`), écrit ensuite. Sans composant (`Recipe::hasComponents()` faux) c'est strictement la copie d'avant : ni verrou, ni lecture en lot, ni recherche de copie (`copier-recette*` 20 / 41 / 21 / 17 et `importer-recette-marmiton*` 57 / 22 / 3 inchangés). `CopyRecipeHandler` et `ImportMarmitonRecipeHandler` ne changent pas.
+- **`planComponents`** : le verrou `RecipeComponentLock` du COPIEUR (décision 27 : une copie qui pose des composants en est une ; jamais celui de l'auteur de l'original ; après le contrôle de visibilité, avant les lectures qu'il protège), puis `findByIds` EN LOT des recettes utilisées. Une arête dont la recette manque ou que la nouvelle règle `RecipeComponentRules::isKeptByCopy` refuse est ignorée (autre auteur que l'original, illisible du copieur, secrète sous une copie ordinaire) ; les rangs sont renumérotés sans trou. L'auteur qui copie sa propre recette **partage** ses recettes utilisées ; un autre compte demande en UNE requête (`RecipeRepository::findUsableCopyIdsOf`) les copies qu'il a déjà, **jugées dans la requête** (`component_count = 0`, `secret = false`, la plus ancienne), réutilise celles-là et choisit un identifiant pour une copie neuve des autres. `findCopyIdsOf` du ticket est devenu `findUsableCopyIdsOf` : la condition « ordinaire si la recette copiée l'est » est toujours « ordinaire » (seul un autre compte crée des recettes utilisées, et sa copie est ordinaire), et la juger dans la requête évite qu'une copie composée ou secrète, plus ancienne, cache une copie utilisable.
+- **Le plafond** : `authorHasAtLeast(copieur, MAX_PER_AUTHOR_WITH_COPIES − à créer + 1)` avec `à créer = 1 + copies neuves`, avant toute écriture et toute copie d'ingrédient, `RECIPE_LIMIT_REACHED` ; une copie réutilisée ne compte pas ; il n'est jugé que s'il y a une copie neuve (avec la seule recette composée à créer, c'est `assertCanCopy`, déjà fait par le handler).
+- **L'écriture** : `ingredientsAndUnitsOf(original, ...recettes à copier)` (un seul rapprochement sur l'union, unités fusionnées), `linkCopies` une fois, les recettes utilisées d'abord (`copyOf` : `Recipe::copyFromOriginal` + `capitalizeFirst`), la recette composée avec ses arêtes (`RecipeComponent::load` + `Recipe::setComponents`), UN seul événement (`recipeIds` : les recettes créées, la composée en dernier). `Recipe::isSecretWhenCopiedBy` est écrit une fois, lu par `copyFromOriginal` et par la règle de la copie.
+- **La réponse** de `POST /recipes/{id}/copy` ne change pas (aucune clé : l'ADR décision 36 laisse le front dire ce qui est copié d'après les `components` qu'il a lus). `docs/api/openapi.json` : seulement les descriptions de la route.
+- **Budget** : `copier-recette-composee` **87**. `CopyComposedRecipeReadsAreConstantTest` : de 1 à 10 recettes utilisées, réutilisées ou non, par un autre ou par l'auteur, mêmes lectures ; seules les écritures des recettes **créées** suivent (une recette neuve cherche son identifiant et ses lignes déjà écrites avant de s'écrire).
+- **Tests** : `CopyComposedRecipeHandlerTest` (23 cas unitaires : l'arbre, l'ordre, l'événement, une composée sans ligne à elle, un seul rapprochement et l'union des unités, la partie d'ingrédient liée une fois, la copie réutilisée / composée / secrète, l'auteur, la secrète d'un autre `404` sans verrou, l'arête secrète ou d'un autre auteur ou orpheline, le plafond aux deux bornes avec et sans copie réutilisée, sans composant ni verrou ni lecture, le modèle relu quand ses arêtes ne sont pas lues), `CopyComposedRecipeApiFlowTest` (vraie base, trois comptes : copier, planifier la copie avec les bonnes quantités, `other-people`, copies autonomes, copie d'une copie, réutilisation, partage de l'auteur, secrète, partie liée une fois, plafond), `RecipeRepositoryTest`, `RecipeComponentRulesCopyTest`, `SubRecipeWritesCheckAuthorTest` (l'ordre de la copie).
+- **Décisions à valider** : le verrou pris par la copie (non écrit dans le ticket, imposé par la décision 27) ; la règle « d'un autre auteur que l'original » ajoutée à celles du ticket pour ignorer une arête ; `findUsableCopyIdsOf` à la place de `findCopyIdsOf`.
+- **Release** : COMP-001, 004, 002 et 003 partent dans la même version du back (décision 43).

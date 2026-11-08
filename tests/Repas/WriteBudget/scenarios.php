@@ -813,6 +813,21 @@ return [
 
         return new CopyRecipeCommand($recipe->getId(), $copier->getId(), UuidGenerator::new());
     },
+    // Copier une recette COMPOSÉE (ADR 0040 décisions 33 à 35, COMP-003) : la tarte et ses deux recettes utilisées sont copiées chez un copieur qui n'a rien (aucun
+    // ingrédient, aucune recette). Lectures : le verrou de l'auteur de la copie, les recettes utilisées EN LOT, les copies qu'il a déjà (une requête), puis le même rapprochement
+    // des ingrédients que `copier-recette-sans-ingredients` mais sur l'union des lignes des trois recettes (un ingrédient présent dans plusieurs n'est copié qu'une fois) ;
+    // écritures : les copies d'ingrédients, puis une recette (et ses lignes) par recette copiée, les recettes utilisées d'abord, et les arêtes de la tarte. Les lectures ne
+    // dépendent pas du nombre de recettes utilisées (`CopyComposedRecipeReadsAreConstantTest`). `copier-recette*` (sans composant) ne change pas.
+    'copier-recette-composee' => static function (WriteBudgetTestCase $t): object {
+        $author = $t->savedUser();
+        $copier = $t->savedUser();
+        $dough = $t->savedRecipe($author, new RecipeBuilder()->isBasqueCake());
+        $cream = $t->savedRecipe($author, new RecipeBuilder()->isSoftBoiledEggs());
+        $pie = $t->savedRecipe($author, new RecipeBuilder()->isPastaCarbonara()->withComponent($dough, 2.0)->withComponent($cream, 0.5));
+        $t->savedConversionsFor([$dough, $cream, $pie]);
+
+        return new CopyRecipeCommand($pie->getId(), $copier->getId(), UuidGenerator::new());
+    },
     // Importer une recette Marmiton (ADR 0037, MAR-003). Lectures : le verrou, la neutre et la copie de la personne (une requête chacune), le plafond du
     // compte, les candidats (une requête par sorte), les types, les unités, les ingrédients à réutiliser ou à copier ; écritures : la neutre, ses lignes, un
     // ingrédient pour chaque nom nouveau (copié du catalogue avec ses conversions propres, ou créé en « divers ») puis la copie de la personne. Les

@@ -332,9 +332,9 @@ class RecipeComponentTest extends TestCase
         $neutral->setComponents($this->components(['pate-id' => 1.0]));
     }
 
-    public function testTheCopyOfARecipeDoesNotCarryTheComponentsYet(): void
+    public function testTheCopyOfAModelDoesNotCarryTheComponentsRecipeCopierSetsThem(): void
     {
-        // Given : COMP-003 copiera les recettes utilisées ; en attendant la copie n'en a pas (et n'écrit rien)
+        // Given : le modèle ne copie que les lignes ; les recettes utilisées de la copie sont celles que `RecipeCopier` décide, puis pose (COMP-003)
         $original = new RecipeBuilder()->withId(self::RECIPE)->withAuthorId('author-id')->withComponent(new RecipeBuilder()->withId('pate-id'))->build();
 
         // When

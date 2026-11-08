@@ -39,6 +39,7 @@ return [
     'confirmation-email' => 4,
     'confirmer-adresse-amorcage' => 31,
     'copier-recette' => 20,
+    'copier-recette-composee' => 87,
     'copier-recette-ingredient-personnel' => 21,
     'copier-recette-ingredient-rapproche' => 17,
     'copier-recette-sans-ingredients' => 41,

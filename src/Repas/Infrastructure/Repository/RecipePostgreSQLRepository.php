@@ -165,6 +165,35 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
         return $copy === null ? null : $copy['id'];
     }
 
+    public function findUsableCopyIdsOf(array $originalIds, string $authorId): array
+    {
+        $originalIds = array_values(array_unique($originalIds));
+        if ($originalIds === []) {
+            return [];
+        }
+
+        // Une requête pour tous : les copies de l'auteur qui peuvent servir de recette utilisée (ni composants ni secrète), la plus ancienne d'abord
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('r.originalId AS original', 'r.id AS id')
+            ->from(RecipeEntity::class, 'r')
+            ->where('r.originalId IN (:originals)')
+            ->andWhere('r.authorId = :authorId')
+            ->andWhere('r.secret = false')
+            ->andWhere('r.componentCount = 0')
+            ->orderBy('r.id', 'ASC')
+            ->setParameter('originals', $originalIds)
+            ->setParameter('authorId', $authorId)
+            ->getQuery()
+            ->getScalarResult();
+
+        $copies = [];
+        foreach ($rows as $row) {
+            $copies[$row['original']] ??= $row['id'];
+        }
+
+        return $copies;
+    }
+
     /**
      * @throws RecipeException
      */

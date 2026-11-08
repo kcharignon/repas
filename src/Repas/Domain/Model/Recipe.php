@@ -167,6 +167,16 @@ final class Recipe implements ModelInterface
     }
 
     /**
+     * La copie de cette recette par cet utilisateur serait-elle secrète ? Seule la copie que l'AUTEUR fait de sa propre recette secrète l'est (ADR 0033) :
+     * toute autre copie est une recette ordinaire. Écrit ici pour que la copie et le choix des recettes utilisées qu'elle garde (ADR 0040 décision 34)
+     * jugent la même chose.
+     */
+    public function isSecretWhenCopiedBy(string $copierId): bool
+    {
+        return $this->secret && $this->authorId === $copierId;
+    }
+
+    /**
      * Rend la recette secrète ou de nouveau visible. Le drapeau est le choix de l'auteur : un autre utilisateur (un administrateur qui
      * modifie la recette) ne peut pas le changer, mais renvoyer la valeur actuelle est sans effet et sans erreur.
      *
@@ -546,7 +556,7 @@ final class Recipe implements ModelInterface
             )),
             originalId: $original->getId(),
             // L'original n'est visible du copieur que s'il est ordinaire ou à lui : secrète ici, il en est l'auteur
-            secret: $original->isSecret() && $original->getAuthorId() === $authorId,
+            secret: $original->isSecretWhenCopiedBy($authorId),
             // Le lien d'origine voyage avec la copie, copie de copie comprise (ADR 0037 décision 10) ; le tag `marmiton_id`, lui, reste sur la neutre
             sourceUrl: $original->getSourceUrl(),
         );
