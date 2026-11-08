@@ -18,7 +18,9 @@ use Repas\Repas\Domain\Model\IngredientDistinctPair;
  *     `EXACT` (même nom une fois normalisé), `TYPO` (0,97 au moins) ou `SUGGESTION` (de 0,90 à 0,97) ;
  *  4. ils ne sont pas la copie de deux ingrédients d'origine DIFFÉRENTE (`adopted_from` : le propriétaire du catalogue les a voulus
  *     distincts) ; deux copies de la même origine, ou un ingrédient créé et une copie, sont proposés ;
- *  5. l'utilisateur n'a pas dit « Pas le même » pour cette paire, dans un sens ou dans l'autre : jamais reproposée.
+ *  5. l'utilisateur n'a pas dit « Pas le même » pour cette paire, dans un sens ou dans l'autre : jamais reproposée ;
+ *  6. l'un n'est pas une partie de l'autre (ADR 0038, SUB-004) : « Jaune d'œuf » et « Œuf » se ressemblent mais ne sont pas un doublon, et la
+ *     fusion de l'un dans l'autre serait refusée (`MergeBlock::PART_CONFLICT`).
  *
  * Le résultat est trié du plus probable au moins probable (score décroissant, puis slugs : deux appels donnent la même liste) et borné.
  * Les comparaisons se font par rayon et par nombre de mots (le garde-fou refuse deux noms de longueurs différentes) : jamais sur tous
@@ -123,6 +125,10 @@ final readonly class DuplicateIngredientFinder
             return null;
         }
         if (isset($distinct[IngredientDistinctPair::keyOf($one->slug, $other->slug)])) {
+            return null;
+        }
+        // Une partie et son parent ne sont pas un doublon (« Jaune d'œuf » et « Œuf » ; ADR 0038 décision 25) : la fusion de l'un dans l'autre est refusée
+        if ($one->parentSlug === $other->slug || $other->parentSlug === $one->slug) {
             return null;
         }
         $similarity = $this->matcher->compare($one, $other);

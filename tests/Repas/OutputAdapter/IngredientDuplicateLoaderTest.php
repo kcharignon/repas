@@ -130,6 +130,28 @@ class IngredientDuplicateLoaderTest extends DatabaseTestCase
         )], $duplicates);
     }
 
+    public function testAPartAndItsParentAreNotProposedButTwoPartsOfTheSameParentAre(): void
+    {
+        // Given : « Tomates » est une partie de « Tomate » ; « Poireau » une partie de « Poireaux » ; « Oignon » et « Oignons » deux parties de « Legume »
+        $this->ingredient('tomate-u', 'Tomate');
+        $this->ingredient('tomates-u', 'Tomates');
+        $this->ingredient('poireau-u', 'Poireau');
+        $this->ingredient('poireaux-u', 'Poireaux');
+        $this->ingredient('legume-u', 'Legume');
+        $this->ingredient('oignon-u', 'Oignon');
+        $this->ingredient('oignons-u', 'Oignons');
+        $this->dataset->partOf('tomates-u', 'tomate-u');
+        $this->dataset->partOf('poireau-u', 'poireaux-u');
+        $this->dataset->partOf('oignon-u', 'legume-u');
+        $this->dataset->partOf('oignons-u', 'legume-u');
+
+        // When
+        $pairs = self::pairs($this->duplicates());
+
+        // Then
+        $this->assertSame(['oignon-u+oignons-u'], $pairs);
+    }
+
     public function testTheSuggestedKeepIsTheMostUsedOneThenTheShortestName(): void
     {
         // Given : « Tomates » est plus utilisée ; « Poireau » et « Poireaux » ne le sont pas du tout

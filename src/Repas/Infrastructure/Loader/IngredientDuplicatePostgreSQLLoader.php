@@ -36,7 +36,7 @@ final readonly class IngredientDuplicatePostgreSQLLoader implements IngredientDu
     public function duplicates(string $userId): array
     {
         $rows = $this->connection()->fetchAllAssociative(
-            'SELECT i.slug, i.name, i.adopted_from, i.department AS department_slug, d.name AS department_name,'
+            'SELECT i.slug, i.name, i.adopted_from, i.parent_slug, i.department AS department_slug, d.name AS department_name,'
             . ' i.default_purchase_unit AS unit_slug, u.name AS unit_name'
             . ' FROM ingredient i JOIN department d ON d.slug = i.department JOIN unit u ON u.slug = i.default_purchase_unit'
             . ' WHERE i.creator = :user ORDER BY i.slug LIMIT ' . self::MAX_INGREDIENTS,
@@ -50,7 +50,7 @@ final readonly class IngredientDuplicatePostgreSQLLoader implements IngredientDu
         $candidates = [];
         $details = [];
         foreach ($rows as $row) {
-            $candidates[] = new IngredientCandidate($row['slug'], $row['name'], $row['department_slug'], $row['unit_slug'], [], $row['adopted_from']);
+            $candidates[] = new IngredientCandidate($row['slug'], $row['name'], $row['department_slug'], $row['unit_slug'], [], $row['adopted_from'], $row['parent_slug']);
             $details[$row['slug']] = $row;
         }
 

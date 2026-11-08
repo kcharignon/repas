@@ -18,6 +18,8 @@ final readonly class IngredientCandidate
     /**
      * @param list<string> $compatibleUnitSlugs
      * @param ?string $adoptedFrom le slug de l'ingrédient dont le candidat est la copie
+     * @param ?string $parentSlug le slug de l'ingrédient dont le candidat est une partie (ADR 0038), `null` s'il n'en est pas une : « Doublons
+     *        possibles » ne propose jamais une partie avec son parent
      */
     public function __construct(
         public string $slug,
@@ -26,6 +28,7 @@ final readonly class IngredientCandidate
         public string $purchaseUnitSlug,
         public array $compatibleUnitSlugs = [],
         public ?string $adoptedFrom = null,
+        public ?string $parentSlug = null,
     ) {
         $this->tokens = IngredientNameMatcher::tokens($name);
     }
