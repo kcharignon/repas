@@ -67,7 +67,7 @@ final readonly class MealPlanCommandAdapter implements MealPlanCommandPort
     private static function failure(MealPlanningException $failure): SpokenMealFailure
     {
         return match ($failure->reason) {
-            MealPlanningException::MISSING_CONVERSION => SpokenMealFailure::missingConversion($failure->recipeName ?? '', $failure->ingredientName, $failure),
+            MealPlanningException::MISSING_CONVERSION => SpokenMealFailure::missingConversion($failure->recipeName ?? '', $failure->ingredientName, $failure->componentName, $failure),
             default => SpokenMealFailure::recipeGone($failure),
         };
     }

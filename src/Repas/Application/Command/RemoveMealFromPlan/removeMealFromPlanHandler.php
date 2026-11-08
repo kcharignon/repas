@@ -3,6 +3,7 @@
 namespace Repas\Repas\Application\Command\RemoveMealFromPlan;
 
 
+use Repas\Repas\Application\Service\FlattenedRecipeRows;
 use Repas\Repas\Application\Service\PlannedMealGroup;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
@@ -20,6 +21,9 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * autres listes en cours (une recette dont aucun produit n'est allé dans la liste principale). S'il fait partie d'un groupe (ADR 0036 décision 9), le
  * retrait agit sur TOUT le groupe, en une transaction : chaque liste ne perd que les lignes que son repas y avait posées (`Meal::places`, figé à la
  * planification). Si une liste du groupe est envoyée au drive, tout est refusé et rien n'est écrit.
+ *
+ * Les lignes déduites sont celles de la recette ET celles de ses recettes utilisées (ADR 0040), aplaties par `FlattenedRecipeRows` d'après les recettes
+ * d'AUJOURD'HUI : le repas ne mémorise ni lignes ni composants (limite connue, ADR 0040 décision 14).
  */
 #[AsMessageHandler]
 readonly class removeMealFromPlanHandler
@@ -29,6 +33,7 @@ readonly class removeMealFromPlanHandler
         private RecipeRepository $recipeRepository,
         private ConversionService $conversionService,
         private PlannedMealGroup $plannedMealGroup,
+        private FlattenedRecipeRows $flattenedRows,
     ) {
     }
 
@@ -70,15 +75,25 @@ readonly class removeMealFromPlanHandler
         $this->plannedMealGroup->assertVersion($members, $command->expectedVersion);
         $this->plannedMealGroup->assertEditable($members);
 
+        // Les recettes utilisées par la recette (ADR 0040), lues en lot seulement si elle en a ; leurs ingrédients se déduisent comme les siens
+        $flat = $this->flattenedRows->of($recipe, $command->ownerId);
+
         // Les quantités à déduire de chaque liste, calculées avant la première écriture : une conversion manquante refuse tout
-        $this->conversionService->preload($recipe->getRows());
+        $this->conversionService->preload($flat->allRows());
         $deductions = [];
         foreach ($members as $member) {
             // On récupere les Ingredients de la recette dans les bonnes proportions, ceux que ce repas avait posés dans sa liste
-            $rows = $recipe->getRowForServing($member->meal->getServing())->filter(static fn(RecipeRow $row): bool => $member->meal->places($row->getIngredient()->getSlug()));
+            $flattened = $flat->forServing($member->meal->getServing());
+            $rows = $flattened->rows()->filter(static fn(RecipeRow $row): bool => $member->meal->places($row->getIngredient()->getSlug()));
             $deductions[] = array_map(
-                // On calcule la quantité dans l'unité d'achat
-                fn(RecipeRow $row): array => [$row->getIngredient()->getSlug(), $this->conversionService->convertRecipeRowToPurchaseUnit($row)],
+                // On calcule la quantité dans l'unité d'achat (une ligne d'une recette utilisée qui ne se convertit pas nomme cette recette, ADR 0040 décision 16)
+                function (RecipeRow $row) use ($flattened): array {
+                    try {
+                        return [$row->getIngredient()->getSlug(), $this->conversionService->convertRecipeRowToPurchaseUnit($row)];
+                    } catch (IngredientException $failure) {
+                        throw $flattened->attribute($failure, $row);
+                    }
+                },
                 array_values($rows->toArray()),
             );
         }

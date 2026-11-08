@@ -231,6 +231,8 @@ final class VoiceReplies
     public const string MEAL_MISSING_CONVERSION = 'Je ne peux pas calculer les quantités de %s. Ouvre la recette dans Repas.';
     /** Un ingrédient précis de la recette n'a pas de conversion vers son unité d'achat (comme l'application, qui le montre) : on le nomme. */
     public const string MEAL_MISSING_CONVERSION_OF = "Il manque une conversion pour %s. Ouvre la recette dans Repas.";
+    /** La ligne en cause est celle d'une recette UTILISÉE par la recette dite (ADR 0040 décision 16) : on nomme l'ingrédient ET cette recette, c'est elle qu'il faut ouvrir. */
+    public const string MEAL_MISSING_CONVERSION_OF_IN = "Il manque une conversion pour %s, dans %s. Ouvre-la dans Repas.";
     /** La recette n'existe plus dans Repas, ou n'est pas à l'utilisateur. */
     public const string MEAL_GONE = 'Je ne retrouve plus cette recette dans Repas.';
     /** Ni produit ni recette ne portent ce nom : plus d'issue. */
@@ -622,14 +624,19 @@ final class VoiceReplies
      * La phrase claire d'un échec CONNU de la commande d'un repas (`SpokenMealFailure`, une seule table) ; `null` pour toute autre panne, qui garde
      * `FAILURE`.
      */
-    public static function mealFailure(string $reason, ?string $recipeName, ?string $ingredientName = null): ?string
+    public static function mealFailure(string $reason, ?string $recipeName, ?string $ingredientName = null, ?string $componentName = null): ?string
     {
         $ingredient = self::speakable($ingredientName ?? '');
+        $component = self::speakable($componentName ?? '');
 
         return match ($reason) {
-            SpokenMealFailure::MISSING_CONVERSION => $ingredient !== ''
-                ? sprintf(self::MEAL_MISSING_CONVERSION_OF, $ingredient)
-                : sprintf(self::MEAL_MISSING_CONVERSION, self::speakable($recipeName ?? '')),
+            // Une ligne d'une recette utilisée : c'est cette recette-là qu'il faut ouvrir, pas celle qu'on a dite (ADR 0040 décision 16)
+            SpokenMealFailure::MISSING_CONVERSION => match (true) {
+                $ingredient !== '' && $component !== '' => sprintf(self::MEAL_MISSING_CONVERSION_OF_IN, $ingredient, $component),
+                $ingredient !== '' => sprintf(self::MEAL_MISSING_CONVERSION_OF, $ingredient),
+                $component !== '' => sprintf(self::MEAL_MISSING_CONVERSION, $component),
+                default => sprintf(self::MEAL_MISSING_CONVERSION, self::speakable($recipeName ?? '')),
+            },
             SpokenMealFailure::RECIPE_GONE => self::MEAL_GONE,
             default => null,
         };

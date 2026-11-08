@@ -25,6 +25,7 @@ use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
+use Repas\Tests\Helper\FlatRows;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Domain\Model\User;
 
@@ -73,6 +74,7 @@ class RemoveMealFromPlanHandlerTest extends TestCase
             $this->recipeRepository,
             $this->conversionService,
             new PlannedMealGroup($this->shoppingListRepository),
+            FlatRows::for($this->recipeRepository),
         );
     }
 

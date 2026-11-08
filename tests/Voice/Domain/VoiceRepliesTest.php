@@ -306,7 +306,16 @@ class VoiceRepliesTest extends TestCase
         $this->assertSame("Il manque une conversion pour pommes de terre. Ouvre la recette dans Repas.", $named);
         $this->assertSame($missing, VoiceReplies::mealFailure(SpokenMealFailure::MISSING_CONVERSION, 'Blanquette de Veau', '  '), 'un nom vide retombe sur la recette');
         $this->assertNull(VoiceReplies::mealFailure('UNE_RAISON_INCONNUE', 'Hachis'));
-        foreach ([$missing, $named, VoiceReplies::MEAL_GONE] as $answer) {
+        // Une ligne d'une recette UTILISÉE (ADR 0040 décision 16) : l'ingrédient ET la recette à ouvrir, qui n'est pas celle qu'on a dite
+        $inComponent = VoiceReplies::mealFailure(SpokenMealFailure::MISSING_CONVERSION, 'Tarte au citron', 'Farine', 'Pâte sablée');
+        $this->assertSame('Il manque une conversion pour farine, dans pâte sablée. Ouvre-la dans Repas.', $inComponent);
+        $this->assertSame(
+            'Je ne peux pas calculer les quantités de pâte sablée. Ouvre la recette dans Repas.',
+            VoiceReplies::mealFailure(SpokenMealFailure::MISSING_CONVERSION, 'Tarte au citron', null, 'Pâte sablée'),
+            'sans ingrédient connu, la recette utilisée est celle qu\'on nomme',
+        );
+        $this->assertSame($named, VoiceReplies::mealFailure(SpokenMealFailure::MISSING_CONVERSION, 'Blanquette de Veau', 'Pommes de Terre', '  '), 'un nom de recette utilisée vide est ignoré');
+        foreach ([$missing, $named, $inComponent, VoiceReplies::MEAL_GONE] as $answer) {
             $this->assertLessThanOrEqual(2, count($this->sentences($answer)), $answer);
             foreach ($this->sentences($answer) as $sentence) {
                 $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $sentence)), $sentence);

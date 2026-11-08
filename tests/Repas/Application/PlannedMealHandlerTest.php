@@ -28,6 +28,7 @@ use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
+use Repas\Tests\Helper\FlatRows;
 use Repas\Tests\Helper\PartLines;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\Tests\Helper\TypedLists;
@@ -75,6 +76,7 @@ class PlannedMealHandlerTest extends TestCase
             $typedLists->routing,
             $typedLists->activeListForType,
             PartLines::for($ingredients, $this->conversionService),
+            FlatRows::for($this->recipeRepository),
         );
     }
 

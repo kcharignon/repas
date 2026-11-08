@@ -131,6 +131,20 @@ class HandleAlexaRequestLoggingTest extends TestCase
         $this->assertStringNotContainsString('secrète', $this->logger->everything());
     }
 
+    public function testTheUsedRecipeWithoutConversionIsNamedToItsOwnerAndNeverLogged(): void
+    {
+        // Given : la farine de la pâte (une recette utilisée par la recette dite, ADR 0040 décision 16) ne se convertit pas
+        $this->commandBus->willThrow(AddSpokenMealCommand::class, SpokenMealFailure::missingConversion('Tarte secrète', 'Farine secrète', 'Pâte secrète'));
+
+        // When
+        $response = $this->controller()($this->request(AlexaTestRequest::addMeal(self::SECRET_PHRASE)->withAccessToken(self::SECRET_TOKEN)->toJson()));
+
+        // Then : Alexa dit l'ingrédient et la pâte à ouvrir ; le journal n'a que la raison
+        $this->assertSame('Il manque une conversion pour farine secrète, dans pâte secrète. Ouvre-la dans Repas.', json_decode((string) $response->getContent(), true)['response']['outputSpeech']['text']);
+        $this->assertSame(['warning', 'Repas impossible : MISSING_CONVERSION.'], [$this->logger->records[0]['level'], $this->logger->records[0]['message']]);
+        $this->assertStringNotContainsString('secrète', $this->logger->everything());
+    }
+
     public function testAKnownMealFailureWrappedByAnotherExceptionIsStillFound(): void
     {
         // Given : un bus imbriqué ou Messenger enveloppe l'échec connu

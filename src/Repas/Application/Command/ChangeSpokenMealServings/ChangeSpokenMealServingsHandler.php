@@ -71,7 +71,7 @@ readonly class ChangeSpokenMealServingsHandler
             try {
                 ($this->updateServingMealHandler)(new UpdateServingMealCommand($meal->getId(), $command->servings));
             } catch (IngredientException $exception) {
-                throw $exception->isMissingConversion() ? MealPlanningException::missingConversion($recipe->getName(), $exception->conversionIngredientName()) : $exception;
+                throw $exception->isMissingConversion() ? MealPlanningException::missingConversion($recipe->getName(), $exception->conversionIngredientName(), $exception->conversionRecipeName()) : $exception;
             }
         }
 

@@ -24,6 +24,7 @@ use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
+use Repas\Tests\Helper\FlatRows;
 use Repas\Tests\Helper\PartLines;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
@@ -71,12 +72,14 @@ class UpdateServingMealHandlerTest extends TestCase
             $this->unitRepository
         );
 
+        $recipes = new RecipeInMemoryRepository([$this->recipe]);
         $this->handler = new UpdateServingMealHandler(
             $this->shoppingListRepository,
-            new RecipeInMemoryRepository([$this->recipe]),
+            $recipes,
             $this->conversionService,
             new PlannedMealGroup($this->shoppingListRepository),
             PartLines::for(new IngredientInMemoryRepository(), $this->conversionService),
+            FlatRows::for($recipes),
         );
     }
 
