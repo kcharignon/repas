@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Effort recommandé pour l'agent** : **xhigh** (il écrit les quantités des listes de courses de tous les comptes ; erreur silencieuse possible ; budgets SQL en cliquet)
 - **Dépend de** : COMP-001. **RÈGLE D'ORDRE : ce ticket est livré en production AVANT, ou DANS LA MÊME RELEASE que COMP-002** (ADR 0040 décision 32) : une recette dont les composants ne s'aplatissent pas planifierait sans les ingrédients de ses recettes utilisées, sans aucune erreur. Il peut être fait et fusionné **avant** COMP-002 : ses tests posent les composants avec `RecipeBuilder::withComponent` / les dépôts, sans passer par la route. **Un agent à la fois.**
-- **Statut** : à faire
+- **Statut** : fait (2026-11-08, PR PRNUMBER)
 - **Lire d'abord** : [ADR 0040](../../adr/0040-recettes-utilisees-dans-d-autres-recettes.md) décisions 11 à 18 ; [ADR 0036](../../adr/0036-types-de-liste-de-courses.md) décisions 5 et 9 (repas éclatés, `placed_ingredients`) ; [ADR 0038](../../adr/0038-sous-ingredients.md) décisions 9 et 10 (`PartAwareLines`, parties) ; [ADR 0029](../../adr/0029-commande-vocale-alexa.md) décision 13 ; `docs/listes/roadmap.md` ; `CLAUDE.md` (puces « Types de liste », « Sous-ingrédients », « Planifier un repas ») ; skill `repas-dev` § 4 (la ligne « Quantité d'une ligne de liste »).
 
 ## But
@@ -38,7 +38,16 @@ Planifier, retirer ou changer le nombre de personnes d'un repas dont la recette 
 
 ## Critères d'acceptation
 
-- [ ] `make test`, `make quality` verts ; `make voice-model-check` vert ; aucun budget existant ne monte.
-- [ ] Aucun cas d'usage n'appelle `Recipe::getRowForServing` (garde-fou).
-- [ ] Un compte sans composant ne paie aucune requête de plus (`FlattenedRecipeRows` ne lit rien sans composant).
-- [ ] PR vers `main` (**À relire** : la formule, les trois remplacements, l'éclatement par types de liste, le message nommant la recette ; **ordre de livraison avec COMP-002**).
+- [x] `make test`, `make quality` verts ; `make voice-model-check` vert ; aucun budget existant ne monte.
+- [x] Aucun cas d'usage n'appelle `Recipe::getRowForServing` (garde-fou).
+- [x] Un compte sans composant ne paie aucune requête de plus (`FlattenedRecipeRows` ne lit rien sans composant).
+- [x] PR vers `main` (**À relire** : la formule, les trois remplacements, l'éclatement par types de liste, le message nommant la recette ; **ordre de livraison avec COMP-002**).
+
+## Réalisation (2026-11-08)
+
+- **Domaine** : `RecipeFlattener::flatten(Recipe, array $components, int $serving): FlattenedRows` (pur, des copies, `multiplicateur × k` appliqué une fois aux lignes d'une recette utilisée, ordre = lignes propres puis positions, jamais de récursion, arête orpheline ignorée) ; `FlattenedRows` (`Domain\Model` : `rows()`, `sourceNameOf()`, `attribute()`). `getRowForServing` reste dans `Recipe`, plus aucun appelant dans `src/` (`FlattenerIsTheOnlyWayToScaleARecipeTest`).
+- **Application** : `FlattenedRecipeRows::of(Recipe, $viewerId): FlattenedRecipe` (`forServing`, `allRows`) ; sans composant, aucune lecture ; avec, `findByIds` une seule fois ; une recette utilisée illisible du propriétaire de la liste est ignorée ; un modèle sans ses arêtes est relu. Les trois handlers l'appellent à la place de `getRowForServing` et préparent `preload`/`parentsOf` sur `allRows()`. **Écart avec le ticket** : le préchargement se fait sur `allRows()` (au nombre de personnes de la recette) pour les trois, comme demandé, mais `UpdateServingMealHandler` n'aplatit qu'APRÈS le test « le nombre de personnes ne change pas » (aucune lecture de plus pour un changement nul).
+- **Conversion manquante** : `IngredientException::inRecipe()` / `conversionRecipeName()` ; `FlattenedRows::attribute()` (appelé dans les trois handlers autour de la conversion ET de `PartAwareLines::prepare`) ; `MealPlanningException::missingConversion($recette, $ingrédient, $composant)` ; `SpokenMealFailure::$componentName` ; `VoiceReplies::MEAL_MISSING_CONVERSION_OF_IN`. La route de planification garde son `422`.
+- **Tests** : `RecipeFlattenerTest` (la formule sur des chiffres, copies, ordre, orphelin, profondeur 1, mêmes ingrédients, source, produit infini), `FlattenedRecipeRowsTest`, `ComposedPlanningHandlersTest` (planifier, retirer, personnes, aller-retour, la pâte seule ET la tarte, liste envoyée, conversion manquante nommée, partie d'ingrédient dans la pâte, recette éclatée, lectures en lot, orphelin et secrète d'un autre, modèle sans arêtes), `ComposedInvariantTest` (12 graines, 200 gestes, modèle de référence à part), `VoiceComposedRecipeTest`, `ComposedRecipePlanningApiFlowTest` (vraie base : parcours HTTP, deux types de liste, deux comptes, 422 inchangé, le drive lit des lignes d'ingrédients), `ComposedRecipeReadsAreConstantTest` (1 à 10 recettes utilisées, 1 à 6 lignes, mêmes ingrédients partout, éclatée), `FlattenerIsTheOnlyWayToScaleARecipeTest` ; côté voix `VoiceRepliesTest`, `RepasMealAdaptersTest`, `HandleAlexaRequestLoggingTest`. Aides : `ComposedScenario`, `ComposedRecipeDataset`, `FlatRows`, `RecipeInMemoryRepository::$batchReads`.
+- **Budgets SQL** : aucun budget existant ne change. Nouveaux : `planifier-recette-composee` 31, `modifier-portions-recette-composee` 28, `retirer-repas-recette-composee` 19, `…-par-la-voix-recette-composee` 33 / 33 / 26 et `…-dit-a-alexa-recette-composee` 35 / 29.
+- **Pas fait ici** (périmètre des tickets suivants) : aucune écriture HTTP des composants (COMP-002), aucune copie (COMP-003). Le ticket est inerte en production tant que COMP-002 n'a pas livré.
