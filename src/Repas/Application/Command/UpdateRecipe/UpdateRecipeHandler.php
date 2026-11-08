@@ -70,11 +70,22 @@ readonly class UpdateRecipeHandler
             ->findBySlugs($command->rows->map(fn(UpdateRecipeRowSubCommand $row) => $row->unitSlug)->unique())
             ->indexBy(fn(Unit $unit) => $unit->getSlug());
 
+        // Les couples (ingrédient, unité) que la recette a DÉJÀ : un couple qui ne se convertit pas (une ligne « à régler », par exemple dans
+        // une recette copiée de Marmiton) y reste toléré, sans quoi une recette qui en porte une ne pourrait plus rien enregistrer, pas même
+        // retirer cette ligne ou en changer une autre. Seul un couple NOUVEAU (autre ingrédient, autre unité) est contrôlé ; planifier la
+        // recette reste refusé tant qu'une ligne n'est pas réglée (`convertible`).
+        $alreadyThere = [];
+        foreach ($recipe->getRows() as $existingRow) {
+            $alreadyThere[$existingRow->getIngredient()->getSlug() . '|' . $existingRow->getUnit()->getSlug()] = true;
+        }
+
         $recipe->setRows(Tab::newEmptyTyped(RecipeRow::class));
         foreach ($command->rows as $row) {
             $ingredient = $ingredients[$slugOf($row)];
             $unit = $units[$row->unitSlug] ?? throw UnitException::notFound($row->unitSlug);
-            $this->conversionService->assertConvertibleToPurchaseUnit($ingredient, $unit);
+            if (!isset($alreadyThere[$ingredient->getSlug() . '|' . $unit->getSlug()])) {
+                $this->conversionService->assertConvertibleToPurchaseUnit($ingredient, $unit);
+            }
             $recipe->addRow($ingredient, $unit, $row->quantity);
         }
 
