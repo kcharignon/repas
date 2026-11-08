@@ -86,6 +86,13 @@ services:
         alias: Repas\Voice\Infrastructure\Security\HttpCertificateChainFetcher
         public: true
 
+    # Lecteur de page Marmiton (ADR 0037 décisions 12 et 13, MAR-001) : un GET vers www.marmiton.org, adresse reconstruite par MarmitonUrl,
+    # résolue puis vérifiée publique avant la connexion (DnsHostAddressResolver). Public pour qu'un test de bout en bout le remplace par un
+    # double : aucun test automatique n'appelle Marmiton.
+    Repas\Repas\Domain\Interface\MarmitonPageReader:
+        alias: Repas\Repas\Infrastructure\Marmiton\MarmitonHttpPageReader
+        public: true
+
     # Propriétaire du catalogue d'ingrédients (ADR 0028, amendement du 2026-10-20) : le compte protégé, ou, en développement seulement, celui
     # que désigne `INGREDIENT_CATALOG_OWNER_EMAIL` (vide dans `.env`, jamais posée en production). Les deux Open Host Services (écriture et
     # lecture, ADR 0035) lisent la même variable.

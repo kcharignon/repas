@@ -4,7 +4,7 @@
 - **Taille** : M
 - **Effort recommandé pour l'agent** : **xhigh** (appel sortant vers un site tiers à partir d'une adresse saisie par un utilisateur : SSRF, taille, délai)
 - **Dépend de** : — (peut se faire en parallèle de MAR-002 et MAR-004)
-- **Statut** : à faire
+- **Statut** : fait (2026-11-08)
 - **Lire d'abord** : [ADR 0037](../../adr/0037-copier-une-recette-depuis-marmiton.md) décisions 12 et 13 ; `CLAUDE.md` ; skill `repas-dev` ; issue #434.
 
 ## But
@@ -34,3 +34,13 @@ Donner au reste du code un port qui, pour une adresse de recette Marmiton, rend 
 - [ ] Aucune dépendance Composer de plus (HttpClient est déjà là, sinon le dire et passer `make audit`).
 - [ ] L'appel réel a été essayé une fois à la main sur la page d'exemple (résultat noté dans la PR, jamais en test automatique).
 - [ ] PR vers `main`, description au gabarit, CI verte.
+
+## Réalisation (2026-11-08)
+
+- **Adresses privées** : le lecteur résout lui-même `www.marmiton.org` (IPv4, `DnsHostAddressResolver`), refuse sans aucune connexion si le nom ne se résout pas ou si UNE adresse n'est pas publique (`FILTER_FLAG_GLOBAL_RANGE`, plus le multicast que ce filtre laisse passer), puis impose au client HTTP de se connecter à la première adresse vérifiée (option `resolve`, TLS vérifié sur le nom). Le client ne refait donc pas sa résolution entre le contrôle et la connexion (pas de rebinding). Choisi plutôt que `NoPrivateNetworkHttpClient`, qui ne contrôle l'adresse qu'une fois la connexion ouverte. Limite connue : la résolution du système (`gethostbynamel`) n'est pas bornée par le délai de 8 s.
+- **Deux gardes de taille** : `on_progress` abandonne le transfert dès que la taille annoncée ou reçue dépasse 2 Mio, la boucle de lecture compte aussi les octets décodés (gzip).
+- **Redirection** : suivie une fois, seulement vers le MÊME identifiant (un autre identifiant est `unavailable` : la neutre porterait le mauvais tag) ; l'adresse suivie est reconstruite par `MarmitonUrl`, jamais copiée ; un chemin relatif `/recettes/…` est lu sur `www.marmiton.org`.
+- **Identifiant** sans zéro en tête (`[1-9][0-9]{0,11}`) : deux écritures d'un même identifiant ne peuvent pas donner deux neutres.
+- **Recette lisible en entier ou rien** : une seule entrée d'ingrédient qui n'est pas un texte, plus de 100 lignes, un nom vide rendent la recette illisible ; seuls la racine, une liste racine et `@graph` sont parcourus (une recette « liée » dans une `ItemList` n'est pas lue).
+- **Code HTTP** porté par l'exception (`422`, `422`, `422`, `502`), comme les autres exceptions de domaine : le controller de MAR-003 n'a rien à poser.
+- Essai réel unique le 2026-11-08 sur la page d'exemple : `200` en 0,1 s, un appel, 13 lignes, bloc `ld+json` unique en `@graph` de 8 éléments (la recette en dernier), profondeur 7 ; le jeu d'essai du dépôt en reprend la forme et les 13 lignes.
