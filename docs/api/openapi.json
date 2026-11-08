@@ -2669,6 +2669,82 @@
                 }
             }
         },
+        "/api/v1/ingredients/{slug}/parent": {
+            "put": {
+                "tags": [
+                    "Ingredients"
+                ],
+                "summary": "D\u00e9coupe un ingr\u00e9dient : il devient une PARTIE d'un autre (\u00ab Jaune d'\u0153uf \u00bb est une partie d'\u00ab \u0152uf \u00bb), ou change de parent ou de ratio",
+                "description": "Seul le propri\u00e9taire de l'ingr\u00e9dient le d\u00e9coupe, un administrateur compris (`403` pour l'ingr\u00e9dient d'un autre) ; le parent est \u00e0 l'utilisateur lui aussi, sinon il est inconnu (`404`). Une partie reste un ingr\u00e9dient ordinaire (recettes, conversions) mais n'est jamais une ligne de la liste de courses : elle se plie dans son parent. Un seul parent, profondeur 1 : un parent n'est pas une partie et une partie n'a pas de partie ; dix parties au plus par parent. Idempotent : refaire le m\u00eame appel, ou ne changer que le ratio, n'est jamais refus\u00e9. Rien n'est \u00e9crit sur un refus. Les listes en cours ne sont pas recalcul\u00e9es.",
+                "operationId": "put_api_set_ingredient_parent",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetIngredientParentPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Ingr\u00e9dient d\u00e9coup\u00e9 (ou d\u00e9j\u00e0 d\u00e9coup\u00e9 ainsi)"
+                    },
+                    "403": {
+                        "description": "L'ingr\u00e9dient appartient \u00e0 un autre utilisateur (un administrateur n'a pas de passe-droit)"
+                    },
+                    "404": {
+                        "description": "Ingr\u00e9dient inconnu, ou parent inconnu ou \u00e0 un autre utilisateur"
+                    },
+                    "409": {
+                        "description": "L'ingr\u00e9dient a une ligne dans une liste de courses non termin\u00e9e (`INGREDIENT_PART_IN_LIST`) : une partie n'est jamais une ligne de liste ; seulement quand le parent change"
+                    },
+                    "422": {
+                        "description": "Corps invalide, ou un cas m\u00e9tier : un ingr\u00e9dient n'est pas sa propre partie (`INGREDIENT_PART_OF_ITSELF`) ; le parent est d\u00e9j\u00e0 une partie ou l'ingr\u00e9dient a d\u00e9j\u00e0 des parties (`INGREDIENT_PART_CHAIN`) ; le parent a d\u00e9j\u00e0 dix parties (`INGREDIENT_PART_LIMIT_REACHED`) ; le ratio n'est pas un nombre de 0,000001 \u00e0 1 000 000 (`INGREDIENT_PART_RATIO_INVALID`, pr\u00e9c\u00e9d\u00e9 de `ratio: ` quand c'est le corps qui le refuse)"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Ingredients"
+                ],
+                "summary": "Recolle une partie : l'ingr\u00e9dient redevient un ingr\u00e9dient ordinaire (sans parent ni ratio)",
+                "description": "Seul le propri\u00e9taire de l'ingr\u00e9dient le recolle, un administrateur compris (`403` pour l'ingr\u00e9dient d'un autre). Idempotent : un ingr\u00e9dient qui n'est pas une partie r\u00e9pond `204` sans rien changer. Toujours permis, m\u00eame quand une liste de courses contient l'ingr\u00e9dient.",
+                "operationId": "delete_api_remove_ingredient_parent",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "L'ingr\u00e9dient est ordinaire (il l'\u00e9tait d\u00e9j\u00e0, ou il vient de l'\u00eatre)"
+                    },
+                    "403": {
+                        "description": "L'ingr\u00e9dient appartient \u00e0 un autre utilisateur (un administrateur n'a pas de passe-droit)"
+                    },
+                    "404": {
+                        "description": "Ingr\u00e9dient inconnu"
+                    }
+                }
+            }
+        },
         "/api/v1/shopping-lists/active/ingredients/{slug}/decrease": {
             "post": {
                 "tags": [
@@ -4782,6 +4858,28 @@
                         "type": "string",
                         "maxLength": 255,
                         "example": "plat"
+                    }
+                },
+                "type": "object"
+            },
+            "SetIngredientParentPayload": {
+                "required": [
+                    "parent",
+                    "ratio"
+                ],
+                "properties": {
+                    "parent": {
+                        "description": "Slug du parent : l'ingr\u00e9dient dont l'ingr\u00e9dient de l'URL fait partie. \u00c0 l'utilisateur lui aussi (le parent d'un autre est inconnu), et lui-m\u00eame n'est pas une partie",
+                        "type": "string",
+                        "maxLength": 255,
+                        "example": "oeuf-0a1b2c3d"
+                    },
+                    "ratio": {
+                        "description": "Combien d'unit\u00e9s par d\u00e9faut de la partie font UNE unit\u00e9 de recette du parent (1 \u0153uf = 1 jaune : 1 ; une gousse de vanille = 2 demi-gousses : 2), de 0,000001 \u00e0 1 000 000",
+                        "type": "number",
+                        "maximum": 1000000,
+                        "minimum": 1.0e-6,
+                        "example": 1
                     }
                 },
                 "type": "object"

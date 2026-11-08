@@ -50,6 +50,7 @@ use Repas\Repas\Application\Command\PlannedMeal\PlannedMealCommand;
 use Repas\Repas\Application\Command\RememberSpokenPhrase\RememberSpokenPhraseCommand;
 use Repas\Repas\Application\Command\RememberSpokenRecipePhrase\RememberSpokenRecipePhraseCommand;
 use Repas\Repas\Application\Command\RemoveIngredient\RemoveIngredientCommand;
+use Repas\Repas\Application\Command\RemoveIngredientParent\RemoveIngredientParentCommand;
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredientCommand;
 use Repas\Repas\Application\Command\RemoveSpokenMeal\RemoveSpokenMealCommand;
@@ -61,6 +62,7 @@ use Repas\Repas\Application\Command\RemoveShoppingListType\RemoveShoppingListTyp
 use Repas\Repas\Application\Command\ReopenShoppingList\ReopenShoppingListCommand;
 use Repas\Repas\Application\Command\SeedUserIngredients\SeedUserIngredientsCommand;
 use Repas\Repas\Application\Command\SendShoppingList\SendShoppingListCommand;
+use Repas\Repas\Application\Command\SetIngredientParent\SetIngredientParentCommand;
 use Repas\Repas\Application\Command\StoppedShoppingList\StoppedShoppingListCommand;
 use Repas\Repas\Application\Command\TickLineOnShoppingList\TickLineOnShoppingListCommand;
 use Repas\Repas\Application\Command\UncheckLineOnShoppingList\UncheckLineOnShoppingListCommand;
@@ -792,6 +794,27 @@ return [
         $t->persister->saveIngredient($tomatoes);
 
         return new MarkIngredientsDistinctCommand($owner->getId(), $tomatoes->getSlug(), $tomato->getSlug());
+    },
+    // Découper un ingrédient en partie d'un autre, puis le recoller (ADR 0038, SUB-001) : les deux ingrédients de l'utilisateur, la ligne dans une
+    // liste non terminée (une requête), le test du plafond (une requête), l'enregistrement de la partie. Le nombre de requêtes ne dépend ni du
+    // nombre de parties du parent ni du nombre de listes.
+    'decouper-ingredient' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $egg = new IngredientBuilder()->withName('Œuf')->withCreator($owner, true)->build();
+        $yolk = new IngredientBuilder()->withName("Jaune d'œuf")->withCreator($owner, true)->build();
+        $t->persister->saveIngredient($egg);
+        $t->persister->saveIngredient($yolk);
+
+        return new SetIngredientParentCommand($yolk->getSlug(), $egg->getSlug(), 1.0, $owner->getId());
+    },
+    'recoller-ingredient' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $egg = new IngredientBuilder()->withName('Œuf')->withCreator($owner, true)->build();
+        $yolk = new IngredientBuilder()->withName("Jaune d'œuf")->withCreator($owner, true)->withParent($egg->getSlug(), 1.0)->build();
+        $t->persister->saveIngredient($egg);
+        $t->persister->saveIngredient($yolk);
+
+        return new RemoveIngredientParentCommand($yolk->getSlug(), $owner->getId());
     },
     // Amorçage des ingrédients à l'activation (ING-008, interrupteur ALLUMÉ) : la confirmation de l'adresse d'un compte en attente copie les
     // ingrédients « de base » du propriétaire du catalogue, leurs conversions propres et leurs alias, dans la transaction de l'activation. Le
