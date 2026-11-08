@@ -197,6 +197,26 @@ class UserDataPurgeRepositoryTest extends DatabaseTestCase
         $this->assertSame(count($stayingRecipe->getRows()), $this->countWhere('recipe_row', 'recipe', $stayingRecipe->getId()));
     }
 
+    public function testDeletingTheRecipesOfAnAuthorRemovesTheEdgesOfTheirComposedRecipesButNotTheOthers(): void
+    {
+        // Arrange : une tarte qui utilise sa pâte, chez chacun des deux comptes
+        $departingDough = $this->savedRecipe($this->departing, new RecipeBuilder()->isBasqueCake());
+        $departingPie = $this->savedRecipe($this->departing, new RecipeBuilder()->isPastaCarbonara()->withComponent($departingDough, 2.0));
+        $stayingDough = $this->savedRecipe($this->staying, new RecipeBuilder()->isBasqueCake());
+        $stayingPie = $this->savedRecipe($this->staying, new RecipeBuilder()->isSoftBoiledEggs()->withComponent($stayingDough, 3.0));
+        $this->assertSame(1, $this->countWhere('recipe_component', 'recipe', $departingPie->getId()));
+
+        // Act
+        $this->recipeRepository->deleteByAuthor($this->departing->getId());
+        $this->entityManager->clear();
+
+        // Assert : plus aucune arête de ses recettes, celles de l'autre compte sont intactes
+        $this->assertSame(0, $this->countWhere('recipe_component', 'recipe', $departingPie->getId()));
+        $this->assertSame(0, $this->countWhere('recipe_component', 'component', $departingDough->getId()));
+        $this->assertSame(1, $this->countWhere('recipe_component', 'recipe', $stayingPie->getId()));
+        $this->assertSame([$stayingDough->getId()], $this->recipeRepository->findOneById($stayingPie->getId())->componentIds());
+    }
+
     public function testDeletingTheIngredientsOfACreatorRemovesTheirConversionsButNotTheCommonOnes(): void
     {
         // Arrange
