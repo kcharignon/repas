@@ -1,0 +1,45 @@
+# COMP-002 — Écrire les composants : `components` au `POST`/`PUT`, suppression refusée, bascules du secret, recettes utilisables (back)
+
+- **Dépôt** : **back**
+- **Jalon** : I9 Recettes utilisées dans d'autres recettes
+- **Taille** : L
+- **Effort recommandé pour l'agent** : **xhigh** (droits sans passe-droit, règle secrète/ordinaire, verrou, suppression de compte, contrat d'API)
+- **Dépend de** : COMP-001 ; **COMP-004 doit être livré AVANT, ou dans la même release que ce ticket** (règle d'ordre, ADR 0040 décision 32 : sinon l'éditeur crée des composants dont les ingrédients manqueraient dans la liste) ; **un agent à la fois**
+- **Statut** : à faire
+- **Lire d'abord** : [ADR 0040](../../adr/0040-recettes-utilisees-dans-d-autres-recettes.md) décisions 5 à 10, 22 à 31, 37 ; [ADR 0033](../../adr/0033-recette-secrete.md) ; [ADR 0037](../../adr/0037-copier-une-recette-depuis-marmiton.md) (recette sans propriétaire) ; COMP-001 ; `MarmitonImportLock` et `MarmitonImportPostgreSQLLock` (le modèle du verrou) ; `CLAUDE.md` ; skill `repas-dev` § 3.2 et § 3.3.
+
+## But
+
+Un utilisateur peut donner des composants à une recette (création et remplacement), jamais en effacer par mégarde, jamais casser la profondeur 1, la règle « ordinaire n'utilise que des ordinaires » ni son plafond, et ne peut pas supprimer une recette qui sert. L'éditeur dispose de la liste des recettes qu'il peut proposer et de celle des recettes qui en utilisent une.
+
+## Vérifié dans le code le 2026-11-08
+
+- `UpdateRecipeHandler` : `findOneById`, `assertVersion`, `allowAdministratorEdition()` (byAdministrator), `changeSecret` (avant toute autre modification), `update()`, tolérance des couples « ingrédient|unité » déjà là, `linesOfTheAuthor` / `linesOfARecipeWithoutOwner`, `setRows` puis `addRow` par ligne, `save`. `CreateRecipeHandler` : plafond `MAX_PER_AUTHOR` d'abord, `Recipe::create`, `assertConvertibleToPurchaseUnit` par ligne, `RecipeCreatedEvent`.
+- `RecipePayload` (`Infrastructure/Http/Api/CreateRecipe/`, **partagé** par `POST` et `PUT`) : `rows` porte `Assert\Count(min: 1, max: Recipe::MAX_ROWS)` ; `secret` est une propriété `mixed` + `Assert\Type('bool')`, `null` = absent. `UpdateRecipeApiController` : `$this->isGranted('ROLE_ADMIN')` pour `byAdministrator`.
+- `RemoveRecipeHandler` : neutre → verrou Marmiton ; `isRecipePlanned` → `cannotRemoveExistInShoppingList` ; `RecipeRepository::delete`. `RecipePostgreSQLRepository::deleteByAuthor`.
+- **Écart avec l'étude** : la règle « lignes ≥ 1 » est dans le **corps** de la requête (`Assert\Count`), pas dans le cas d'usage ; elle devient « lignes + composants ≥ 1 » dans le cas d'usage (ADR 0040 décision 9).
+
+## À livrer
+
+1. **Corps** : `RecipePayload` gagne `components` (propriété `mixed`, `null` par défaut = absent ; une liste de `RecipeComponentPayload{recipeId: string non vide ≤ 36, multiplier: nombre JSON}` ; `PayloadMessages::COMPONENTS` et `COMPONENT_MULTIPLIER` à créer ; plus de 10 éléments → `422 RECIPE_COMPONENT_LIMIT_REACHED` ; **`Assert\Count(min: 1)` de `rows` passe à `min: 0`**, `max` inchangé). `#[OA\…]` : « absent ou `null` = inchangé ; `[]` = tout retirer ; sinon remplacement complet ; l'ordre est la position ».
+2. **Commandes et handlers** : `CreateRecipeCommand` et `UpdateRecipeCommand` gagnent `?Tab $components` (`RecipeComponentSubCommand{recipeId, multiplier}` ; `null` = inchangé) ; `CreateRecipeHandler` et `UpdateRecipeHandler` appliquent **l'ordre exact des contrôles de la décision 26**, tous avant la première écriture, sur l'**état final** (un `PUT` peut changer `secret` et `components` ensemble) ; `Recipe::setComponents` n'est appelé que si `components` n'est pas `null` (le drapeau reste faux sinon) ; **une recette sans propriétaire modifiée par un administrateur refuse des composants non vides** (`422 RECIPE_COMPONENT_OWNERLESS`, `[]` et absent sont sans effet). Pour l'administrateur qui modifie la recette d'un autre : on compare avec l'**auteur de la recette**. `RecipeRepository::isUsedAsComponent` n'est appelé que si la liste est non vide.
+3. **Verrou** : port `Repas\Repas\Domain\Interface\RecipeComponentLock::acquire(string $authorId)`, adapter `RecipeComponentPostgreSQLLock` (`pg_advisory_xact_lock(hashtext('recipe-components:' || authorId))`, comme `MarmitonImportPostgreSQLLock`), pris par **toute écriture qui pose des composants non vides** et par **tout changement de `secret`** (une recette qui bascule), jamais ailleurs ; double en mémoire.
+4. **Les deux bascules du secret** (dans `UpdateRecipeHandler`, quand la valeur envoyée **diffère** de l'actuelle) : passer en secrète une recette qu'une recette ordinaire utilise → `409 RECIPE_SECRET_USED_BY_PUBLIC` (`isUsedByOrdinaryRecipe`, une requête) ; passer en publique une recette qui a un composant secret → `409 RECIPE_COMPONENT_SECRET` (`hasSecretComponent`, **seulement si** `hasComponents()`). Rien n'est écrit sur un refus.
+5. **Supprimer** : `RemoveRecipeHandler` refuse `409 RECIPE_USED_AS_COMPONENT` (`isUsedAsComponent`, une requête, **avant** le refus de la liste planifiée, **sauf** pour une recette sans propriétaire qui ne la fait pas) ; supprimer une recette composée efface ses arêtes (une instruction, seulement si `hasComponents()`, dans `RecipePostgreSQLRepository::delete`), jamais ses recettes utilisées.
+6. **Suppression d'un compte** : `RecipePostgreSQLRepository::deleteByAuthor` efface les arêtes (`recipe_component` dont `recipe` est une recette de l'auteur) **avant** ses recettes. Test dédié (la table n'a aucune colonne `owner|author|creator|user`, `UserOwnedDataCoverageTest` ne la verra pas) : `RecipeComponentsArePurgedWithTheUserTest`.
+7. **Lectures** (avant `/recipes/{id}` dans l'ordre des routes, comme `/ingredients/to-fix`) : `GET /api/v1/recipes/usable` (`ListUsableRecipesQuery`/`Handler`/`UsableRecipesDTO`, `RecipeLoader::listUsable`, ADR 0040 décision 22 : `forRecipeId`, `secret`, `q`, 200 au plus, `canHaveComponents`, `RECIPE_OWNER` sur `forRecipeId`) et `GET /api/v1/recipes/{id}/used-in` (`ListRecipeUsagesQuery`…, décision 23, `RECIPE_OWNER`). Aucune de ces lectures ne rend la recette d'un autre ni une secrète d'un autre (`404` d'une recette inconnue).
+8. **Contrat et docs** : `#[OA\…]` complet (les neuf codes, `If-Match`), `make openapi`, ADR 0040 (amendements), `docs/recipes/roadmap.md`, `CLAUDE.md` (la puce du chantier devient une puce de règles), skill `repas-dev` (Definition of Done : `components` absent = inchangé ; verrou).
+
+## Tests
+
+- Handlers (`InMemoryRepository`, unitaires) : `CreateRecipeHandlerTest` / `UpdateRecipeHandlerTest` étendus — `components` absent et `null` = inchangé (composants intacts, version +1), `[]` = tout retiré, remplacement, ordre = position, rows seules (recette faite que de recettes utilisées), chacun des refus (`404` inconnue / d'un autre compte / secrète d'un autre, `SELF`, `DUPLICATE`, `MULTIPLIER_INVALID` aux deux bornes, `LIMIT_REACHED` à 11, `CHAIN` dans les deux sens, `OWNERLESS`, `EMPTY`, `COMPONENT_SECRET`), **rien n'est écrit sur un refus**, administrateur qui modifie la recette d'un autre (compare avec l'auteur), le verrou est pris exactement dans les trois cas.
+- `RemoveRecipeHandlerTest` : `USED_AS_COMPONENT`, composée supprimée (arêtes effacées, recettes utilisées intactes), neutre sans la requête. `ComponentsSurviveEverySaveTest` complété (favori, secret, type, nom, `PUT` d'un ancien client sans `components`).
+- Vraie base : `RecipeComponentsApiFlowTest` (créer, remplacer, `PUT` absent / `null` / `[]`, les refus avec leurs statuts et messages, les deux bascules, administrateur sur la recette ordinaire d'un autre, **administrateur sur la secrète d'un autre : `404`**, suppression refusée puis permise après avoir retiré l'arête, `usable` : tri, `q`, secrète/ordinaire, `canHaveComponents`, limite de 200, `used-in`), `RecipeComponentsArePurgedWithTheUserTest`, concurrence : deux écritures croisées (donner des composants à une recette pendant qu'on l'utilise) se suivent grâce au verrou (comme `CountersAreAtomicAcrossProcessesTest`, de vrais processus).
+- Budgets SQL (`tests/Repas/WriteBudget`) : `creer-recette-composee`, `modifier-recette-composee`, `rendre-recette-secrete`, `supprimer-recette-composee` figés à leur mesure ; **`supprimer-recette` 12 → 13**, `supprimer-recette-sans-proprietaire` reste 10 ; `creer-recette` 17, `modifier-recette` 16 et `mettre-recette-en-favoris` 9 **ne bougent pas** (`make sql-budget-update` n'est lancé que pour la baisse ou la ligne neuve).
+
+## Critères d'acceptation
+
+- [ ] `make test`, `make quality`, `make openapi-check` verts ; baseline PHPStan en baisse ou égale ; Deptrac sans baseline.
+- [ ] Aucun passe-droit `ROLE_ADMIN` de plus : la secrète d'un autre reste `404` pour l'administrateur, comme toute secrète.
+- [ ] Un ancien client (corps sans `components`) n'efface aucun composant (`ComponentsSurviveEverySaveTest`).
+- [ ] PR vers `main`, **dans la même release que COMP-004 au plus tard** (**À relire** : l'ordre des contrôles, le verrou, les deux bascules, la suppression de compte).
