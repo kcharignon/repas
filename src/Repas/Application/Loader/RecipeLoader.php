@@ -7,6 +7,8 @@ use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipesDTO;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipeTypes\OtherPeopleRecipeTypesDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeSummaryDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeTypeRecipesDTO;
+use Repas\Repas\Application\Query\ListRecipeUsages\RecipeUsagesDTO;
+use Repas\Repas\Application\Query\ListUsableRecipes\UsableRecipesDTO;
 use Repas\Repas\Domain\Exception\RecipeException;
 
 interface RecipeLoader
@@ -62,4 +64,25 @@ interface RecipeLoader
      * de visibilité, une seule requête quel que soit le nombre de types ou de recettes.
      */
     public function listOtherPeopleTypes(string $userId, bool $isAdministrator = false): OtherPeopleRecipeTypesDTO;
+
+    /**
+     * Les recettes qu'un éditeur peut proposer comme recette utilisée (ADR 0040 décision 22). Celles de l'AUTEUR de `$forRecipeId` (celui de l'utilisateur
+     * quand il est `null`) qui n'ont PAS de composants (profondeur 1), ne sont pas la recette elle-même, et sont ordinaires : les recettes SECRÈTES
+     * de l'auteur n'y sont que si `$secret` (la recette écrite l'est ou va l'être) ET que l'utilisateur est cet auteur (jamais une secrète d'un autre,
+     * administrateur compris). Triées par nom puis par identifiant, ou, avec `$search`, par pertinence (`SearchRelevance`, ADR 0019) ; 200 au plus,
+     * `totalItems` est le vrai nombre.
+     *
+     * `canHaveComponents` : faux quand la recette écrite est elle-même utilisée par une autre, ou qu'elle n'a pas de propriétaire (une recette
+     * Marmiton neutre n'est jamais composée : aucune recette n'est alors proposée). Au plus deux requêtes : l'auteur et l'usage de la recette écrite
+     * (seulement avec `$forRecipeId`), puis les recettes.
+     *
+     * @throws RecipeException `$forRecipeId` est inconnu
+     */
+    public function listUsable(string $userId, ?string $forRecipeId, bool $secret, ?string $search): UsableRecipesDTO;
+
+    /**
+     * Les recettes DE L'AUTEUR qui utilisent cette recette (ADR 0040 décision 23), triées par nom puis par identifiant. Une recette secrète n'est
+     * montrée qu'à son auteur (administrateur compris : celle d'un autre lui est inconnue). Une requête.
+     */
+    public function listUsages(string $recipeId, string $userId): RecipeUsagesDTO;
 }

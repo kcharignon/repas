@@ -9,6 +9,8 @@ use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipesDTO;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipeTypes\OtherPeopleRecipeTypesDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeSummaryDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeTypeRecipesDTO;
+use Repas\Repas\Application\Query\ListRecipeUsages\RecipeUsagesDTO;
+use Repas\Repas\Application\Query\ListUsableRecipes\UsableRecipesDTO;
 use Repas\Repas\Domain\Exception\RecipeException;
 
 /**
@@ -31,6 +33,12 @@ class RecipeInMemoryLoader implements RecipeLoader
     /** @var list<array{string, bool}> */
     public array $listOtherPeopleTypesCalls = [];
 
+    /** @var list<array{string, string|null, bool, string|null}> */
+    public array $listUsableCalls = [];
+
+    /** @var list<array{string, string}> */
+    public array $listUsagesCalls = [];
+
     public function __construct(
         private readonly ?RecipeDTO $recipe = null,
         private readonly ?RecipeTypeRecipesDTO $recipesByType = null,
@@ -38,6 +46,8 @@ class RecipeInMemoryLoader implements RecipeLoader
         /** @var list<RecipeSummaryDTO> */
         private readonly array $favorites = [],
         private readonly OtherPeopleRecipeTypesDTO $otherPeopleTypes = new OtherPeopleRecipeTypesDTO([], 0),
+        private readonly UsableRecipesDTO $usable = new UsableRecipesDTO([], 0, true),
+        private readonly RecipeUsagesDTO $usages = new RecipeUsagesDTO([], 0),
     ) {
     }
 
@@ -74,5 +84,19 @@ class RecipeInMemoryLoader implements RecipeLoader
         $this->listOtherPeopleTypesCalls[] = [$userId, $isAdministrator];
 
         return $this->otherPeopleTypes;
+    }
+
+    public function listUsable(string $userId, ?string $forRecipeId, bool $secret, ?string $search): UsableRecipesDTO
+    {
+        $this->listUsableCalls[] = [$userId, $forRecipeId, $secret, $search];
+
+        return $this->usable;
+    }
+
+    public function listUsages(string $recipeId, string $userId): RecipeUsagesDTO
+    {
+        $this->listUsagesCalls[] = [$recipeId, $userId];
+
+        return $this->usages;
     }
 }

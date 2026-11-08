@@ -11,9 +11,11 @@ use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipesDTO;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipeTypes\OtherPeopleRecipeTypesDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeSummaryDTO;
 use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeDTO;
+use Repas\Repas\Application\Query\ListUsableRecipes\UsableRecipeDTO;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Model\Recipe;
+use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -1080,6 +1082,186 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
 
         // When
         $this->recipeLoader->get($pie->getId(), $other->getId());
+    }
+
+    // --- Les recettes proposables comme recette utilisée (ADR 0040 décision 22) et celles qui en utilisent une (décision 23)
+
+    public function testUsableRecipesAreTheAuthorsRecipesWithoutComponentsSortedByNameAndNeverTheRecipeItself(): void
+    {
+        // Given : trois recettes simples, une composée, la recette écrite, une recette d'un autre, une recette sans propriétaire
+        $author = $this->savedUser();
+        $other = $this->savedUser();
+        $tart = $this->savedRecipe($author, 'zzz tarte', new RecipeTypeBuilder()->isDessert());
+        $cream = $this->savedRecipe($author, 'zzz crème', new RecipeTypeBuilder()->isMeal());
+        $dough = $this->savedRecipe($author, 'zzz pâte', new RecipeTypeBuilder()->isDessert());
+        $composed = new RecipeBuilder()->withAuthor($author)->withName('zzz menu')->withRecipeType(new RecipeTypeBuilder()->isDessert())->withComponent($dough)->build();
+        $this->persister->saveRecipe($composed);
+        $this->savedRecipe($other, 'zzz pâte du voisin', new RecipeTypeBuilder()->isDessert());
+        $neutral = new RecipeBuilder()->isPastaCarbonara()->asMarmitonNeutral('22082')->withAuthorId(Recipe::MARMITON_OWNER_ID)->withName('zzz neutre')->build();
+        $this->persister->saveRecipe($neutral);
+
+        // When : en créant (aucune recette écrite), puis en modifiant la tarte
+        $creating = $this->recipeLoader->listUsable($author->getId(), null, false, null);
+        $editing = $this->recipeLoader->listUsable($author->getId(), $tart->getId(), false, null);
+
+        // Then : ni la composée, ni celle d'un autre, ni la sans propriétaire ; triées par nom, la tarte elle-même absente en la modifiant
+        $this->assertSame([$cream->getId(), $dough->getId(), $tart->getId()], array_map(static fn($recipe): string => $recipe->id, $creating->member));
+        $this->assertSame([$cream->getId(), $dough->getId()], array_map(static fn($recipe): string => $recipe->id, $editing->member));
+        $this->assertSame([3, true, 2, true], [$creating->totalItems, $creating->canHaveComponents, $editing->totalItems, $editing->canHaveComponents]);
+        $this->assertEquals(new UsableRecipeDTO($cream->getId(), 'zzz crème', 2, 'plat', 'plat', false), $editing->member[0]);
+    }
+
+    public function testASecretRecipeIsProposedOnlyToItsAuthorAndOnlyWhenTheRecipeBeingWrittenIsOrWillBeSecret(): void
+    {
+        // Given
+        $author = $this->savedUser();
+        $other = $this->savedUser();
+        $ordinary = $this->savedRecipe($author, 'zzz ordinaire', new RecipeTypeBuilder()->isDessert());
+        $secret = $this->savedRecipe($author, 'zzz secrète', new RecipeTypeBuilder()->isDessert(), secret: true);
+        $pie = $this->savedRecipe($author, 'zzz tarte', new RecipeTypeBuilder()->isDessert());
+
+        // When
+        $ordinaryPie = $this->recipeLoader->listUsable($author->getId(), $pie->getId(), false, null);
+        $secretPie = $this->recipeLoader->listUsable($author->getId(), $pie->getId(), true, null);
+        // l'administrateur (ou tout autre) qui modifie la recette d'un auteur : jamais ses recettes secrètes, même avec `secret = true`
+        $asAnother = $this->recipeLoader->listUsable($other->getId(), $pie->getId(), true, null);
+
+        // Then
+        $this->assertSame([$ordinary->getId()], array_map(static fn($recipe): string => $recipe->id, $ordinaryPie->member));
+        $this->assertSame([$ordinary->getId(), $secret->getId()], array_map(static fn($recipe): string => $recipe->id, $secretPie->member));
+        $this->assertSame([true], [$secretPie->member[1]->secret]);
+        $this->assertSame([$ordinary->getId()], array_map(static fn($recipe): string => $recipe->id, $asAnother->member));
+    }
+
+    public function testARecipeThatIsUsedOrWithoutAnOwnerCannotHaveComponents(): void
+    {
+        // Given : la pâte est utilisée par une tarte ; la neutre n'a pas de propriétaire
+        $author = $this->savedUser();
+        $dough = $this->savedRecipe($author, 'zzz pâte', new RecipeTypeBuilder()->isDessert());
+        $this->persister->saveRecipe(new RecipeBuilder()->withAuthor($author)->withName('zzz tarte')->withRecipeType(new RecipeTypeBuilder()->isDessert())->withComponent($dough)->build());
+        $neutral = new RecipeBuilder()->isPastaCarbonara()->asMarmitonNeutral('22082')->withAuthorId(Recipe::MARMITON_OWNER_ID)->build();
+        $this->persister->saveRecipe($neutral);
+        $this->savedRecipe($this->savedUser(), 'zzz autre neutre', new RecipeTypeBuilder()->isDessert());
+
+        // When
+        $forDough = $this->recipeLoader->listUsable($author->getId(), $dough->getId(), false, null);
+        $forNeutral = $this->recipeLoader->listUsable($author->getId(), $neutral->getId(), false, null);
+
+        // Then : la pâte peut encore dire ce qu'on lui propose (le front masque la section) ; la neutre n'a rien à proposer ni à recevoir
+        $this->assertFalse($forDough->canHaveComponents);
+        $this->assertSame([[], 0, false], [$forNeutral->member, $forNeutral->totalItems, $forNeutral->canHaveComponents]);
+    }
+
+    public function testUsableRecipesOfAnUnknownRecipeAreNotFound(): void
+    {
+        // Then
+        $this->expectExceptionObject(RecipeException::notFound('unknown'));
+
+        // When
+        $this->recipeLoader->listUsable($this->savedUser()->getId(), 'unknown', false, null);
+    }
+
+    public function testUsableRecipesAreSearchedByNameWithTypoAndAccentsAndRankedByRelevance(): void
+    {
+        // Given
+        $author = $this->savedUser();
+        $exact = $this->savedRecipe($author, 'Pâte sablée', new RecipeTypeBuilder()->isDessert());
+        $longer = $this->savedRecipe($author, 'Pâte sablée aux amandes', new RecipeTypeBuilder()->isDessert());
+        $this->savedRecipe($author, 'Soupe de légumes', new RecipeTypeBuilder()->isMeal());
+
+        // When
+        $found = $this->recipeLoader->listUsable($author->getId(), null, false, 'pate sablee');
+        $typo = $this->recipeLoader->listUsable($author->getId(), null, false, 'pate sabléé');
+        $nothing = $this->recipeLoader->listUsable($author->getId(), null, false, '!!!');
+
+        // Then : le nom exact avant le plus long ; une faute de frappe est tolérée ; un texte sans lettre ne trouve rien
+        $this->assertSame([$exact->getId(), $longer->getId()], array_map(static fn($recipe): string => $recipe->id, $found->member));
+        $this->assertSame(2, $found->totalItems);
+        $this->assertContains($exact->getId(), array_map(static fn($recipe): string => $recipe->id, $typo->member));
+        $this->assertSame([[], 0, true], [$nothing->member, $nothing->totalItems, $nothing->canHaveComponents]);
+    }
+
+    public function testUsableRecipesAreCappedAtTwoHundredWithTheRealTotal(): void
+    {
+        // Given : 203 recettes
+        $author = $this->savedUser();
+        for ($number = 1; $number <= 203; $number++) {
+            $this->savedRecipe($author, sprintf('Recette %03d', $number), new RecipeTypeBuilder()->isDessert());
+        }
+
+        // When
+        $all = $this->recipeLoader->listUsable($author->getId(), null, false, null);
+        $searched = $this->recipeLoader->listUsable($author->getId(), null, false, 'recette');
+
+        // Then
+        $this->assertSame([200, 203], [count($all->member), $all->totalItems]);
+        $this->assertSame([200, 203], [count($searched->member), $searched->totalItems]);
+    }
+
+    public function testUsableRecipesAreTwoQueriesAtMostWhateverTheNumberOfRecipes(): void
+    {
+        // Given
+        $author = $this->savedUser();
+        $pie = $this->savedRecipe($author, 'zzz tarte', new RecipeTypeBuilder()->isDessert());
+        for ($number = 1; $number <= 12; $number++) {
+            $this->savedRecipe($author, "zzz base $number", new RecipeTypeBuilder()->isDessert());
+        }
+        $counter = static::getContainer()->get(QueryCounter::class);
+
+        // When : l'auteur et l'usage de la recette écrite, puis les recettes
+        $counter->reset();
+        $this->recipeLoader->listUsable($author->getId(), $pie->getId(), false, null);
+        $withRecipe = $counter->count();
+        $counter->reset();
+        $this->recipeLoader->listUsable($author->getId(), null, false, null);
+        $withoutRecipe = $counter->count();
+
+        // Then
+        $this->assertSame([2, 1], [$withRecipe, $withoutRecipe]);
+    }
+
+    public function testTheRecipesThatUseARecipeAreSortedByNameAndSecretOnesAreShownToTheirAuthorOnly(): void
+    {
+        // Given : la pâte est utilisée par la tarte et par la quiche secrète ; la crème par personne ; une arête orpheline (sa recette n'existe plus)
+        $author = $this->savedUser();
+        $other = $this->savedUser();
+        $dough = $this->savedRecipe($author, 'zzz pâte', new RecipeTypeBuilder()->isDessert());
+        $cream = $this->savedRecipe($author, 'zzz crème', new RecipeTypeBuilder()->isDessert());
+        $pie = new RecipeBuilder()->withAuthor($author)->withName('zzz tarte')->withRecipeType(new RecipeTypeBuilder()->isDessert())->withComponent($dough)->build();
+        $quiche = new RecipeBuilder()->withAuthor($author)->withName('zzz quiche')->withRecipeType(new RecipeTypeBuilder()->isDessert())->asSecret()->withComponent($dough)->build();
+        $this->persister->saveRecipe($pie);
+        $this->persister->saveRecipe($quiche);
+        $this->entityManager->getConnection()->executeStatement('INSERT INTO recipe_component (id, recipe, component, multiplier, position) VALUES (?, ?, ?, 1, 0)', [UuidGenerator::new(), UuidGenerator::new(), $dough->getId()]);
+        $this->entityManager->clear();
+
+        // When
+        $own = $this->recipeLoader->listUsages($dough->getId(), $author->getId());
+        $unused = $this->recipeLoader->listUsages($cream->getId(), $author->getId());
+        // l'administrateur (ou tout autre qui a le droit de lire) ne voit pas la quiche secrète
+        $asAnother = $this->recipeLoader->listUsages($dough->getId(), $other->getId());
+
+        // Then : par nom (quiche avant tarte), la secrète dite telle ; l'arête orpheline n'y est pas
+        $this->assertEquals([new RecipeSummaryDTO($quiche->getId(), 'zzz quiche', true), new RecipeSummaryDTO($pie->getId(), 'zzz tarte', false)], $own->member);
+        $this->assertSame([2, 0, 1], [$own->totalItems, $unused->totalItems, $asAnother->totalItems]);
+        $this->assertSame([$pie->getId()], array_map(static fn(RecipeSummaryDTO $recipe): string => $recipe->id, $asAnother->member));
+    }
+
+    public function testTheUsagesOfARecipeAreOneQuery(): void
+    {
+        // Given
+        $author = $this->savedUser();
+        $dough = $this->savedRecipe($author, 'zzz pâte', new RecipeTypeBuilder()->isDessert());
+        for ($number = 1; $number <= 6; $number++) {
+            $this->persister->saveRecipe(new RecipeBuilder()->withAuthor($author)->withName("zzz tarte $number")->withRecipeType(new RecipeTypeBuilder()->isDessert())->withComponent($dough)->build());
+        }
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $usages = $this->recipeLoader->listUsages($dough->getId(), $author->getId());
+
+        // Then
+        $this->assertSame([6, 1], [$usages->totalItems, $counter->count()]);
     }
 
     private function searchQueryCount(User $me): int
