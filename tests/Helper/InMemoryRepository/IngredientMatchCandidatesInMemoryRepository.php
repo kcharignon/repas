@@ -25,9 +25,27 @@ class IngredientMatchCandidatesInMemoryRepository implements IngredientMatchCand
     public function visibleTo(string $userId): array
     {
         ++$this->reads;
-        $visible = $this->ingredients->findAll()->filter(
+
+        return $this->candidatesOf($this->ingredients->findAll()->filter(
             static fn(Ingredient $ingredient): bool => $ingredient->getCreatorId() === $userId,
-        )->toArray();
+        )->toArray());
+    }
+
+    public function baseOf(string $ownerId): array
+    {
+        ++$this->reads;
+
+        return $this->candidatesOf($this->ingredients->findAll()->filter(
+            static fn(Ingredient $ingredient): bool => $ingredient->getCreatorId() === $ownerId && $ingredient->isBase(),
+        )->toArray());
+    }
+
+    /**
+     * @param array<Ingredient> $visible
+     * @return list<IngredientCandidate>
+     */
+    private function candidatesOf(array $visible): array
+    {
         usort($visible, static fn(Ingredient $first, Ingredient $second): int => $first->getSlug() <=> $second->getSlug());
 
         return array_map(

@@ -19,4 +19,13 @@ interface IngredientMatchCandidates
      * @return list<IngredientCandidate> triés par slug
      */
     public function visibleTo(string $userId): array;
+
+    /**
+     * Les ingrédients « de base » du catalogue du propriétaire `$ownerId` (créés par lui et portant le marqueur `is_base`, ADR 0028 amendement),
+     * ceux que reçoit un compte à son activation : de quoi rapprocher le nom d'une ligne de recette Marmiton d'un ingrédient du catalogue
+     * (ADR 0037 décision 6). Une seule requête, aucun modèle hydraté.
+     *
+     * @return list<IngredientCandidate> triés par slug
+     */
+    public function baseOf(string $ownerId): array;
 }

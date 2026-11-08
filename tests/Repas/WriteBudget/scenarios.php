@@ -41,6 +41,7 @@ use Repas\Repas\Application\Service\ActiveListForType;
 use Repas\Repas\Application\Command\CreateUnit\CreateUnitCommand;
 use Repas\Repas\Application\Command\EnsureActiveShoppingList\EnsureActiveShoppingListCommand;
 use Repas\Repas\Application\Command\DeleteIngredientConversion\DeleteIngredientConversionCommand;
+use Repas\Repas\Application\Command\ImportMarmitonRecipe\ImportMarmitonRecipeCommand;
 use Repas\Repas\Application\Command\MarkIngredientsDistinct\MarkIngredientsDistinctCommand;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 use Repas\Repas\Application\Command\PausedShoppingList\PausedShoppingListCommand;
@@ -97,6 +98,7 @@ use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\MarmitonPages;
 use Repas\Tests\Helper\WriteBudgetTestCase;
 use Repas\User\Application\ChangeUserStatus\ChangeUserStatusCommand;
 use Repas\User\Application\DeleteUser\DeleteUserCommand;
@@ -636,7 +638,51 @@ return [
 
         return new CopyRecipeCommand($recipe->getId(), $copier->getId(), UuidGenerator::new());
     },
+    // Importer une recette Marmiton (ADR 0037, MAR-003). Lectures : le verrou, la neutre et la copie de la personne (une requête chacune), le plafond du
+    // compte, les candidats (une requête par sorte), les types, les unités, les ingrédients à réutiliser ou à copier ; écritures : la neutre, ses lignes, un
+    // ingrédient pour chaque nom nouveau (copié du catalogue avec ses conversions propres, ou créé en « divers ») puis la copie de la personne. Les
+    // lectures ne dépendent pas du nombre de lignes (`MarmitonImportReadsAreConstantTest`), les écritures suivent les ingrédients créés.
+    'importer-recette-marmiton' => static function (WriteBudgetTestCase $t): object {
+        $t->savedMarmitonReferenceData();
+        $catalogOwner = $t->savedUser(new UserBuilder()->isCatalogOwner());
+        $flour = new IngredientBuilder()->isFlour()->withCreator($catalogOwner, true)->withBase()->build();
+        $t->persister->saveIngredient($flour);
+        $t->persister->saveConversion(new ConversionBuilder()->withIngredient($flour)->withStartUnit(new UnitBuilder()->isSoupSpoon())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(12)->build());
+        $user = $t->savedUser();
+        // Un nom du catalogue (copié, deux lignes), un nom nouveau (créé en « divers ») et une pincée de sel (créée aussi)
+        $t->marmitonPageReader('22082', ['250 g de farine', '100 g de farine', '2 oeufs', '1 pincées de sel']);
+
+        return new ImportMarmitonRecipeCommand(MarmitonPages::EXAMPLE_URL, $user->getId(), UuidGenerator::new());
+    },
+    // Le cas ordinaire : la neutre existe (un autre compte l'a importée) et la personne a reçu à son activation une copie de chaque ingrédient du
+    // catalogue (et son alias) : tout se retrouve par la provenance, rien n'est créé ni lu sur Marmiton.
+    'importer-recette-marmiton-neutre-existante' => static function (WriteBudgetTestCase $t): object {
+        $t->savedMarmitonReferenceData();
+        $catalogOwner = $t->savedUser(new UserBuilder()->isCatalogOwner());
+        $user = $t->savedUser();
+        foreach ([new IngredientBuilder()->isFlour(), new IngredientBuilder()->isEgg(), new IngredientBuilder()->isSugar()] as $builder) {
+            $origin = $builder->withCreator($catalogOwner, true)->withBase()->build();
+            $t->persister->saveIngredient($origin);
+            $copy = Ingredient::copyFromOriginal($origin, $user->getId(), $origin->getSlug() . $user->getId());
+            $t->persister->saveIngredient($copy);
+            $t->persister->saveIngredientAlias(IngredientAlias::create($user->getId(), $origin->getSlug(), $copy->getSlug(), AliasKind::ADOPTION, 'activation', new \DateTimeImmutable()));
+        }
+        $t->marmitonPageReader('22082', ['250 g de farine', '2 oeufs', '100 g de sucre']);
+        $t->service(CommandBusInterface::class)->dispatch(new ImportMarmitonRecipeCommand(MarmitonPages::EXAMPLE_URL, $t->savedUser()->getId(), UuidGenerator::new()));
+
+        return new ImportMarmitonRecipeCommand(MarmitonPages::EXAMPLE_URL, $user->getId(), UuidGenerator::new());
+    },
+    // La personne a déjà sa copie : elle lui est rendue, rien n'est écrit (le verrou, la neutre, la copie).
+    'importer-recette-marmiton-copie-existante' => static function (WriteBudgetTestCase $t): object {
+        $t->savedMarmitonReferenceData();
+        $user = $t->savedUser();
+        $t->marmitonPageReader('22082', ['250 g de farine', '2 oeufs']);
+        $t->service(CommandBusInterface::class)->dispatch(new ImportMarmitonRecipeCommand(MarmitonPages::EXAMPLE_URL, $user->getId(), UuidGenerator::new()));
+
+        return new ImportMarmitonRecipeCommand(MarmitonPages::EXAMPLE_URL, $user->getId(), UuidGenerator::new());
+    },
     'supprimer-recette' => static function (WriteBudgetTestCase $t): object {
+
         $owner = $t->savedUser();
         $recipe = $t->savedRecipe($owner, new RecipeBuilder()->isPastaCarbonara());
 

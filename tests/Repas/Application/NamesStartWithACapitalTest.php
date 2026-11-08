@@ -98,6 +98,7 @@ class NamesStartWithACapitalTest extends TestCase
         // Then : ce que le test refuse
         $this->assertNotSame([], self::violationsIn('$r = Recipe::create(id: $i, name: $command->name, servings: 4);'));
         $this->assertNotSame([], self::violationsIn('$i = Ingredient::create(name: $command->name, image: "", creatorId: $id);'));
+        $this->assertNotSame([], self::violationsIn('$r = Recipe::createMarmitonNeutral(id: $i, name: $title, servings: 4, recipeType: $t, rows: $rows, url: $url);'));
         $this->assertNotSame([], self::violationsIn('$ingredient->update(name: $command->name, image: "");'));
         $this->assertNotSame([], self::violationsIn('$recipe->update(name: $command->name, type: $t, serving: 4);'));
         $this->assertNotSame([], self::violationsIn('$copy->setName($name);'));
@@ -113,6 +114,7 @@ class NamesStartWithACapitalTest extends TestCase
         $this->assertSame([], self::violationsIn('$r = Recipe::create(id: $i, name: StringTool::capitalizeFirst($command->name), servings: 4);'));
         $this->assertSame([], self::violationsIn('$i = Ingredient::create(name: StringTool::capitalizeFirst($command->name), image: "", creatorId: $id);'));
         $this->assertSame([], self::violationsIn('$ingredient->update(name: StringTool::capitalizeFirst($command->name), image: "");'));
+        $this->assertSame([], self::violationsIn('$r = Recipe::createMarmitonNeutral(id: $i, name: StringTool::capitalizeFirst($title), servings: 4, recipeType: $t, rows: $rows, url: $url);'));
         $this->assertSame([], self::violationsIn('$c = Recipe::copyFromOriginal($i); $c->setName(StringTool::capitalizeFirst($c->getName()));'));
         $this->assertSame([], self::violationsIn('$t = ShoppingListType::create(id: $i, ownerId: $o, name: StringTool::capitalizeFirst($command->name), createdAt: $now);'));
         $this->assertSame([], self::violationsIn('$listType->rename(StringTool::capitalizeFirst($command->name));'));

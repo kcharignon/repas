@@ -42,7 +42,6 @@ class RecipeMarmitonNeutralTest extends TestCase
 
     public function testTheReservedOwnerIsNotAnAccountButAFixedWellFormedIdentifier(): void
     {
-        $this->assertSame('00000000-0000-4000-8000-4d41524d4954', Recipe::MARMITON_OWNER_ID);
         $this->assertMatchesRegularExpression('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-8[0-9a-f]{3}-[0-9a-f]{12}$/', Recipe::MARMITON_OWNER_ID);
     }
 

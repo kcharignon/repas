@@ -97,9 +97,37 @@ class IngredientMatchCandidatesRepositoryTest extends DatabaseTestCase
         $this->assertCount(4, $slugs);
     }
 
+    public function testTheBaseCandidatesAreTheMarkedIngredientsOfTheCatalogOwnerOnlyInOneQuery(): void
+    {
+        // Given : le propriétaire du catalogue a deux ingrédients « de base » et un qui ne l'est pas ; un autre compte a un ingrédient marqué (inerte)
+        $owner = $this->savedUser(admin: true);
+        $other = $this->savedUser();
+        $flour = $this->saved(new IngredientBuilder()->isFlour()->withCreator($owner, true)->withBase());
+        $butter = $this->saved(new IngredientBuilder()->isButter()->withCreator($owner, true)->withBase());
+        $this->saved(new IngredientBuilder()->isSugar()->withCreator($owner, true));
+        $this->saved(new IngredientBuilder()->isEgg()->withCreator($other, true)->withBase());
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $base = $this->candidates->baseOf($owner->getId());
+
+        // Then : uniquement les ingrédients marqués du propriétaire, triés par slug, en une requête, avec de quoi comparer
+        $this->assertSame(1, $counter->count());
+        $slugs = [$flour->getSlug(), $butter->getSlug()];
+        sort($slugs);
+        $this->assertSame($slugs, array_map(static fn(IngredientCandidate $candidate): string => $candidate->slug, $base));
+        $this->assertSame('Farine', $this->bySlug($base, $flour->getSlug())->name);
+        $this->assertSame('plaquette', $this->bySlug($base, $butter->getSlug())->purchaseUnitSlug);
+        // Le marqueur posé sur l'ingrédient d'un autre compte est inerte : seul le catalogue de celui qu'on demande compte
+        $this->assertCount(1, $this->candidates->baseOf($other->getId()), "Un compte n'a pour « catalogue » que ses propres ingrédients marqués : l'appelant ne demande que celui du propriétaire.");
+        $this->assertSame([], $this->candidates->baseOf('personne'));
+    }
+
     /**
      * @return list<string> dans l'ordre rendu par le port
      */
+
     private function slugs(User $user): array
     {
         return array_map(static fn(IngredientCandidate $candidate): string => $candidate->slug, $this->candidates->visibleTo($user->getId()));

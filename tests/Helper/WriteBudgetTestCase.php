@@ -13,7 +13,9 @@ use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\RetailerPreference;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 
+use Repas\Repas\Domain\Interface\MarmitonPageReader;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\MarmitonRecipePage;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Application\Interface\CommandBusInterface;
@@ -21,7 +23,9 @@ use Repas\Drive\Domain\Interface\DriveFeature;
 use Repas\Tests\Helper\Alexa\AlexaTestClient;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
+use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
+use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ProductBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
@@ -59,6 +63,7 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
 {
     public DataPersister $persister;
     private bool $ingredientSeedingSwitchedOn = false;
+    private ?MarmitonInMemoryPageReader $marmitonReader = null;
 
     protected function setUp(): void
     {
@@ -315,7 +320,39 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     }
 
     /**
-     * Les ingrédients de test par défaut (propriétaire `IngredientBuilder::DEFAULT_CREATOR_ID`) passent au propriétaire du catalogue `$ownerId` :
+     * Ce que l'import d'une recette Marmiton suppose en base (ADR 0037, MAR-003) : les unités des lignes, le rayon « divers » et un type de
+     * recette. Les ingrédients du catalogue et les conversions sont au scénario.
+     */
+    public function savedMarmitonReferenceData(): void
+    {
+        foreach ([new UnitBuilder()->isUnite(), new UnitBuilder()->isGramme(), new UnitBuilder()->isKilo(), new UnitBuilder()->isSoupSpoon(), new UnitBuilder()->withSlug('pincee')->withName('pincée')] as $unit) {
+            $this->persister->saveUnit($unit->build());
+        }
+        $this->persister->saveDepartment(new DepartmentBuilder()->isMiscellaneous()->build());
+        $this->persister->saveRecipeType(new RecipeTypeBuilder()->isMeal()->build());
+        $this->persister->saveConversion(new ConversionBuilder()->isKiloToGramme()->build());
+    }
+
+    /**
+     * Le lecteur de page Marmiton d'un scénario d'import : un double (aucun test n'appelle Marmiton) qui rend `$lines` pour l'identifiant
+     * `$marmitonId`. À appeler AVANT de lancer la commande : un service déjà utilisé ne se remplace plus dans le conteneur de test.
+     *
+     * @param list<string> $lines
+     */
+    public function marmitonPageReader(string $marmitonId, array $lines): MarmitonInMemoryPageReader
+    {
+        // Un seul double par test (un second appel lui ajoute une page) : le conteneur ne remplace plus un service déjà utilisé
+        if ($this->marmitonReader === null) {
+            $this->marmitonReader = new MarmitonInMemoryPageReader();
+            static::getContainer()->set(MarmitonPageReader::class, $this->marmitonReader);
+        }
+
+        return $this->marmitonReader->willRead($marmitonId, new MarmitonRecipePage(sprintf('https://www.marmiton.org/recettes/recette_tarte_%s.aspx', $marmitonId), 'Tarte au citron', '6 personnes', 'Dessert', $lines));
+    }
+
+    /**
+     * Les ingrédients de test par défaut
+ (propriétaire `IngredientBuilder::DEFAULT_CREATOR_ID`) passent au propriétaire du catalogue `$ownerId` :
      * son catalogue, d'où l'amorçage copie les ingrédients « de base » vers un compte.
      */
     public function giveDefaultIngredientsToTheCatalogOwner(string $ownerId): void
