@@ -14,6 +14,7 @@ class DepartmentDTOBuilder implements Builder
     private string $image;
     private ?string $icon = null;
     private ?string $listTypeId = null;
+    private int $ingredientCount = 0;
 
     private function initialize(): void
     {
@@ -52,13 +53,19 @@ class DepartmentDTOBuilder implements Builder
         return $this;
     }
 
+    public function withIngredientCount(int $ingredientCount): self
+    {
+        $this->ingredientCount = $ingredientCount;
+        return $this;
+    }
+
     /**
      * Le rayon tel que la liste des rayons le montre à un utilisateur (avec le type de liste auquel il l'a rattaché).
      */
     public function buildListItem(): DepartmentListItemDTO
     {
         $this->initialize();
-        return new DepartmentListItemDTO($this->slug, $this->name, $this->image, $this->icon, $this->listTypeId);
+        return new DepartmentListItemDTO($this->slug, $this->name, $this->image, $this->icon, $this->listTypeId, $this->ingredientCount);
     }
 
     public function build(): DepartmentDTO
