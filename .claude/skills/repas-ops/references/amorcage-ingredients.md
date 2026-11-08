@@ -43,6 +43,10 @@ Du plus léger au plus lourd ; s'arrêter dès que c'est réglé.
 2. **Le code** : sans danger, l'ancien code lit tout (`references/incident.md` § 2).
 3. **La base** : restaurer `avant-amorcage-ingredients` (`references/incident.md` § 3), décision humaine, jamais automatique.
 
+## Sous-ingrédients (SUB-006)
+
+Le rattrapage de « Jaune d'œuf » et « Blanc d'œuf » des comptes déjà amorcés (ADR 0038) se fait **compte par compte** avec ce même script (`--complet --compte=<référence>`, à blanc d'abord, un compte d'essai, puis les autres) : le pas à pas complet, le rapport à lire ligne à ligne, le cas d'un compte qui a déjà son propre « Jaune d'œuf », la recette et le retour arrière sont dans `docs/ingredients/sous-ingredients-exploitation.md` (partie 2). Même règles qu'ici : une étape par message, jamais le jour d'une release du back, l'assistant ne lance que des lectures.
+
 ## Pièges
 
 - Le script se lance avec `bash -s -- --appliquer …` : sans `--appliquer` il ne fait que lire.

@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Effort recommandé pour l'agent** : **high** (écrans visibles, textes à la voix du produit, captures lues, maquette du designer faite avant)
 - **Dépend de** : SUB-001 et SUB-003 **en production** (champs `parts`, `partOf`, `partOf*`, `includes`, routes `PUT|DELETE /ingredients/{slug}/parent`, erreurs). Les champs sont lus comme facultatifs (un ancien back : traités comme vides).
-- **Statut** : à faire (maquette du designer faite le 2026-11-08 : <https://claude.ai/artifact/3Yd2usWrEx7iSAE98TUvWy>, six écrans téléphone, clair ; à faire valider par le propriétaire avant la première ligne de code)
+- **Statut** : fait (2026-11-08, PR front #329, site `v1.23.0` en production ; maquette du designer : <https://claude.ai/artifact/3Yd2usWrEx7iSAE98TUvWy>, six écrans téléphone, clair, **validée par le propriétaire le 2026-11-08**)
 - **Lire d'abord** : [ADR 0038](../../adr/0038-sous-ingredients.md) décisions 1, 15, 16, 28, 29 ; `CLAUDE.md` du front ; skills `repas-front-dev`, **`repas-po`** (`docs/drive/principes-produit.md` : tutoiement, 15 mots au plus, aucun avertissement, erreurs en trois phrases), `repas-designer` ; ING-015 et ING-017 (écrans voisins).
 
 ## Écrans à dessiner (maquette Claude Design, avant le code)
@@ -35,6 +35,13 @@
 
 ## Critères d'acceptation
 
-- [ ] Maquette validée par le propriétaire avant la première ligne de code ; captures lues avant de fusionner.
-- [ ] Un compte sans partie ne voit aucun changement d'écran.
-- [ ] CI du front verte ; release du site **après** celle du back, une à la fois.
+- [x] Maquette validée par le propriétaire avant la première ligne de code ; captures lues avant de fusionner.
+- [x] Un compte sans partie ne voit aucun changement d'écran.
+- [x] CI du front verte ; release du site **après** celle du back, une à la fois.
+
+## Réalisation
+
+- **PR front #329** (`feat(ingredients): découper un ingrédient en parties (SUB-007)`), fusionnée le 2026-11-08, publiée dans le site `v1.23.0` après le back `v1.19.0`.
+- **Écrans** : section « Ses parties » sur la fiche de tout ingrédient entier à soi (cartes « 1 œuf = 1 jaune d'œuf », nombre modifiable, croix pour détacher) et feuille « Ajouter une partie » (un ingrédient à soi, ou « Nouvelle partie » : création avec le rayon et les unités de l'entier puis rattachement, sans doublon si le second appel échoue) ; fiche d'une partie (« Partie de : Œuf », « Ne plus en faire une partie », pas de choix de liste) ; ligne de liste « Comprend 2 blancs d'œuf et 2 jaunes d'œuf. » ; ligne de recette « compte pour des œufs » ; sélecteur et recherche « Partie de : Œuf » ; fusion refusée (`PART_CONFLICT`, `PART_IN_LIST`) en trois phrases ; refus du découpage (`INGREDIENT_PART_*`) en une phrase chacun.
+- **Limites connues** (PR #329, ADR 0038) : sur une partie, le « + » de la recherche des rayons ajoute au total de l'entier mais la partie reste affichée à 0 (le résumé ne porte pas les parties) ; un nom de partie au pluriel (« Jaunes d'oeuf ») donne « 1 œuf = 1 jaunes d'oeuf » : le document d'exploitation demande le singulier exact.
+- **Reste** : les opérations de données du propriétaire, dans [`sous-ingredients-exploitation.md`](../sous-ingredients-exploitation.md) (SUB-006).
