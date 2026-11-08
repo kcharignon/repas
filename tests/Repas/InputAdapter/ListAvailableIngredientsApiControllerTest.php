@@ -14,8 +14,8 @@ class ListAvailableIngredientsApiControllerTest extends QueryBusWebTestCase
         // Given
         $user = $this->savedUser();
         $this->queryBus->willReturn(ListAvailableIngredientsQuery::class, [
-            new IngredientOptionDTO('farine', 'farine', 'epicerie', 'épicerie'),
-            new IngredientOptionDTO('oeuf', 'œuf', 'surgele', 'surgelé'),
+            new IngredientOptionDTO('farine', 'farine', 'epicerie', 'épicerie', null, null),
+            new IngredientOptionDTO('jaune', 'jaune d\'œuf', 'surgele', 'surgelé', 'oeuf', 'œuf'),
         ]);
 
         // When
@@ -26,8 +26,8 @@ class ListAvailableIngredientsApiControllerTest extends QueryBusWebTestCase
         $this->assertEquals(new ListAvailableIngredientsQuery($user->getId()), $this->queryBus->getLastAskedQuery());
         $this->assertSame([
             'member' => [
-                ['slug' => 'farine', 'name' => 'farine', 'departmentSlug' => 'epicerie', 'departmentName' => 'épicerie'],
-                ['slug' => 'oeuf', 'name' => 'œuf', 'departmentSlug' => 'surgele', 'departmentName' => 'surgelé'],
+                ['slug' => 'farine', 'name' => 'farine', 'departmentSlug' => 'epicerie', 'departmentName' => 'épicerie', 'partOfSlug' => null, 'partOfName' => null],
+                ['slug' => 'jaune', 'name' => 'jaune d\'œuf', 'departmentSlug' => 'surgele', 'departmentName' => 'surgelé', 'partOfSlug' => 'oeuf', 'partOfName' => 'œuf'],
             ],
             'totalItems' => 2,
         ], $this->jsonBody());

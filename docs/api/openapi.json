@@ -5779,6 +5779,18 @@
                         "description": "Chemin ou URL de l'image du rayon de l'ingr\u00e9dient",
                         "type": "string",
                         "example": "images/department/cremerie.png"
+                    },
+                    "partOfSlug": {
+                        "description": "Identifiant du parent quand l'ingr\u00e9dient est une PARTIE d'un autre (ADR 0038 : \u00ab Jaune d'\u0153uf \u00bb pour \u00ab \u0152uf \u00bb), `null` pour un ingr\u00e9dient ordinaire. Cl\u00e9 toujours \u00e9crite",
+                        "type": "string",
+                        "example": "oeuf-0a1b2c3d",
+                        "nullable": true
+                    },
+                    "partOfName": {
+                        "description": "Nom du parent quand l'ingr\u00e9dient est une PARTIE d'un autre, `null` pour un ingr\u00e9dient ordinaire. Cl\u00e9 toujours \u00e9crite",
+                        "type": "string",
+                        "example": "\u0152uf",
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -5914,6 +5926,18 @@
                         "description": "Nom du rayon de l'ingr\u00e9dient",
                         "type": "string",
                         "example": "Surgel\u00e9"
+                    },
+                    "partOfSlug": {
+                        "description": "Identifiant du parent quand l'ingr\u00e9dient est une PARTIE d'un autre (ADR 0038 : \u00ab Jaune d'\u0153uf \u00bb pour \u00ab \u0152uf \u00bb), `null` pour un ingr\u00e9dient ordinaire. Cl\u00e9 toujours \u00e9crite",
+                        "type": "string",
+                        "example": "oeuf-0a1b2c3d",
+                        "nullable": true
+                    },
+                    "partOfName": {
+                        "description": "Nom du parent quand l'ingr\u00e9dient est une PARTIE d'un autre, `null` pour un ingr\u00e9dient ordinaire. Cl\u00e9 toujours \u00e9crite",
+                        "type": "string",
+                        "example": "\u0152uf",
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -6287,6 +6311,62 @@
                 },
                 "type": "object"
             },
+            "IngredientPartDTO": {
+                "required": [
+                    "slug",
+                    "name",
+                    "ratio",
+                    "unitName"
+                ],
+                "properties": {
+                    "slug": {
+                        "description": "Identifiant de la partie (slug)",
+                        "type": "string",
+                        "example": "jaune-d-oeuf-0a1b2c3d"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Jaune d'\u0153uf"
+                    },
+                    "ratio": {
+                        "description": "Combien d'unit\u00e9s par d\u00e9faut de la partie font UNE unit\u00e9 de recette du parent (1 \u0153uf = 1 jaune : 1)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 1
+                    },
+                    "unitName": {
+                        "description": "Nom de l'unit\u00e9 d'achat de la partie (celle dont parle le ratio)",
+                        "type": "string",
+                        "example": "unit\u00e9"
+                    }
+                },
+                "type": "object"
+            },
+            "IngredientPartOfDTO": {
+                "required": [
+                    "slug",
+                    "name",
+                    "ratio"
+                ],
+                "properties": {
+                    "slug": {
+                        "description": "Identifiant du parent (slug)",
+                        "type": "string",
+                        "example": "oeuf-0a1b2c3d"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "\u0152uf"
+                    },
+                    "ratio": {
+                        "description": "Combien d'unit\u00e9s par d\u00e9faut de cette partie font UNE unit\u00e9 de recette du parent (1 \u0153uf = 1 jaune : 1)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 1
+                    }
+                },
+                "type": "object"
+            },
             "IngredientDTO": {
                 "required": [
                     "slug",
@@ -6305,7 +6385,8 @@
                     "listCount",
                     "isBase",
                     "canSetBase",
-                    "listDestination"
+                    "listDestination",
+                    "parts"
                 ],
                 "properties": {
                     "slug": {
@@ -6394,6 +6475,22 @@
                     },
                     "listDestination": {
                         "$ref": "#/components/schemas/ListDestinationDTO"
+                    },
+                    "parts": {
+                        "description": "Les PARTIES de l'ingr\u00e9dient (ADR 0038 : \u00ab Jaune d'\u0153uf \u00bb et \u00ab Blanc d'\u0153uf \u00bb pour \u00ab \u0152uf \u00bb), tri\u00e9es par nom puis identifiant ; `[]` pour un ingr\u00e9dient sans partie. Cl\u00e9 toujours \u00e9crite. Une partie n'est jamais une ligne de la liste de courses : elle se plie dans son parent",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/IngredientPartDTO"
+                        }
+                    },
+                    "partOf": {
+                        "description": "Le parent de l'ingr\u00e9dient quand c'est une PARTIE d'un autre ; `null` pour un ingr\u00e9dient ordinaire. Cl\u00e9 toujours \u00e9crite",
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/IngredientPartOfDTO"
+                            }
+                        ]
                     }
                 },
                 "type": "object"
@@ -6612,6 +6709,12 @@
                         "description": "Nom du rayon de l'ingr\u00e9dient",
                         "type": "string",
                         "example": "Surgel\u00e9"
+                    },
+                    "partOfName": {
+                        "description": "Nom du parent quand l'ingr\u00e9dient de la ligne est une PARTIE d'un autre (ADR 0038 : \u00ab \u0152uf \u00bb pour \u00ab Jaune d'\u0153uf \u00bb), `null` pour un ingr\u00e9dient ordinaire. Cl\u00e9 toujours \u00e9crite",
+                        "type": "string",
+                        "example": "\u0152uf",
+                        "nullable": true
                     }
                 },
                 "type": "object"

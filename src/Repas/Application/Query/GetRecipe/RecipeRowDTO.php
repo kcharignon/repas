@@ -31,6 +31,8 @@ final readonly class RecipeRowDTO
         public string $departmentSlug,
         #[OA\Property(description: 'Nom du rayon de l\'ingrédient', example: 'Surgelé')]
         public string $departmentName,
+        #[OA\Property(description: "Nom du parent quand l'ingrédient de la ligne est une PARTIE d'un autre (ADR 0038 : « Œuf » pour « Jaune d'œuf »), `null` pour un ingrédient ordinaire. Clé toujours écrite", type: 'string', nullable: true, example: 'Œuf')]
+        public ?string $partOfName,
     ) {
     }
 }

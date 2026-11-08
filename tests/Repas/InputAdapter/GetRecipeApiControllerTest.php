@@ -18,7 +18,7 @@ class GetRecipeApiControllerTest extends QueryBusWebTestCase
         $id = UuidGenerator::new();
         $this->queryBus->willReturn(GetRecipeQuery::class, new RecipeDTOBuilder()
             ->withId($id)->withName('pâtes carbonara')->withServing(4)->withType('plat', 'plat')->withVersion(3)
-            ->withRow(new RecipeRowDTO('pate', 'pâtes', 'images/pate.png', 500.0, 'gramme', 'g', 'gramme', 'kilo', 'kilo', false, 'epicerie', 'épicerie'))
+            ->withRow(new RecipeRowDTO('pate', 'pâtes', 'images/pate.png', 500.0, 'gramme', 'g', 'gramme', 'kilo', 'kilo', false, 'epicerie', 'épicerie', null))
             ->build());
 
         // When
@@ -53,6 +53,7 @@ class GetRecipeApiControllerTest extends QueryBusWebTestCase
                 'convertible' => false,
                 'departmentSlug' => 'epicerie',
                 'departmentName' => 'épicerie',
+                'partOfName' => null,
             ]],
             'version' => 3,
             'sourceUrl' => null,

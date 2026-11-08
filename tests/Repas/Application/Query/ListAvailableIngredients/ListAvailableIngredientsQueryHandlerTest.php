@@ -14,7 +14,7 @@ class ListAvailableIngredientsQueryHandlerTest extends TestCase
     public function testReturnsWhatTheLoaderReturns(): void
     {
         // Given
-        $ingredients = [new IngredientOptionDTO('farine', 'farine', 'epicerie', 'épicerie'), new IngredientOptionDTO('oeuf', 'œuf', 'divers', 'divers')];
+        $ingredients = [new IngredientOptionDTO('farine', 'farine', 'epicerie', 'épicerie', null, null), new IngredientOptionDTO('oeuf', 'œuf', 'divers', 'divers', null, null)];
         $handler = new ListAvailableIngredientsQueryHandler(new IngredientInMemoryLoader(availableIngredients: $ingredients));
 
         // When

@@ -47,6 +47,8 @@ class GetIngredientApiControllerTest extends QueryBusWebTestCase
             'isBase' => true,
             'canSetBase' => true,
             'listDestination' => ['mode' => 'DEFAULT', 'typeId' => null, 'typeName' => null],
+            'parts' => [],
+            'partOf' => null,
         ], $this->jsonBody());
     }
 
