@@ -25,11 +25,11 @@ Rien n'est modifié. Lire avec lui, sans jargon : combien d'ingrédients « de b
 
 ## D. L'écriture
 
-`… 'bash -s -- --appliquer --accepter-listes-envoyees'`. Attendu : le rapport, une **sauvegarde** `avant-amorcage-ingredients` (dire où elle est), une ligne par compte (« copies créées… empreinte … identique »), puis « Rien à faire : 0 à copier, 0 à repointer » et la santé. **Au premier échec le script s'arrête** : lire le message avec lui (le compte en cause n'a rien reçu), ne pas relancer à l'aveugle ; relancer est sans danger une fois compris.
+`… 'bash -s -- --appliquer --accepter-listes-envoyees'`. Attendu : le rapport, une **sauvegarde** `avant-amorcage-ingredients` (dire où elle est), une ligne par compte (« copies créées… empreinte … identique », et « N lien(s) posé(s) entre sous-ingrédients » : « Jaune d'œuf » reliée à « Œuf » quand le catalogue les a découpés, ADR 0038), puis « Rien à faire : 0 à copier, 0 à repointer, 0 à relier » et la santé. **Au premier échec le script s'arrête** : lire le message avec lui (le compte en cause n'a rien reçu), ne pas relancer à l'aveugle ; relancer est sans danger une fois compris.
 
 ## E. La santé
 
-`… 'bash -s -- --verifier'`. `verdict : VERT` et code 0. Code 3 (« rien à écrire, santé rouge ») : un compte en attente ou désactivé garde des lignes sur les anciens communs (ou une ligne d'un vieil onglet est restée sur l'origine d'une copie) ; le dire avec ses mots, décider avec lui : le servir (`--compte=<référence>`, `--complet` pour un compte déjà amorcé), ou attendre (la passation l'exigera).
+`… 'bash -s -- --verifier'`. `verdict : VERT` et code 0. Code 3 (« rien à écrire, santé rouge ») : un compte en attente ou désactivé garde des lignes sur les anciens communs (ou une ligne d'un vieil onglet est restée sur l'origine d'une copie) ; le dire avec ses mots, décider avec lui : le servir (`--compte=<référence>`, `--complet` pour un compte déjà amorcé), ou attendre (la passation l'exigera). Code 3 aussi, ou 1 avec « à relier : N » au rapport : des copies de sous-ingrédients attendent leur lien (le catalogue a été découpé après leur copie) ; `--complet --compte=<référence>` copie les parties qui manquent PUIS relie, à blanc d'abord ; la ligne « copies à relier (sous-ingrédients, tous comptes) » de la santé doit revenir à 0.
 
 ## F. Allumer l'interrupteur (décision de l'utilisateur, après D et E)
 
@@ -49,4 +49,5 @@ Du plus léger au plus lourd ; s'arrêter dès que c'est réglé.
 - `--complet` exige `--compte=` : on ne complète jamais tous les comptes.
 - Le rattrapage marche interrupteur coupé ; l'interrupteur ne commande que l'amorçage automatique.
 - Un compte déjà amorcé n'est jamais touché sans `--complet` ; rejouer le script n'écrit rien.
+- Une partie que l'utilisateur a recollée à la main (« Jaune d'œuf » n'est plus une partie d'« Œuf ») est de nouveau reliée par `--complet` : le rapport à blanc la compte dans « à relier » avant toute écriture, la lui signaler si elle apparaît.
 - La commande refuse d'écrire hors des environnements `prod` et `dev`.
