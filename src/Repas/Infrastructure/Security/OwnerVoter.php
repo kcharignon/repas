@@ -4,6 +4,7 @@ namespace Repas\Repas\Infrastructure\Security;
 
 
 use Repas\Repas\Application\Loader\OwnershipLoader;
+use Repas\Repas\Domain\Model\Recipe;
 use Repas\Shared\Domain\Exception\DomainException;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -65,10 +66,9 @@ class OwnerVoter extends Voter
         try {
             if ($isAdmin && $attribute === self::RECIPE_OWNER) {
                 // L'administrateur modifie et supprime toute recette ordinaire ; la recette secrète d'un autre n'existe pas pour lui, comme pour
-                // tout utilisateur : `recipeAuthorIdFor` la traite en recette inconnue (404)
-                $this->ownershipLoader->recipeAuthorIdFor($subject, $user->getId());
-
-                return true;
+                // tout utilisateur : `recipeAuthorIdFor` la traite en recette inconnue (404). La recette Marmiton NEUTRE n'a pas de propriétaire :
+                // pas même lui ne la modifie (ADR 0037 décision 5), on la copie
+                return $this->ownershipLoader->recipeAuthorIdFor($subject, $user->getId()) !== Recipe::MARMITON_OWNER_ID;
             }
 
             return $this->owns($attribute, $subject, $user);
@@ -86,8 +86,11 @@ class OwnerVoter extends Voter
             case self::SHOPPING_LIST_OWNER:
                 return $this->ownershipLoader->shoppingListOwnerId($subject) === $user->getId();
             case self::RECIPE_OWNER:
-                // Une recette secrète d'un autre n'existe pas pour lui : `404`, pas `403` (ADR 0033) ; une recette ordinaire d'un autre est refusée
-                return $this->ownershipLoader->recipeAuthorIdFor($subject, $user->getId()) === $user->getId();
+                // Une recette secrète d'un autre n'existe pas pour lui : `404`, pas `403` (ADR 0033) ; une recette ordinaire d'un autre est refusée.
+                // La recette Marmiton neutre est refusée à tous (ADR 0037 décision 5) : son auteur réservé n'est le compte de personne
+                $authorId = $this->ownershipLoader->recipeAuthorIdFor($subject, $user->getId());
+
+                return $authorId === $user->getId() && $authorId !== Recipe::MARMITON_OWNER_ID;
             case self::MEAL_OWNER:
                 return $this->ownershipLoader->mealOwnerId($subject) === $user->getId();
             case self::SHOPPING_LIST_ROW_OWNER:

@@ -46,7 +46,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
     public function get(string $id, string $userId): RecipeDTO
     {
         $recipe = $this->entityManager->createQueryBuilder()
-            ->select('r.id AS id', 'r.name AS name', 'r.serving AS serving', 't.slug AS typeSlug', 't.name AS typeName', 'r.version AS version', 'r.secret AS secret', 'r.favorite AS favorite', 'r.authorId AS authorId')
+            ->select('r.id AS id', 'r.name AS name', 'r.serving AS serving', 't.slug AS typeSlug', 't.name AS typeName', 'r.version AS version', 'r.secret AS secret', 'r.favorite AS favorite', 'r.authorId AS authorId', 'r.sourceUrl AS sourceUrl')
             ->from(Recipe::class, 'r')
             ->innerJoin(RecipeType::class, 't', Join::WITH, 't.slug = r.typeSlug')
             ->where('r.id = :id')
@@ -100,6 +100,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
                 $rows,
             ),
             version: (int) $recipe['version'],
+            sourceUrl: $recipe['sourceUrl'],
         );
     }
 
@@ -167,7 +168,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
         }
 
         $recipes = $this->otherPeopleQuery($userId)
-            ->select('r.id AS id', 'r.name AS name', 't.name AS typeName', 't.slug AS typeSlug')
+            ->select('r.id AS id', 'r.name AS name', 't.name AS typeName', 't.slug AS typeSlug', 'r.marmitonId AS marmitonId')
             ->orderBy('t.sequence', 'ASC')
             ->addOrderBy('r.slug', 'ASC')
             ->addOrderBy('r.id', 'ASC')
@@ -195,7 +196,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
         }
 
         $rows = $this->otherPeopleQuery($userId)
-            ->select('r.id AS id', 'r.name AS name', 'r.slug AS slug', 't.name AS typeName', 't.slug AS typeSlug')
+            ->select('r.id AS id', 'r.name AS name', 'r.slug AS slug', 't.name AS typeName', 't.slug AS typeSlug', 'r.marmitonId AS marmitonId')
             ->getQuery()
             ->getArrayResult();
 
@@ -217,11 +218,12 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
     }
 
     /**
-     * @param array{id: string, name: string, typeName: string, typeSlug: string} $recipe
+     * @param array{id: string, name: string, typeName: string, typeSlug: string, marmitonId: string|null} $recipe
      */
     private static function toDto(array $recipe): OtherPeopleRecipeDTO
     {
-        return new OtherPeopleRecipeDTO($recipe['id'], $recipe['name'], $recipe['typeName'], $recipe['typeSlug']);
+        // Une recette Marmiton neutre porte le tag de la page (lu dans la même instruction que la page) ; aucune autre recette
+        return new OtherPeopleRecipeDTO($recipe['id'], $recipe['name'], $recipe['typeName'], $recipe['typeSlug'], $recipe['marmitonId'] !== null);
     }
 
     /**

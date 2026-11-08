@@ -15,6 +15,7 @@ final class RecipeException extends DomainException
     public const string SECRET_FORBIDDEN = 'RECIPE_SECRET_FORBIDDEN';
     public const string FAVORITE_FORBIDDEN = 'RECIPE_FAVORITE_FORBIDDEN';
     public const string TYPE_TRANSFER_TO_ITSELF = 'RECIPE_TYPE_TRANSFER_TO_ITSELF';
+    public const string MARMITON_FROZEN = 'RECIPE_MARMITON_FROZEN';
 
     public static function notFound(string $id): static
     {
@@ -106,6 +107,15 @@ final class RecipeException extends DomainException
     public static function favoriteForbidden(): self
     {
         return new self(self::FAVORITE_FORBIDDEN, 403);
+    }
+
+    /**
+     * La recette Marmiton neutre n'appartient à personne et ne se modifie pas, administrateur compris : on la copie (ADR 0037 décision 5).
+     * Refus d'autorisation, `403`.
+     */
+    public static function frozen(): self
+    {
+        return new self(self::MARMITON_FROZEN, 403);
     }
 
     /**

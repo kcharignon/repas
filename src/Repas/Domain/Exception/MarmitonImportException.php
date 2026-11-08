@@ -16,6 +16,8 @@ final class MarmitonImportException extends DomainException
     public const string RECIPE_NOT_FOUND = 'MARMITON_RECIPE_NOT_FOUND';
     public const string RECIPE_UNREADABLE = 'MARMITON_RECIPE_UNREADABLE';
     public const string UNAVAILABLE = 'MARMITON_UNAVAILABLE';
+    /** Le plafond d'imports (appels sortants) d'un utilisateur est atteint : `429` + `Retry-After`, portée par `RateLimitedException` (ADR 0037 décision 14). */
+    public const string RATE_LIMITED = 'MARMITON_IMPORT_RATE_LIMITED';
 
     /** Ce n'est pas l'adresse d'une recette Marmiton (hôte, chemin ou identifiant hors de la forme permise). */
     public static function urlInvalid(): self

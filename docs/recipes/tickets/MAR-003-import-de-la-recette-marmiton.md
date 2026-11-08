@@ -4,7 +4,7 @@
 - **Taille** : L
 - **Effort recommandé pour l'agent** : **xhigh** (migration, propriétaire sans compte, droits qui ne doivent jamais s'ouvrir, appel sortant)
 - **Dépend de** : MAR-001 (lecteur de page) et MAR-002 (lecture des lignes), **fusionnés dans `main`**
-- **Statut** : à faire
+- **Statut** : fait (2026-11-08)
 - **Lire d'abord** : [ADR 0037](../../adr/0037-copier-une-recette-depuis-marmiton.md) en entier ; `CLAUDE.md` (puces « Recette secrète », « Ingrédients propres à chaque utilisateur », « Bornes et plafonds de `Repas` », « Contextes étanches ») ; `CopyRecipeHandler` ; `docs/ingredients/rapprochement.md` ; skill `repas-dev` ; issue #434.
 
 ## But
@@ -38,3 +38,11 @@
 - [ ] Aucun contexte autre que `Repas` touché hors `Infrastructure/Acl` (le catalogue passe par `CatalogOwnerCommandPort`).
 - [ ] Aucune adresse sortante n'est construite à partir d'autre chose que l'identifiant de `MarmitonUrl`.
 - [ ] PR vers `main`, description au gabarit (**À relire** : le propriétaire « personne », les droits, la migration), CI verte.
+
+## Réalisation (2026-11-08)
+
+- **Un seul point d'entrée de copie** : `Application/Service/RecipeCopier` (`assertCanCopy`, `copy`, `copyIngredient`) est ce que `CopyRecipeHandler` et `ImportMarmitonRecipeHandler` appellent ; le rapprochement n'est écrit qu'à cet endroit, `CopyRecipeHandlerTest` n'a changé que sa construction et son budget (`copier-recette*`) pas du tout. SUB-002 y ajoute son appel après les copies d'ingrédients.
+- **Cas d'usage** : `MarmitonUrl::parse`, verrou (`MarmitonImportLock`, `pg_advisory_xact_lock`), neutre connue ? copie de la personne déjà là ? plafond de recettes, puis seulement si la neutre n'existe pas : plafond d'imports (`MarmitonImportLimiter`, `marmiton_import` 20/h/utilisateur), lecture de la page, `MarmitonNeutralRecipeCreator` (a, b, c de la décision 6 ; `MarmitonIngredientMatcher` cherche le nom dans chaque rayon et ne branche que si un seul rayon répond), puis `RecipeCopier::copy`. Le handler rend `ImportedMarmitonRecipe {recipeId, created}`.
+- **Écarts avec le ticket, notés dans l'amendement de l'ADR** : le verrou est pris pour tout import (pas seulement avant de créer la neutre) ; le repository rend des identifiants (`findMarmitonNeutralId`, `findCopyIdOf`) et il n'y a pas de `saveNeutral` ; le lien d'origine est l'adresse de la page lue après redirection ; les lectures sont constantes mais les écritures suivent le nombre d'ingrédients créés ou copiés (une copie d'ingrédient et ses conversions propres ne se font pas en une instruction), donc les budgets décrivent des scénarios fixes et `MarmitonImportReadsAreConstantTest` prouve la part des lectures ; la planification directe de la neutre reste `404` comme toute recette d'un autre.
+- **Droits et propriétaire réservé** : `OwnerVoter` (`403` à tous, administrateur compris), `Recipe::assertNotFrozen()` dans le modèle et à la suppression, rapports de santé qui ne le prennent pas pour une anomalie. Preuves sur la vraie base : `ImportMarmitonApiFlowTest`, `MarmitonNeutralRecipeTest`, `MarmitonImportLockTest` (deux connexions), `MarmitonImportConcurrencyTest` (un vrai processus attend le verrou d'un autre import, puis copie sa neutre sans lire de page).
+- **Essai réel unique** (2026-11-08, base de développement, une seule lecture de page, par `POST /api/v1/recipes/import/marmiton` avec le compte de démonstration) : `201`, 13 lignes sur 12 ingrédients du propriétaire réservé (5 copiés du catalogue : Farine, Citron, Œuf, Sel, Maïzena ; 7 créés en `divers`) ; lignes « à régler » (`convertible: false`) : 1 pincée de sel (le sel du catalogue s'achète au gramme) et 1 cuillère à soupe de maïzena ; un second import du même lien rend `200` et la même copie, l'administrateur reçoit `403` en écriture sur la neutre.

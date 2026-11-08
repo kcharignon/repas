@@ -3,6 +3,7 @@
 namespace Repas\Repas\Infrastructure\Repository;
 
 
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Interface\IngredientMatchCandidates;
 use Repas\Repas\Domain\Model\IngredientCandidate;
@@ -23,15 +24,35 @@ readonly class IngredientMatchCandidatesPostgreSQLRepository extends PostgreSQLR
 
     public function visibleTo(string $userId): array
     {
-        $rows = $this->entityManager->createQueryBuilder()
+        return $this->candidates($this->query()
+            ->where(IngredientVisibility::visibleBy('i', 'viewer'))
+            ->setParameter('viewer', $userId));
+    }
+
+    public function baseOf(string $ownerId): array
+    {
+        // Le catalogue du propriétaire, marqueur « de base » : la même règle que l'amorçage (`IngredientVisibility::isBaseCatalogSql`), en DQL
+        return $this->candidates($this->query()
+            ->where(IngredientVisibility::visibleBy('i', 'owner'))
+            ->andWhere('i.isBase = true')
+            ->setParameter('owner', $ownerId));
+    }
+
+    private function query(): QueryBuilder
+    {
+        return $this->entityManager->createQueryBuilder()
             ->select('i.slug AS slug', 'i.name AS name', 'i.departmentSlug AS departmentSlug', 'i.defaultPurchaseUnitSlug AS purchaseUnitSlug')
             ->addSelect('i.compatibleUnitSlugs AS compatibleUnitSlugs', 'i.adoptedFrom AS adoptedFrom')
             ->from(IngredientEntity::class, 'i')
-            ->where(IngredientVisibility::visibleBy('i', 'viewer'))
-            ->setParameter('viewer', $userId)
-            ->orderBy('i.slug', 'ASC')
-            ->getQuery()
-            ->getArrayResult();
+            ->orderBy('i.slug', 'ASC');
+    }
+
+    /**
+     * @return list<IngredientCandidate>
+     */
+    private function candidates(QueryBuilder $query): array
+    {
+        $rows = $query->getQuery()->getArrayResult();
 
         return array_map(
             static fn(array $row): IngredientCandidate => new IngredientCandidate(

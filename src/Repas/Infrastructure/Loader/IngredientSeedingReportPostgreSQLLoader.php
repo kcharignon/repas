@@ -12,6 +12,7 @@ use Repas\Repas\Application\Query\GetSeedingReport\SeedingReportDTO;
 use Repas\Repas\Application\Query\GetSeedingReport\SeedingUserReportDTO;
 use Repas\Repas\Domain\Model\AdoptionSnapshot;
 use Repas\Repas\Domain\Model\IngredientToSeed;
+use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Service\IngredientSlugPolicy;
 use Repas\Repas\Infrastructure\Adoption\AdoptionSnapshotReader;
 use Repas\Repas\Infrastructure\Adoption\SeedingSourceReader;
@@ -272,7 +273,8 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
         // Un ingrédient est toujours à quelqu'un : ceux dont le créateur n'est aucun compte existant (créateur vide compris) sont une anomalie
         $withoutCreator = 0;
         foreach ($ingredientsByCreator as $creator => $count) {
-            $withoutCreator += isset($statuses[$creator]) ? 0 : (int) $count;
+            // Le propriétaire réservé des recettes Marmiton (ADR 0037) n'est pas un compte, et ses ingrédients ne sont pas une anomalie
+            $withoutCreator += isset($statuses[$creator]) || $creator === Recipe::MARMITON_OWNER_ID ? 0 : (int) $count;
         }
         // Le propriétaire du catalogue entre dans les contrôles 2 et 4 dès qu'il existe (la passation est faite)
         $ownerIncluded = $ownerId !== null;

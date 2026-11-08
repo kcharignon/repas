@@ -33,6 +33,7 @@ class NamesStartWithACapitalTest extends TestCase
     /** Les écritures d'un nom : l'appel porte lui-même la règle. */
     private const array NAME_WRITERS = [
         '/\bRecipe::create\(/',
+        '/\bRecipe::createMarmitonNeutral\(/',
         '/\bIngredient::create\(/',
         '/\bnew Ingredient\(/',
         '/\$(?:recipe|ingredient|copy|\w+Recipe|\w+Ingredient|\w+Copy)->(?:update|setName)\(/',
@@ -72,7 +73,7 @@ class NamesStartWithACapitalTest extends TestCase
         }
 
         // Then : le test ne doit pas être vide, les écritures existent bien dans l'application
-        foreach (['CreateRecipeHandler', 'UpdateRecipeHandler', 'CreateIngredientHandler', 'UpdateIngredientHandler', 'CopyRecipeHandler', 'CreateShoppingListTypeHandler', 'UpdateShoppingListTypeHandler'] as $handler) {
+        foreach (['CreateRecipeHandler', 'UpdateRecipeHandler', 'CreateIngredientHandler', 'UpdateIngredientHandler', 'RecipeCopier', 'CreateShoppingListTypeHandler', 'UpdateShoppingListTypeHandler'] as $handler) {
             $this->assertNotEmpty(array_filter($writers, static fn(string $path): bool => str_ends_with($path, "/$handler.php")), "$handler n'est plus vu comme une écriture de nom : le garde-fou ne vérifie plus rien.");
         }
     }
@@ -97,6 +98,7 @@ class NamesStartWithACapitalTest extends TestCase
         // Then : ce que le test refuse
         $this->assertNotSame([], self::violationsIn('$r = Recipe::create(id: $i, name: $command->name, servings: 4);'));
         $this->assertNotSame([], self::violationsIn('$i = Ingredient::create(name: $command->name, image: "", creatorId: $id);'));
+        $this->assertNotSame([], self::violationsIn('$r = Recipe::createMarmitonNeutral(id: $i, name: $title, servings: 4, recipeType: $t, rows: $rows, url: $url);'));
         $this->assertNotSame([], self::violationsIn('$ingredient->update(name: $command->name, image: "");'));
         $this->assertNotSame([], self::violationsIn('$recipe->update(name: $command->name, type: $t, serving: 4);'));
         $this->assertNotSame([], self::violationsIn('$copy->setName($name);'));
@@ -112,6 +114,7 @@ class NamesStartWithACapitalTest extends TestCase
         $this->assertSame([], self::violationsIn('$r = Recipe::create(id: $i, name: StringTool::capitalizeFirst($command->name), servings: 4);'));
         $this->assertSame([], self::violationsIn('$i = Ingredient::create(name: StringTool::capitalizeFirst($command->name), image: "", creatorId: $id);'));
         $this->assertSame([], self::violationsIn('$ingredient->update(name: StringTool::capitalizeFirst($command->name), image: "");'));
+        $this->assertSame([], self::violationsIn('$r = Recipe::createMarmitonNeutral(id: $i, name: StringTool::capitalizeFirst($title), servings: 4, recipeType: $t, rows: $rows, url: $url);'));
         $this->assertSame([], self::violationsIn('$c = Recipe::copyFromOriginal($i); $c->setName(StringTool::capitalizeFirst($c->getName()));'));
         $this->assertSame([], self::violationsIn('$t = ShoppingListType::create(id: $i, ownerId: $o, name: StringTool::capitalizeFirst($command->name), createdAt: $now);'));
         $this->assertSame([], self::violationsIn('$listType->rename(StringTool::capitalizeFirst($command->name));'));
@@ -122,7 +125,7 @@ class NamesStartWithACapitalTest extends TestCase
     public function testTheModelsOnlyAcceptANameThroughTheMethodsThisTestKnows(): void
     {
         // Then : une nouvelle méthode publique qui reçoit un `$name` est une nouvelle porte d'entrée pour le nom : l'ajouter ici (et au test ci-dessus)
-        $this->assertSame(['create', 'setName', 'update'], self::methodsAcceptingAName(Recipe::class));
+        $this->assertSame(['create', 'createMarmitonNeutral', 'setName', 'update'], self::methodsAcceptingAName(Recipe::class));
         $this->assertSame(['__construct', 'create', 'setName', 'update'], self::methodsAcceptingAName(Ingredient::class));
         $this->assertSame(['create', 'rename'], self::methodsAcceptingAName(ShoppingListType::class));
     }

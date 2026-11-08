@@ -145,6 +145,15 @@ framework:
             lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 60
             interval: '1 minute'
+        # Lecture d'une page de recette Marmiton (POST /api/v1/recipes/import/marmiton, ADR 0037 décision 14, MAR-003), PAR UTILISATEUR
+        # (MarmitonImportRateLimiter) : compte les APPELS SORTANTS vers Marmiton, pas les imports. Consommé seulement quand la page doit
+        # être lue (la copie d'une recette neutre déjà connue ne coûte aucun appel) ; une personne copie quelques recettes par visite, 20
+        # par heure arrêtent un flot (boucle, script, compte malveillant) sans gêner l'usage.
+        marmiton_import:
+            policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
+            limit: 20
+            interval: '1 hour'
 
 when@test:
     framework:
@@ -184,4 +193,6 @@ when@test:
             voice_webhook:
                 cache_pool: test.rate_limiter_pool
             voice_webhook_link:
+                cache_pool: test.rate_limiter_pool
+            marmiton_import:
                 cache_pool: test.rate_limiter_pool

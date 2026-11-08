@@ -15,6 +15,8 @@ final readonly class OtherPeopleRecipeDTO
         public string $typeName,
         #[OA\Property(description: 'Identifiant stable du type de recette, pour grouper les recettes par catégorie', example: 'plat')]
         public string $typeSlug,
+        #[OA\Property(description: "Vrai pour une recette Marmiton neutre (ADR 0037 décision 11) : sans propriétaire, visible de tous, qu'on ne fait que copier ; le front en tire la pastille « Marmiton ». Toujours écrit", example: false)]
+        public bool $fromMarmiton,
     ) {
     }
 }
