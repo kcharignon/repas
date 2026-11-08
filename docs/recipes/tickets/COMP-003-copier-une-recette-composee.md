@@ -5,7 +5,7 @@
 - **Taille** : M
 - **Effort recommandé pour l'agent** : **xhigh** (règle de visibilité de la recette secrète à la copie, plafond de compte, rapprochement des ingrédients)
 - **Dépend de** : COMP-001 (modèle, `findByIds`, arêtes) ; COMP-002 recommandé (les règles d'écriture, pour construire les composants de la copie) ; **un agent à la fois**
-- **Statut** : fait (2026-11-09, PR à venir)
+- **Statut** : fait (2026-11-09, PR #464)
 - **Lire d'abord** : [ADR 0040](../../adr/0040-recettes-utilisees-dans-d-autres-recettes.md) décisions 33 à 36 ; [ADR 0028](../../adr/0028-ingredients-propres-a-chaque-utilisateur.md) décision 8 ; [`../../ingredients/rapprochement.md`](../../ingredients/rapprochement.md) ; [ADR 0033](../../adr/0033-recette-secrete.md) ; [ADR 0037](../../adr/0037-copier-une-recette-depuis-marmiton.md) (le point d'entrée unique `RecipeCopier::copy`) ; [ADR 0038](../../adr/0038-sous-ingredients.md) décisions 20 et 24 (la liaison des parties) ; `CLAUDE.md`.
 
 ## But
@@ -43,7 +43,7 @@ Copier la recette composée d'un autre copie **aussi ses recettes utilisées** (
 
 - [x] `make test`, `make quality`, `make openapi-check` verts ; aucune dépendance entre contextes de plus.
 - [x] Copier une recette sans composant : mêmes requêtes qu'avant (budgets inchangés).
-- [ ] PR vers `main` (**À relire** : le plafond jugé sur « compte + à créer », la réutilisation d'une copie existante, le partage des composants par l'auteur).
+- [x] PR vers `main` (**À relire** : le plafond jugé sur « compte + à créer », la réutilisation d'une copie existante, le partage des composants par l'auteur).
 
 ## Réalisation (2026-11-09)
 
