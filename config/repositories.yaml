@@ -20,6 +20,10 @@ services:
         alias: 'Repas\Repas\Infrastructure\Repository\IngredientAdoptionBulkPostgreSQLRepository'
         public: true
 
+    Repas\Repas\Domain\Interface\IngredientPartLinkRepository:
+        alias: 'Repas\Repas\Infrastructure\Repository\IngredientPartLinkPostgreSQLRepository'
+        public: true
+
     Repas\Repas\Domain\Interface\IngredientMergeRepository:
         alias: 'Repas\Repas\Infrastructure\Repository\IngredientMergePostgreSQLRepository'
         public: true
