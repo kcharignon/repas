@@ -24,7 +24,7 @@ description: Mettre en production, publier une release, revenir en arrière, sau
 |---|---|
 | Première mise en production (nouveau serveur de déploiement, base de l'ancienne installation reprise) | `references/premiere-mise-en-production.md` |
 | Publier une version (back ou front) | `references/release.md` |
-| Ça ne marche plus : retour arrière, restauration de la base, diagnostic | `references/incident.md` |
+| Ça ne marche plus : retour arrière, restauration de la base ou des images envoyées (volume `uploads`, ADR 0039), diagnostic | `references/incident.md` |
 | Le front est inutilisable : rendre Twig en urgence (dernière version qui le servait) | `references/retour-twig.md` |
 | Mettre en place l'envoi d'emails (confirmation d'adresse, ADR 0020) : compte Brevo, domaine, clé d'API, `MAILER_DSN` | `references/envoi-emails.md` |
 | Envoi de la liste au drive : mettre en production (back, front, application), allumer ou couper `DRIVE_ENABLED`, revenir en arrière avec des listes `SENT` (faits et commandes : `docs/production.md`) | `references/drive.md` (scripts `ecrire-drive-enabled.sh`, `rouvrir-listes-envoyees.sh`) |

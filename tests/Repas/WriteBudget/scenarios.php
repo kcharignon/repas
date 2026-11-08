@@ -64,6 +64,8 @@ use Repas\Repas\Application\Command\SeedUserIngredients\SeedUserIngredientsComma
 use Repas\Repas\Application\Command\SendShoppingList\SendShoppingListCommand;
 use Repas\Repas\Application\Command\SetIngredientParent\SetIngredientParentCommand;
 use Repas\Repas\Application\Command\StoppedShoppingList\StoppedShoppingListCommand;
+use Repas\Repas\Application\Command\StoreImageFromUrl\StoreImageFromUrlCommand;
+use Repas\Repas\Application\Command\StoreUploadedImage\StoreUploadedImageCommand;
 use Repas\Repas\Application\Command\TickLineOnShoppingList\TickLineOnShoppingListCommand;
 use Repas\Repas\Application\Command\UncheckLineOnShoppingList\UncheckLineOnShoppingListCommand;
 use Repas\Repas\Application\Command\UpdateConversion\UpdateConversionCommand;
@@ -100,6 +102,7 @@ use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\Image\Images;
 use Repas\Tests\Helper\MarmitonPages;
 use Repas\Tests\Helper\WriteBudgetTestCase;
 use Repas\User\Application\ChangeUserStatus\ChangeUserStatusCommand;
@@ -988,6 +991,15 @@ return [
         $t->persister->saveConversion($conversion);
 
         return new UpdateConversionCommand($conversion->getId(), 'kilo', 'gramme', 1001.0, null, $t->savedUser(new UserBuilder()->isAdmin())->getId());
+    },
+
+    // Envoyer une image en fichier, ou la faire télécharger d'un lien (ADR 0039) : aucune base de données (le contenu est reconnu, assaini ou ré-encodé,
+    // puis écrit sur le disque sous son empreinte). Le budget ne bouge que si une requête s'y glisse ; le plafond des téléchargements est dans le cache.
+    'envoyer-image' => static fn(WriteBudgetTestCase $t): object => new StoreUploadedImageCommand(Images::png(300, 200)),
+    'telecharger-image' => static function (WriteBudgetTestCase $t): object {
+        $t->imageFetcher('https://exemple.org/images/surgeles.png', Images::png(300, 200));
+
+        return new StoreImageFromUrlCommand('https://exemple.org/images/surgeles.png', $t->savedUser(new UserBuilder()->isAdmin())->getId());
     },
 
     // --- Référentiels

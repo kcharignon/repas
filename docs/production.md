@@ -21,10 +21,10 @@ Créer une release GitHub (tag `vX.Y.Z`) sur le dépôt concerné : `gh release 
 
 | Fichier | Rôle |
 |---|---|
-| `deploy/compose.yaml` | services `edge`, `php`, `front`, `database`, volumes, redémarrage automatique |
-| `deploy/Caddyfile` | un site par nom de domaine, TLS automatique, en-têtes communs, taille et durée de lecture des corps |
+| `deploy/compose.yaml` | services `edge`, `php`, `front`, `database`, volumes (base, clés JWT, images envoyées, certificats), redémarrage automatique |
+| `deploy/Caddyfile` | un site par nom de domaine, TLS automatique, en-têtes communs, taille (dont l'envoi d'image) et durée de lecture des corps |
 | `deploy/deploy.sh` | `./deploy.sh back\|front vX.Y.Z` : sauvegarde, déploiement, contrôle de santé, retour arrière |
-| `deploy/backup.sh` | `pg_dump` vérifié, 14 dernières sauvegardes conservées |
+| `deploy/backup.sh` | `pg_dump` vérifié et archive du volume des images envoyées, 14 dernières sauvegardes de chaque sorte conservées |
 | `deploy/.env.example` | modèle du `.env` du serveur (secrets : jamais dans git) |
 | `deploy/smoke-test.sh` | essai de bout en bout, `make deploy-smoke` (aussi dans la CI) |
 | `.github/workflows/release.yml` | release → tests → image GHCR → déploiement (environnement `production`) |
@@ -303,3 +303,20 @@ Décision : [ADR 0029](adr/0029-commande-vocale-alexa.md). Analyse, tickets : [`
 - **Couper** : `ecrire-alexa-enabled.sh false`. Les liaisons de compte restent ; rallumer suffit.
 - **Ce qui part avec un compte** : ses liaisons, codes d'autorisation et jetons (`PurgeUserVoiceData`).
 - **Journaux** : un refus de requête Amazon écrit un seul `warning` avec une catégorie, jamais le corps (voix transcrite) ni la signature.
+
+## Images envoyées par l'administrateur (ADR 0039)
+
+Décision : [ADR 0039](adr/0039-images-envoyees.md). L'administrateur envoie une image (fichier, ou lien que le serveur télécharge) pour un rayon ou un type de recette ; le serveur la garde sous `images/uploads/<empreinte SHA-256>.<png|webp|svg>` et rend ce chemin, qui se met dans le champ `image`.
+
+- **Où elles vivent** : le volume Docker `uploads` (projet `repas-prod` : `repas-prod_uploads`), monté sur `/app/public/images/uploads` du conteneur `php`. Il survit à chaque déploiement et à chaque retour arrière du code ; il n'est dans aucune image. Le dossier est créé dans l'image avec les bons droits : le volume les prend à son premier montage (le serveur tourne en `root`, qui y écrit ; tout le monde lit). Le serveur de fichiers de FrankenPHP les sert sous `/images/uploads/` (la bordure relaie déjà `/images/*`), avec le type d'après l'extension, `nosniff`, un cache d'un an (`immutable`) et `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox` (un SVG ouvert directement ne peut rien exécuter).
+- **Ce qui est déployé avec le back** : l'extension PHP `gd` (dans l'image), le volume, les routes `POST /api/v1/images` et `POST /api/v1/images/from-url`, la limite de corps de la bordure pour la première (3 Mio + 256 Kio, le reste garde 1 Mo), `upload_max_filesize = 4M`. **Aucune migration, aucun interrupteur, aucune variable d'environnement.** Le premier `docker compose up` après cette version crée le volume vide.
+- **Sauvegarde** : `backup.sh` ajoute à chaque sauvegarde de la base (avant chaque déploiement du back, et la nuit) une archive `backups/uploads-<date>[-<étiquette>].tar.gz` du volume, vérifiée (`tar tzf`), 14 conservées. Elles restent sur le serveur, en mode `700`. Si le conteneur `php` ne tourne pas, ou si la version en place est d'avant l'ADR 0039 (pas de dossier), il n'y a rien à archiver et le script le dit ; une archive illisible fait échouer le script (donc le déploiement), comme un dump illisible.
+- **Restaurer les images** (décision humaine ; les fichiers portent le nom de leur empreinte, restaurer ne remplace jamais une image par une autre) :
+  1. repérer l'archive : `ls -1t /opt/repas/backups/uploads-*.tar.gz` ;
+  2. la déposer dans le volume, sans rien supprimer : `cd /opt/repas && docker compose exec -T php tar xzf - -C /app/public/images/uploads < backups/uploads-AAAAMMJJ-HHMMSS.tar.gz` ;
+  3. vérifier : `docker compose exec -T php ls /app/public/images/uploads | head`. Aucun redémarrage n'est nécessaire.
+  Restaurer la **base** (skill `repas-ops`, `references/incident.md` § 3) ne touche pas au volume : une base restaurée à une date antérieure peut pointer vers des fichiers que le volume a encore, ou n'en plus pointer certains dont le fichier est resté ; sans conséquence, aucun fichier n'est jamais supprimé.
+- **Retour arrière du code** : le code seul. L'ancien code ignore le dossier, le volume et les deux routes ; un rayon ou un type dont l'image a été choisie dans `images/uploads/…` perd son image à l'écran tant que le code n'est pas revenu (le chemin reste en base, les fichiers dans le volume). **Le volume reste, rien n'est supprimé** : remettre la version qui connaît cet ADR suffit à tout retrouver. Un retour arrière vers une version d'avant l'ADR 0039 avec le `compose.yaml` d'après monte quand même le volume (sans effet).
+- **Pas de nettoyage automatique** : une image remplacée reste dans le volume (le fichier peut être partagé par plusieurs rayons, types ou ingrédients ; quelques dizaines de Ko ; ADR 0039 décision 15). Surveiller la taille du volume : `docker compose exec php du -sh /app/public/images/uploads`.
+- **Diagnostic** : `IMAGE_STORAGE_FAILED` (500) = le disque n'a pas gardé le fichier (dossier absent, volume plein ou en lecture seule : le journal du conteneur dit la raison, jamais le contenu) ; `IMAGE_PROCESSING_FAILED` (500) = GD en panne ; `IMAGE_DOWNLOAD_FAILED` (502) = le site du lien ne répond pas ; `IMAGE_URL_REFUSED` = lien non https, nom non public ou redirection refusée (le journal garde la raison, jamais le lien).
+- **Essai** : `make deploy-smoke` envoie un PNG, un WebP et un SVG piégé par la bordure, relit leurs en-têtes, vérifie que le JPEG est refusé, que les fichiers survivent au déploiement suivant et que la sauvegarde d'avant ce déploiement les contient.

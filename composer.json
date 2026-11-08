@@ -8,7 +8,12 @@
     "require": {
         "php": ">=8.4.2",
         "ext-ctype": "*",
+        "ext-dom": "*",
+        "ext-gd": "*",
         "ext-iconv": "*",
+        "ext-libxml": "*",
+        "ext-xmlreader": "*",
+        "ext-xmlwriter": "*",
         "doctrine/dbal": "^4.5",
         "doctrine/doctrine-bundle": "^3.3",
         "doctrine/doctrine-migrations-bundle": "^4.0",

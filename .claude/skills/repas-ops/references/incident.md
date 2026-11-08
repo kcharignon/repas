@@ -29,6 +29,8 @@ Les sauvegardes sont dans `/opt/repas/backups/` (14 dernières, une avant chaque
 3. Restaurer : `docker compose exec -T database sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner' < backups/<fichier>.dump`.
 4. Remettre la version de code qui correspond à ce schéma (`./deploy.sh back vX.Y.Z`), qui redémarre `php`.
 
+Les **images envoyées par l'administrateur** (ADR 0039) sont dans un volume Docker à part (`uploads`), archivées avec la base (`backups/uploads-*.tar.gz`, même rotation) ; restaurer la base ne les touche pas. Les restaurer (sans rien supprimer) : `docker compose exec -T php tar xzf - -C /app/public/images/uploads < backups/uploads-AAAAMMJJ-HHMMSS.tar.gz` (détail : `docs/production.md`, section « Images envoyées »).
+
 À répéter d'abord sur une base jetable locale (voir la répétition faite avant le premier déploiement : `docker compose exec -T database createdb …` puis `pg_restore`).
 
 ## 4. Rendre Twig en urgence

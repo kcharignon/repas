@@ -154,6 +154,14 @@ framework:
             lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 20
             interval: '1 hour'
+        # Téléchargement d'une image par lien (POST /api/v1/images/from-url, ADR 0039), PAR UTILISATEUR (ImageDownloadRateLimiter) : compte les
+        # APPELS SORTANTS vers un hôte que l'administrateur choisit, pas les envois de fichier. L'écriture d'un rayon ou d'un type est rare : 30 par
+        # heure laissent essayer plusieurs liens et arrêtent un flot (boucle, script, jeton volé).
+        image_download:
+            policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
+            limit: 30
+            interval: '1 hour'
 
 when@test:
     framework:
@@ -195,4 +203,6 @@ when@test:
             voice_webhook_link:
                 cache_pool: test.rate_limiter_pool
             marmiton_import:
+                cache_pool: test.rate_limiter_pool
+            image_download:
                 cache_pool: test.rate_limiter_pool

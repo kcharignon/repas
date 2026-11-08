@@ -46,3 +46,6 @@ phpstan.neon
 .env.*.local*
 # Marqueur Windows laissé par un fichier copié
 *:Zone.Identifier
+
+# Images envoyées par l'administrateur (ADR 0039) : des données, jamais du code
+/public/images/uploads/

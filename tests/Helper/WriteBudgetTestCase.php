@@ -13,6 +13,7 @@ use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\RetailerPreference;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 
+use Repas\Repas\Domain\Interface\ImageFetcher;
 use Repas\Repas\Domain\Interface\MarmitonPageReader;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\MarmitonRecipePage;
@@ -34,6 +35,7 @@ use Repas\Tests\Helper\Builder\UserAppVersionBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\Builder\UserIdentityBuilder;
+use Repas\Tests\Helper\Image\ImageInMemoryFetcher;
 use Repas\Repas\Domain\Interface\IngredientSeedingFeature;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\Shared\Domain\Tool\UuidGenerator;
@@ -51,6 +53,7 @@ use Repas\Voice\Domain\Model\AccessGrant;
 use Repas\Voice\Domain\Model\AuthorizationCode;
 use Repas\Voice\Domain\Model\OpaqueToken;
 use Repas\Voice\Domain\Model\VoiceLink;
+use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Mesure le nombre de requêtes SQL d'un use case d'écriture, de bout en bout : bus de commandes, handler, repositories
@@ -64,12 +67,23 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     public DataPersister $persister;
     private bool $ingredientSeedingSwitchedOn = false;
     private ?MarmitonInMemoryPageReader $marmitonReader = null;
+    private ?ImageInMemoryFetcher $imageFetcher = null;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->persister = new DataPersister(static::getContainer());
+    }
+
+    protected function tearDown(): void
+    {
+        // Les images que les scénarios d'envoi ont écrites (ADR 0039) : un dossier jetable, jamais `public/`
+        if (static::getContainer()->hasParameter('repas.images.public_directory')) {
+            new Filesystem()->remove(static::getContainer()->getParameter('repas.images.public_directory'));
+        }
+
+        parent::tearDown();
     }
 
     /**
@@ -357,6 +371,20 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
         }
 
         return $this->marmitonReader->willRead($marmitonId, new MarmitonRecipePage(sprintf('https://www.marmiton.org/recettes/recette_tarte_%s.aspx', $marmitonId), 'Tarte au citron', '6 personnes', 'Dessert', $lines));
+    }
+
+    /**
+     * Le téléchargement d'images d'un scénario d'envoi par lien (ADR 0039) : un double (aucun test n'appelle le réseau) qui rend `$bytes` pour l'adresse
+     * `$url`. À appeler AVANT de lancer la commande, comme `marmitonPageReader`.
+     */
+    public function imageFetcher(string $url, string $bytes): ImageInMemoryFetcher
+    {
+        if ($this->imageFetcher === null) {
+            $this->imageFetcher = new ImageInMemoryFetcher();
+            static::getContainer()->set(ImageFetcher::class, $this->imageFetcher);
+        }
+
+        return $this->imageFetcher->willFetch($url, $bytes);
     }
 
     /**

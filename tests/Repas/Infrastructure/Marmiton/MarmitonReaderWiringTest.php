@@ -5,9 +5,9 @@ namespace Repas\Tests\Repas\Infrastructure\Marmiton;
 
 use ReflectionProperty;
 use Repas\Repas\Domain\Interface\MarmitonPageReader;
-use Repas\Repas\Infrastructure\Marmiton\DnsHostAddressResolver;
-use Repas\Repas\Infrastructure\Marmiton\HostAddressResolver;
 use Repas\Repas\Infrastructure\Marmiton\MarmitonHttpPageReader;
+use Repas\Repas\Infrastructure\Network\DnsHostAddressResolver;
+use Repas\Repas\Infrastructure\Network\HostAddressResolver;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**

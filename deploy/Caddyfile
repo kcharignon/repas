@@ -33,8 +33,8 @@
 # le back, qui lit l'adresse du visiteur dans `X-Forwarded-For` (SYMFONY_TRUSTED_PROXIES).
 #
 # Taille des corps de requête : 1 Mo partout, sauf le webhook d'Alexa, dont le contrôleur lit 1 Mio + 1 octet (1048577) avant de
-# refuser les corps plus gros ; la bordure laisse passer exactement cela. Au-delà : `413`. Un `request_body` ne se relève pas dans un
-# bloc plus profond, d'où une limite par bloc `handle`.
+# refuser les corps plus gros ; la bordure laisse passer exactement cela. L'envoi d'une image a sa limite (3 Mio + 256 Kio, plus bas). Au-delà : `413`.
+# Un `request_body` ne se relève pas dans un bloc plus profond, d'où une limite par bloc `handle`.
 {$APP_HOST} {
 	import en_tetes
 
@@ -42,6 +42,17 @@
 	handle @alexa {
 		request_body {
 			max_size 1048577
+		}
+		reverse_proxy php:80
+	}
+
+	# Envoi d'une image (ADR 0039) : le fichier fait 3 Mio au plus et c'est l'application qui le refuse au-delà, avec un message que le site traduit.
+	# La bordure laisse passer 3 Mio + 256 Kio (l'enveloppe multipart) pour qu'elle puisse le dire, et coupe tout ce qui est plus gros (413, sans corps
+	# JSON). Cette route seule : l'envoi par lien (/api/v1/images/from-url) est un corps JSON de quelques octets, il garde la limite de 1 Mo.
+	@image_upload path /api/v1/images
+	handle @image_upload {
+		request_body {
+			max_size 3407872
 		}
 		reverse_proxy php:80
 	}
