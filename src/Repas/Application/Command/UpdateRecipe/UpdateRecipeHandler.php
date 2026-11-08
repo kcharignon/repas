@@ -3,11 +3,13 @@
 namespace Repas\Repas\Application\Command\UpdateRecipe;
 
 use Repas\Repas\Application\Service\IngredientSlugResolver;
+use Repas\Repas\Application\Service\RecipeComponentsWriter;
 use Repas\Repas\Application\Service\RecipeCopier;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
+use Repas\Repas\Domain\Interface\RecipeComponentLock;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
@@ -16,6 +18,7 @@ use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
+use Repas\Repas\Domain\Service\RecipeComponentRules;
 use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Shared\Domain\Tool\Tab;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -31,12 +34,16 @@ readonly class UpdateRecipeHandler
         private ConversionService $conversionService,
         private IngredientSlugResolver $slugResolver,
         private RecipeCopier $copier,
+        private RecipeComponentsWriter $components,
+        private RecipeComponentRules $rules,
+        private RecipeComponentLock $componentLock,
     ) {
     }
 
     /**
      * @throws UnitException
-     * @throws RecipeException
+     * @throws RecipeException les composants sont refusés (ADR 0040, voir `RecipeComponentsWriter`), une bascule du secret est refusée, ou la recette ne
+     *                         contiendrait plus rien (ni ligne ni recette utilisée)
      * @throws IngredientException
      */
     public function __invoke(UpdateRecipeCommand $command): void
@@ -52,8 +59,23 @@ readonly class UpdateRecipeHandler
 
         // Le droit de changer le choix « recette secrète » se juge avant toute autre modification : absent, il reste ce qu'il était ; envoyé,
         // il ne change que par l'auteur (ADR 0033), et sinon rien n'est écrit
+        $lockHeld = false;
         if ($command->secret !== null) {
+            $flips = $command->secret !== $recipe->isSecret();
             $recipe->changeSecret($command->secret, $command->userId ?? '');
+            if ($flips) {
+                // Une recette qui bascule prend le verrou de l'auteur AVANT de lire qui l'utilise (ADR 0040 décision 27), puis les deux bascules de la
+                // décision 8 : rendue secrète, aucune recette ordinaire ne doit l'utiliser ; rendue visible, aucun de ses composants ne doit être
+                // secret. Ce second contrôle regarde les composants d'AUJOURD'HUI : si la requête les remplace, c'est la liste envoyée qui est jugée
+                // plus bas, sur l'état final (un `PUT` peut changer `secret` et `components` ensemble)
+                $this->componentLock->acquire($recipe->getAuthorId());
+                $lockHeld = true;
+                if ($command->secret) {
+                    $this->rules->assertCanBecomeSecret($this->recipeRepository->isUsedByOrdinaryRecipe($recipe->getId()));
+                } elseif ($command->components === null && $recipe->hasComponents()) {
+                    $this->rules->assertCanBecomePublic($this->recipeRepository->hasSecretComponent($recipe->getId()));
+                }
+            }
         }
 
         $type = $this->recipeTypeRepository->findOneBySlug($command->typeSlug);
@@ -82,6 +104,15 @@ readonly class UpdateRecipeHandler
         foreach ($lines as [$ingredient, $unit, $quantity]) {
             $recipe->addRow($ingredient, $unit, $quantity);
         }
+
+        // Les recettes utilisées (ADR 0040 décisions 24 à 26) : absent ou `null` = inchangé (le drapeau « composants modifiés » reste faux et
+        // l'enregistrement n'y touche pas), `[]` = tout retirer, sinon remplacement complet ; les contrôles, le verrou et la lecture en lot sont
+        // ceux du service. Les unités des recettes utilisées ne sont pas revérifiées (leurs lignes sont déjà enregistrées)
+        if ($command->components !== null) {
+            $this->components->apply($recipe, $command->components, $command->userId ?? '', recipeIsNew: false, lockHeld: $lockHeld);
+        }
+        // Lignes + composants ≥ 1 sur l'état final : une recette faite seulement de recettes utilisées est permise
+        $this->rules->assertNotEmpty($recipe);
 
         $this->recipeRepository->save($recipe);
     }

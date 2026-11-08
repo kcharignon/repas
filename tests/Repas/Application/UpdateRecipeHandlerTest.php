@@ -16,7 +16,10 @@ use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Application\Service\RecipeComponentsWriter;
 use Repas\Repas\Application\Service\RecipeCopier;
+use Repas\Repas\Domain\Service\RecipeComponentRules;
+use Repas\Tests\Helper\RecipeComponentLockSpy;
 use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Service\IngredientNameMatcher;
 use Repas\Repas\Domain\Service\IngredientSlugPolicy;
@@ -55,6 +58,7 @@ class UpdateRecipeHandlerTest extends TestCase
     private readonly UnitRepository $unitRepository;
     private readonly ConversionInMemoryRepository $conversionRepository;
     private readonly SpyEventDispatcher $events;
+    private readonly RecipeComponentLockSpy $componentLock;
 
     protected function setUp(): void
     {
@@ -72,6 +76,7 @@ class UpdateRecipeHandlerTest extends TestCase
         ]);
         $this->aliasRepository = new IngredientAliasInMemoryRepository();
         $this->conversionRepository = new ConversionInMemoryRepository();
+        $this->componentLock = new RecipeComponentLockSpy();
         $this->events = new SpyEventDispatcher();
 
         $this->handler = $this->handlerWith($this->ingredientRepository);
@@ -325,6 +330,9 @@ class UpdateRecipeHandlerTest extends TestCase
                 new UuidGenerator(),
                 $this->events,
             ),
+            new RecipeComponentsWriter($this->recipeRepository, $this->componentLock, $rules = new RecipeComponentRules()),
+            $rules,
+            $this->componentLock,
         );
     }
 

@@ -32,6 +32,7 @@ use Repas\Repas\Application\Command\CreateIngredient\CreateIngredientCommand;
 use Repas\Repas\Application\Command\CreateIngredientConversion\CreateIngredientConversionCommand;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeCommand;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeRowSubCommand;
+use Repas\Repas\Application\Command\CreateRecipe\RecipeComponentSubCommand;
 use Repas\Repas\Application\Command\CreateRecipeType\CreateRecipeTypeCommand;
 use Repas\Repas\Application\Command\ChangeRecipeFavorite\ChangeRecipeFavoriteCommand;
 use Repas\Repas\Application\Command\ChangeSpokenMealServings\ChangeSpokenMealServingsCommand;
@@ -713,6 +714,46 @@ return [
 
         return new UpdateRecipeCommand($neutral->getId(), 'Carbonara revisitée', 4, $rows, $neutral->getType()->getSlug(), userId: $admin->getId(), byAdministrator: true);
     },
+    // Les recettes utilisées dans d'autres recettes (ADR 0040, COMP-002). Créer : le plafond, le type, les lignes, PUIS le verrou de l'auteur, la lecture en lot des
+    // deux recettes utilisées et l'écriture de leurs arêtes ; la recette neuve n'est « utilisée » par personne (aucune question de plus). Les lectures ne dépendent pas
+    // du nombre de recettes utilisées (`RecipeComponentsWritesAreConstantTest`). `creer-recette` (sans composant) ne change pas.
+    'creer-recette-composee' => static function (WriteBudgetTestCase $t) use ($createRows): object {
+        $owner = $t->savedUser();
+        $model = $t->savedRecipe($owner, new RecipeBuilder()->isPastaCarbonara());
+        $dough = $t->savedRecipe($owner, new RecipeBuilder()->isBasqueCake());
+        $cream = $t->savedRecipe($owner, new RecipeBuilder()->isSoftBoiledEggs());
+        $t->savedConversionsFor([$model, $dough, $cream]);
+
+        return new CreateRecipeCommand(
+            UuidGenerator::new(), 'Carbonara bis', 4, $owner->getId(), $createRows($model), $model->getType()->getSlug(),
+            components: new Tab([new RecipeComponentSubCommand($dough->getId(), 2.0), new RecipeComponentSubCommand($cream->getId(), 0.5)], RecipeComponentSubCommand::class),
+        );
+    },
+    // Remplacer : une paire gardée (autre multiplicateur, même arête), une retirée, une nouvelle ; le verrou, la lecture en lot, « une autre recette l'utilise-t-elle ? »
+    // et l'écriture des arêtes. `modifier-recette` (sans composant, `components` absent) ne change pas.
+    'modifier-recette-composee' => static function (WriteBudgetTestCase $t) use ($updateRows): object {
+        $owner = $t->savedUser();
+        $dough = $t->savedRecipe($owner, new RecipeBuilder()->isBasqueCake());
+        $cream = $t->savedRecipe($owner, new RecipeBuilder()->isSoftBoiledEggs());
+        $pie = $t->savedRecipe($owner, new RecipeBuilder()->isPastaCarbonara()->withComponent($dough, 2.0)->withComponent($cream, 0.5));
+        $other = $t->savedRecipe($owner, new RecipeBuilder()->isBasqueCake()->withName('Autre pâte'));
+        $t->savedConversionsFor([$dough, $cream, $pie, $other]);
+
+        return new UpdateRecipeCommand(
+            $pie->getId(), 'Carbonara revisitée', 4, $updateRows($pie), $pie->getType()->getSlug(), userId: $owner->getId(),
+            components: new Tab([new RecipeComponentSubCommand($cream->getId(), 1.0), new RecipeComponentSubCommand($other->getId(), 3.0)], RecipeComponentSubCommand::class),
+        );
+    },
+    // Rendre secrète une recette qui en utilise deux : le verrou de l'auteur, puis « une recette ordinaire l'utilise-t-elle ? » (une requête d'existence)
+    'rendre-recette-secrete' => static function (WriteBudgetTestCase $t) use ($updateRows): object {
+        $owner = $t->savedUser();
+        $dough = $t->savedRecipe($owner, new RecipeBuilder()->isBasqueCake());
+        $cream = $t->savedRecipe($owner, new RecipeBuilder()->isSoftBoiledEggs());
+        $pie = $t->savedRecipe($owner, new RecipeBuilder()->isPastaCarbonara()->withComponent($dough, 2.0)->withComponent($cream, 0.5));
+        $t->savedConversionsFor([$dough, $cream, $pie]);
+
+        return new UpdateRecipeCommand($pie->getId(), $pie->getName(), 4, $updateRows($pie), $pie->getType()->getSlug(), secret: true, userId: $owner->getId());
+    },
     'mettre-recette-en-favoris' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
         $recipe = $t->savedRecipe($owner, new RecipeBuilder()->isPastaCarbonara());
@@ -829,6 +870,16 @@ return [
         }
 
         return new RemoveRecipeCommand($neutral->getId(), byAdministrator: true);
+    },
+    // Supprimer une recette composée : « une autre recette l'utilise-t-elle ? », puis ses lignes ET ses arêtes (une instruction) ; les recettes qu'elle utilisait
+    // restent. `supprimer-recette` passe à 13 (cette question), `supprimer-recette-sans-proprietaire` ne la pose pas.
+    'supprimer-recette-composee' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $dough = $t->savedRecipe($owner, new RecipeBuilder()->isBasqueCake());
+        $cream = $t->savedRecipe($owner, new RecipeBuilder()->isSoftBoiledEggs());
+        $pie = $t->savedRecipe($owner, new RecipeBuilder()->isPastaCarbonara()->withComponent($dough, 2.0)->withComponent($cream, 0.5));
+
+        return new RemoveRecipeCommand($pie->getId());
     },
     'supprimer-recette' => static function (WriteBudgetTestCase $t): object {
 

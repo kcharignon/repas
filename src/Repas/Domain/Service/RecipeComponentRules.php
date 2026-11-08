@@ -30,11 +30,15 @@ final readonly class RecipeComponentRules
      *  5. la recette utilisée a elle-même des composants : `422 RECIPE_COMPONENT_CHAIN` (second sens) ;
      *  6. une recette ordinaire n'utilise qu'une recette ordinaire : `409 RECIPE_COMPONENT_SECRET`.
      *
+     * Pour plusieurs recettes utilisées, le cas d'usage appelle chaque étape pour TOUTES les recettes avant la suivante (`assertFound`, puis
+     * `assertDepth`, puis `assertSecrecy`) : celle-ci est l'enchaînement pour une seule recette.
+     *
      * @param bool $parentIsUsed une autre recette utilise déjà la recette composée (`RecipeRepository::isUsedAsComponent`)
+     * @param string|null $editorId l'utilisateur qui écrit (voir `assertFound`)
      *
      * @throws RecipeException
      */
-    public function assertCanUse(Recipe $parent, Recipe $component, bool $parentIsUsed): void
+    public function assertCanUse(Recipe $parent, Recipe $component, bool $parentIsUsed, ?string $editorId = null): void
     {
         if ($parent->getId() === $component->getId()) {
             throw RecipeException::componentSelf();
@@ -42,12 +46,47 @@ final readonly class RecipeComponentRules
         if ($parent->isMarmitonNeutral()) {
             throw RecipeException::componentOwnerless();
         }
-        if ($parent->getAuthorId() !== $component->getAuthorId()) {
+        $this->assertFound($parent, $component, $editorId);
+        $this->assertDepth($parent, $component, $parentIsUsed);
+        $this->assertSecrecy($parent, $component);
+    }
+
+    /**
+     * La recette utilisée existe, pour qui écrit (étape 3) : elle est de l'AUTEUR de la recette composée (jamais celle d'un autre compte, on la
+     * copie d'abord) et, si `$editorId` est donné, visible de celui qui écrit. Sans ce second contrôle, l'administrateur qui modifie la recette
+     * ordinaire d'un autre apprendrait par un `409` qu'une recette secrète de cet auteur existe : sans passe-droit, elle est pour lui une recette
+     * inconnue.
+     *
+     * @throws RecipeException `404`, avec le message d'une recette inconnue
+     */
+    public function assertFound(Recipe $parent, Recipe $component, ?string $editorId = null): void
+    {
+        if ($parent->getAuthorId() !== $component->getAuthorId() || ($editorId !== null && !$component->isVisibleTo($editorId))) {
             throw RecipeException::notFound($component->getId());
         }
+    }
+
+    /**
+     * Profondeur 1, dans les deux sens (étapes 4 et 5) : `422 RECIPE_COMPONENT_CHAIN`.
+     *
+     * @param bool $parentIsUsed une autre recette utilise déjà la recette composée
+     *
+     * @throws RecipeException
+     */
+    public function assertDepth(Recipe $parent, Recipe $component, bool $parentIsUsed): void
+    {
         if ($parentIsUsed || $component->hasComponents()) {
             throw RecipeException::componentChain();
         }
+    }
+
+    /**
+     * Une recette ordinaire n'utilise qu'une recette ordinaire (étape 6) : `409 RECIPE_COMPONENT_SECRET`.
+     *
+     * @throws RecipeException
+     */
+    public function assertSecrecy(Recipe $parent, Recipe $component): void
+    {
         if (!$parent->isSecret() && $component->isSecret()) {
             throw RecipeException::componentSecret();
         }

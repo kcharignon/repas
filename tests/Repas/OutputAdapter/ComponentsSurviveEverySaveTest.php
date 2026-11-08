@@ -28,8 +28,9 @@ use Repas\User\Domain\Model\User;
  * la charge puis l'enregistre. Chaque cas d'usage qui écrit une recette est rejoué, avec les vrais bus et la vraie base, sur une recette qui en
  * utilise une autre ; ses arêtes (mêmes identifiants, mêmes multiplicateurs, mêmes positions) et son `component_count` sont les mêmes après.
  *
- * COMP-002 y ajoute le `PUT` d'un ancien client (`components` absent ou `null`) et les écritures de recettes qui touchent les composants ; une
- * nouvelle écriture d'une recette est un nouveau cas ci-dessous.
+ * COMP-002 y ajoute le `PUT` d'un ancien client (`components` absent ou `null`, avec ou sans `If-Match`), le changement de type, de nom et de choix du secret :
+ * une écriture qui n'envoie PAS `components` ne touche jamais aux composants. Celles qui les envoient (`[]` retire tout, une liste remplace) sont éprouvées
+ * dans `RecipeComponentsApiFlowTest`. Une nouvelle écriture d'une recette est un nouveau cas ci-dessous.
  */
 class ComponentsSurviveEverySaveTest extends DatabaseTestCase
 {
@@ -62,6 +63,10 @@ class ComponentsSurviveEverySaveTest extends DatabaseTestCase
         yield 'mettre la recette en favoris' => ['favorite'];
         yield 'la retirer des favoris' => ['unfavorite'];
         yield 'modifier la recette (nom, personnes, lignes) sans toucher aux composants' => ['update'];
+        yield "le `PUT` d'un ancien client : `components` absent, avec `If-Match`" => ['old-client'];
+        yield '`components: null` explicite (comme absent)' => ['null-components'];
+        yield 'changer le type de la recette' => ['type-changed'];
+        yield 'renvoyer le choix « secret » actuel (faux)' => ['same-secret'];
         yield 'la rendre secrète (elle les utilise toujours)' => ['secret'];
         yield 'supprimer le type de la recette (les recettes passent dans un autre type)' => ['type-removed'];
     }
@@ -103,6 +108,41 @@ class ComponentsSurviveEverySaveTest extends DatabaseTestCase
                 8,
                 Tab::fromArray(new UpdateRecipeRowSubCommand($this->ownIngredientSlug(), 'gramme', 300.0)),
                 'dessert',
+                userId: $this->author->getId(),
+            ),
+            'old-client' => new UpdateRecipeCommand(
+                $this->pie->getId(),
+                $this->pie->getName(),
+                $this->pie->getServing(),
+                Tab::fromArray(new UpdateRecipeRowSubCommand($this->ownIngredientSlug(), 'gramme', 250.0)),
+                $this->pie->getType()->getSlug(),
+                expectedVersion: $this->pie->getVersion(),
+                userId: $this->author->getId(),
+            ),
+            'null-components' => new UpdateRecipeCommand(
+                $this->pie->getId(),
+                'Tarte renommée',
+                $this->pie->getServing(),
+                Tab::fromArray(new UpdateRecipeRowSubCommand($this->ownIngredientSlug(), 'gramme', 250.0)),
+                $this->pie->getType()->getSlug(),
+                userId: $this->author->getId(),
+                components: null,
+            ),
+            'type-changed' => new UpdateRecipeCommand(
+                $this->pie->getId(),
+                $this->pie->getName(),
+                $this->pie->getServing(),
+                Tab::fromArray(new UpdateRecipeRowSubCommand($this->ownIngredientSlug(), 'gramme', 250.0)),
+                'plat',
+                userId: $this->author->getId(),
+            ),
+            'same-secret' => new UpdateRecipeCommand(
+                $this->pie->getId(),
+                $this->pie->getName(),
+                $this->pie->getServing(),
+                Tab::fromArray(new UpdateRecipeRowSubCommand($this->ownIngredientSlug(), 'gramme', 250.0)),
+                $this->pie->getType()->getSlug(),
+                secret: false,
                 userId: $this->author->getId(),
             ),
             'secret' => new UpdateRecipeCommand(

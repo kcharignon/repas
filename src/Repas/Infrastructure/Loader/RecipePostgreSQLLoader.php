@@ -16,6 +16,10 @@ use Repas\Repas\Application\Query\ListOtherPeopleRecipeTypes\OtherPeopleRecipeTy
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeSummaryDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeTypeRecipesDTO;
 use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeDTO;
+use Repas\Repas\Application\Query\ListRecipeUsages\RecipeUsagesDTO;
+use Repas\Repas\Application\Query\ListUsableRecipes\ListUsableRecipesQuery;
+use Repas\Repas\Application\Query\ListUsableRecipes\UsableRecipeDTO;
+use Repas\Repas\Application\Query\ListUsableRecipes\UsableRecipesDTO;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Model\Recipe as DomainRecipe;
 use Repas\Repas\Infrastructure\Conversion\IngredientConversionGraphs;
@@ -289,6 +293,150 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
         $types = array_map(static fn(array $row): OtherPeopleRecipeTypeDTO => new OtherPeopleRecipeTypeDTO($row['typeSlug'], $row['typeName'], (int) $row['recipeCount']), $rows);
 
         return new OtherPeopleRecipeTypesDTO($types, count($types));
+    }
+
+    /**
+     * Les recettes qu'un éditeur propose comme recette utilisée (ADR 0040 décision 22) : une lecture de l'auteur et de l'usage de la recette écrite
+     * (seulement avec `$forRecipeId`), puis UNE requête de recettes (le nombre n'en dépend pas).
+     *
+     * Les recettes secrètes de l'auteur ne sont proposées que si `$secret` ET que l'utilisateur EST l'auteur : la condition est dans la requête, jamais
+     * un passe-droit (l'administrateur qui modifie la recette ordinaire d'un autre ne voit que des recettes ordinaires). Sans `$search`, 200 au plus
+     * en SQL, le total n'est compté que si la liste est pleine ; avec, comme `searchOfOtherPeople()`, le score de Jaro-Winkler n'existe pas en SQL : la
+     * requête lit toutes les recettes proposables de l'auteur (au plus `Recipe::MAX_PER_AUTHOR_WITH_COPIES`) et la pertinence est calculée en PHP.
+     */
+    public function listUsable(string $userId, ?string $forRecipeId, bool $secret, ?string $search): UsableRecipesDTO
+    {
+        $authorId = $userId;
+        $canHaveComponents = true;
+        if ($forRecipeId !== null) {
+            // L'auteur de la recette écrite et « une autre recette l'utilise-t-elle ? », en une lecture
+            $recipe = $this->entityManager->getConnection()->fetchAssociative(
+                'SELECT r.author AS author, EXISTS (SELECT 1 FROM recipe_component rc WHERE rc.component = r.id) AS used FROM recipe r WHERE r.id = :id',
+                ['id' => $forRecipeId],
+            );
+            if ($recipe === false) {
+                throw RecipeException::notFound($forRecipeId);
+            }
+            $authorId = $recipe['author'];
+            // Une recette sans propriétaire n'est jamais composée (ADR 0040 décision 7) ; une recette utilisée ne peut pas avoir de composants (profondeur 1)
+            $canHaveComponents = !(bool) $recipe['used'] && $authorId !== DomainRecipe::MARMITON_OWNER_ID;
+            if ($authorId === DomainRecipe::MARMITON_OWNER_ID) {
+                return new UsableRecipesDTO([], 0, false);
+            }
+        }
+
+        $query = fn(): QueryBuilder => $this->usableQuery($authorId, $userId, $forRecipeId, $secret);
+        if ($search !== null) {
+            return $this->searchUsable($query(), $search, $canHaveComponents);
+        }
+
+        $rows = $query()
+            ->select('r.id AS id', 'r.name AS name', 'r.serving AS serving', 't.slug AS typeSlug', 't.name AS typeName', 'r.secret AS secret')
+            ->orderBy('r.slug', 'ASC')
+            ->addOrderBy('r.id', 'ASC')
+            ->setMaxResults(ListUsableRecipesQuery::MAX_ITEMS)
+            ->getQuery()
+            ->getArrayResult();
+
+        // Le total n'est compté que si la liste est pleine : sinon elle contient déjà toutes les recettes proposables
+        $total = count($rows) < ListUsableRecipesQuery::MAX_ITEMS
+            ? count($rows)
+            : (int) $query()->select('COUNT(r.id)')->getQuery()->getSingleScalarResult();
+
+        return new UsableRecipesDTO(array_map(self::toUsable(...), $rows), $total, $canHaveComponents);
+    }
+
+    /**
+     * Les recettes de l'auteur qu'une autre peut utiliser (sans select : l'appelant choisit la liste ou le compte) : sans composants, ni la recette
+     * écrite, ordinaires ; les secrètes de l'auteur seulement pour lui-même et si `$secret`.
+     */
+    private function usableQuery(string $authorId, string $userId, ?string $forRecipeId, bool $secret): QueryBuilder
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->from(Recipe::class, 'r')
+            ->innerJoin(RecipeType::class, 't', Join::WITH, 't.slug = r.typeSlug')
+            ->where('r.authorId = :author')
+            ->andWhere('r.authorId != :withoutOwner')
+            ->andWhere('r.componentCount = 0')
+            ->setParameter('author', $authorId)
+            ->setParameter('withoutOwner', DomainRecipe::MARMITON_OWNER_ID);
+
+        if ($secret && $authorId === $userId) {
+            // Les siennes : ordinaires et secrètes
+        } else {
+            $query->andWhere('r.secret = false');
+        }
+        if ($forRecipeId !== null) {
+            $query->andWhere('r.id != :forRecipeId')->setParameter('forRecipeId', $forRecipeId);
+        }
+
+        return $query;
+    }
+
+    /**
+     * @param array{id: string, name: string, serving: int|string, typeSlug: string, typeName: string, secret: bool} $recipe
+     */
+    private static function toUsable(array $recipe): UsableRecipeDTO
+    {
+        return new UsableRecipeDTO($recipe['id'], $recipe['name'], (int) $recipe['serving'], $recipe['typeSlug'], $recipe['typeName'], (bool) $recipe['secret']);
+    }
+
+    /**
+     * Du plus pertinent au moins pertinent ; à pertinence égale par nom (slug) puis par identifiant. Un texte sans lettre ni chiffre ne trouve rien.
+     */
+    private function searchUsable(QueryBuilder $query, string $search, bool $canHaveComponents): UsableRecipesDTO
+    {
+        $needle = StringTool::slugify($search);
+        if ($needle === '') {
+            return new UsableRecipesDTO([], 0, $canHaveComponents);
+        }
+
+        $rows = $query
+            ->select('r.id AS id', 'r.name AS name', 'r.slug AS slug', 'r.serving AS serving', 't.slug AS typeSlug', 't.name AS typeName', 'r.secret AS secret')
+            ->getQuery()
+            ->getArrayResult();
+
+        $scored = [];
+        foreach ($rows as $row) {
+            $score = SearchRelevance::score($needle, (string) $row['slug']);
+            if ($score >= SearchRelevance::MINIMUM) {
+                $scored[] = ['score' => $score, 'row' => $row];
+            }
+        }
+        usort($scored, static fn(array $a, array $b): int => [$b['score'], $a['row']['slug'], $a['row']['id']] <=> [$a['score'], $b['row']['slug'], $b['row']['id']]);
+
+        return new UsableRecipesDTO(
+            array_map(static fn(array $match): UsableRecipeDTO => self::toUsable($match['row']), array_slice($scored, 0, ListUsableRecipesQuery::MAX_ITEMS)),
+            count($scored),
+            $canHaveComponents,
+        );
+    }
+
+    /**
+     * Les recettes de l'auteur qui utilisent celle-ci : UNE requête (l'arête jointe à la recette composée, sur l'index des recettes utilisées). Une arête
+     * dont la recette composée n'existe plus n'y est pas (jointure interne) ; la recette secrète d'un autre non plus (jamais de passe-droit).
+     */
+    public function listUsages(string $recipeId, string $userId): RecipeUsagesDTO
+    {
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('p.id AS id', 'p.name AS name', 'p.secret AS secret')
+            ->from(RecipeComponent::class, 'rc')
+            ->innerJoin(Recipe::class, 'p', Join::WITH, 'p.id = rc.recipeId')
+            ->where('rc.componentId = :id')
+            // De l'auteur de la recette : une arête d'un autre auteur (que les écritures refusent) ne serait pas un usage de cette recette
+            ->andWhere(sprintf('p.authorId = (SELECT c.authorId FROM %s c WHERE c.id = :id)', Recipe::class))
+            ->andWhere('(p.secret = false OR p.authorId = :userId)')
+            ->setParameter('id', $recipeId)
+            ->setParameter('userId', $userId)
+            ->orderBy('p.slug', 'ASC')
+            ->addOrderBy('p.id', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+
+        return new RecipeUsagesDTO(
+            array_map(static fn(array $recipe): RecipeSummaryDTO => new RecipeSummaryDTO($recipe['id'], $recipe['name'], (bool) $recipe['secret']), $rows),
+            count($rows),
+        );
     }
 
     /**

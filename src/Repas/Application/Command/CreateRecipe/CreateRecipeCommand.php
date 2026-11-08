@@ -11,6 +11,8 @@ readonly class CreateRecipeCommand
     /**
      * @param Tab<CreateRecipeRowSubCommand> $rows
      * @param bool $secret la recette n'est vue que de son auteur (ADR 0033) ; faux par défaut
+     * @param Tab<RecipeComponentSubCommand>|null $components les recettes que la nouvelle recette utilise (ADR 0040), dans l'ordre de leur position ;
+     *                                                        `null` ou vide : aucune
      */
     public function __construct(
         public string $id,
@@ -20,6 +22,7 @@ readonly class CreateRecipeCommand
         public Tab $rows,
         public string $typeSlug,
         public bool $secret = false,
+        public ?Tab $components = null,
     ) {
     }
 }
