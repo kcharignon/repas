@@ -30,8 +30,8 @@ class ListOtherPeopleRecipesApiControllerTest extends QueryBusWebTestCase
         $this->assertSame([$user->getId(), 200, 0, null], [$query->userId, $query->limit, $query->offset, $query->search]);
         $this->assertSame([
             'member' => [
-                ['id' => 'recipe-1', 'name' => 'pâtes carbonara', 'typeName' => 'plat', 'typeSlug' => 'plat', 'fromMarmiton' => false, 'alreadyCopied' => false],
-                ['id' => 'recipe-2', 'name' => 'tarte au citron', 'typeName' => 'dessert', 'typeSlug' => 'dessert', 'fromMarmiton' => true, 'alreadyCopied' => false],
+                ['id' => 'recipe-1', 'name' => 'pâtes carbonara', 'typeName' => 'plat', 'typeSlug' => 'plat', 'fromMarmiton' => false, 'alreadyCopied' => false, 'copyId' => null],
+                ['id' => 'recipe-2', 'name' => 'tarte au citron', 'typeName' => 'dessert', 'typeSlug' => 'dessert', 'fromMarmiton' => true, 'alreadyCopied' => false, 'copyId' => null],
             ],
             'totalItems' => 2,
         ], $this->jsonBody());
@@ -40,7 +40,7 @@ class ListOtherPeopleRecipesApiControllerTest extends QueryBusWebTestCase
     public function testTheQueryTellsThatTheUserIsAnAdministratorAndTheCopyAlreadyMadeIsWritten(): void
     {
         // Given : une recette sans propriétaire que l'administrateur a déjà copiée
-        $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([new OtherPeopleRecipeDTO('recipe-2', 'tarte au citron', 'dessert', 'dessert', true, true)], 1));
+        $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([new OtherPeopleRecipeDTO('recipe-2', 'tarte au citron', 'dessert', 'dessert', true, true, 'copy-2')], 1));
 
         // When
         $this->client->request('GET', '/api/v1/recipes/other-people', server: $this->bearerFor($this->savedUser(admin: true)));
@@ -50,6 +50,7 @@ class ListOtherPeopleRecipesApiControllerTest extends QueryBusWebTestCase
         $this->assertInstanceOf(ListOtherPeopleRecipesQuery::class, $query);
         $this->assertTrue($query->isAdministrator);
         $this->assertTrue($this->jsonBody()['member'][0]['alreadyCopied']);
+        $this->assertSame('copy-2', $this->jsonBody()['member'][0]['copyId']);
     }
 
     public function testTheQueryTellsThatAnOrdinaryUserIsNotAnAdministrator(): void

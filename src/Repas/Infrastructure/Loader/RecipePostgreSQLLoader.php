@@ -47,15 +47,18 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
     public function get(string $id, string $userId, bool $isAdministrator = false): RecipeDTO
     {
         $recipe = $this->entityManager->createQueryBuilder()
-            ->select('r.id AS id', 'r.name AS name', 'r.serving AS serving', 't.slug AS typeSlug', 't.name AS typeName', 'r.version AS version', 'r.secret AS secret', 'r.favorite AS favorite', 'r.authorId AS authorId', 'r.sourceUrl AS sourceUrl', 'o.id AS originalId')
+            ->select('r.id AS id', 'r.name AS name', 'r.serving AS serving', 't.slug AS typeSlug', 't.name AS typeName', 'r.version AS version', 'r.secret AS secret', 'r.favorite AS favorite', 'r.authorId AS authorId', 'r.sourceUrl AS sourceUrl', 'o.id AS originalId', 'k.id AS copyId')
             ->from(Recipe::class, 'r')
             ->innerJoin(RecipeType::class, 't', Join::WITH, 't.slug = r.typeSlug')
             // L'original, dans la même instruction : seulement s'il existe encore et que le lecteur le voit (jamais l'identifiant d'une recette supprimée ou secrète)
             ->leftJoin(Recipe::class, 'o', Join::WITH, 'o.id = r.originalId AND (o.secret = false OR o.authorId = :userId)')
+            // La copie du lecteur quand la recette n'a pas de propriétaire : au plus UNE ligne jointe (la plus ancienne), dans la même instruction
+            ->leftJoin(Recipe::class, 'k', Join::WITH, $this->firstCopyOfTheReader('r') . ' AND r.authorId = :withoutOwner')
             ->where('r.id = :id')
             ->andWhere('(r.secret = false OR r.authorId = :userId)')
             ->setParameter('id', $id)
             ->setParameter('userId', $userId)
+            ->setParameter('withoutOwner', DomainRecipe::MARMITON_OWNER_ID)
             ->getQuery()
             ->getOneOrNullResult();
 
@@ -109,6 +112,9 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
             originalId: $recipe['originalId'],
             // La sienne ; pour un administrateur, toute recette qu'il lit (le droit `RECIPE_OWNER` : une recette sans propriétaire n'est modifiée que par lui)
             canEdit: $isAdministrator || $recipe['authorId'] === $userId,
+            ownerless: $recipe['authorId'] === DomainRecipe::MARMITON_OWNER_ID,
+            // Pour une recette ordinaire la jointure ne trouve rien : toujours `null`
+            copyId: $recipe['copyId'],
         );
     }
 
@@ -175,8 +181,8 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
             return $this->searchOfOtherPeople($userId, $limit, $offset, $search, $isAdministrator);
         }
 
-        $recipes = $this->otherPeopleQuery($userId, $isAdministrator)
-            ->select('r.id AS id', 'r.name AS name', 't.name AS typeName', 't.slug AS typeSlug', 'r.marmitonId AS marmitonId', ...$this->alreadyCopiedSelect($isAdministrator))
+        $recipes = $this->withAdministratorCopy($this->otherPeopleQuery($userId, $isAdministrator), $isAdministrator)
+            ->select('r.id AS id', 'r.name AS name', 't.name AS typeName', 't.slug AS typeSlug', 'r.marmitonId AS marmitonId', ...$this->copyIdSelect($isAdministrator))
             ->orderBy('t.sequence', 'ASC')
             ->addOrderBy('r.slug', 'ASC')
             ->addOrderBy('r.id', 'ASC')
@@ -203,8 +209,8 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
             return new OtherPeopleRecipesDTO([], 0);
         }
 
-        $rows = $this->otherPeopleQuery($userId, $isAdministrator)
-            ->select('r.id AS id', 'r.name AS name', 'r.slug AS slug', 't.name AS typeName', 't.slug AS typeSlug', 'r.marmitonId AS marmitonId', ...$this->alreadyCopiedSelect($isAdministrator))
+        $rows = $this->withAdministratorCopy($this->otherPeopleQuery($userId, $isAdministrator), $isAdministrator)
+            ->select('r.id AS id', 'r.name AS name', 'r.slug AS slug', 't.name AS typeName', 't.slug AS typeSlug', 'r.marmitonId AS marmitonId', ...$this->copyIdSelect($isAdministrator))
             ->getQuery()
             ->getArrayResult();
 
@@ -226,26 +232,49 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
     }
 
     /**
-     * @param array{id: string, name: string, typeName: string, typeSlug: string, marmitonId: string|null, alreadyCopied?: bool|int|string|null} $recipe
+     * @param array{id: string, name: string, typeName: string, typeSlug: string, marmitonId: string|null, copyId?: string|null} $recipe
      */
     private static function toDto(array $recipe): OtherPeopleRecipeDTO
     {
         // Une recette Marmiton neutre porte le tag de la page (lu dans la même instruction que la page) ; aucune autre recette. Une copie déjà
-        // faite n'est vue que d'un administrateur, pour une recette sans propriétaire
-        return new OtherPeopleRecipeDTO($recipe['id'], $recipe['name'], $recipe['typeName'], $recipe['typeSlug'], $recipe['marmitonId'] !== null, (bool) ($recipe['alreadyCopied'] ?? false));
+        // faite n'est vue que d'un administrateur, pour une recette sans propriétaire : `alreadyCopied` n'est que « il y a une copie »
+        $copyId = $recipe['copyId'] ?? null;
+
+        return new OtherPeopleRecipeDTO($recipe['id'], $recipe['name'], $recipe['typeName'], $recipe['typeSlug'], $recipe['marmitonId'] !== null, $copyId !== null, $copyId);
     }
 
     /**
-     * Ce que la page lit en plus pour un administrateur, dans la même instruction : a-t-il déjà une copie de la recette ? Rien pour tout autre
-     * utilisateur (sa liste ne contient que ce qu'il n'a pas copié).
+     * Ce que la page lit en plus pour un administrateur, dans la même instruction : l'identifiant de sa copie de la recette (`copyId`). Rien pour
+     * tout autre utilisateur (sa liste ne contient que ce qu'il n'a pas copié).
      *
      * @return list<string>
      */
-    private function alreadyCopiedSelect(bool $isAdministrator): array
+    private function copyIdSelect(bool $isAdministrator): array
     {
-        return $isAdministrator
-            ? [sprintf('CASE WHEN EXISTS (SELECT m.id FROM %s m WHERE m.authorId = :userId AND m.originalId = r.id) THEN true ELSE false END AS alreadyCopied', Recipe::class)]
-            : [];
+        return $isAdministrator ? ['k.id AS copyId'] : [];
+    }
+
+    /**
+     * Joint la copie de l'administrateur : AU PLUS UNE ligne par recette (la plus ancienne), la jointure ne multiplie donc ni la page ni le coût.
+     * Ajoutée aux seules requêtes de la page, jamais au total (qu'elle ne change pas).
+     */
+    private function withAdministratorCopy(QueryBuilder $query, bool $isAdministrator): QueryBuilder
+    {
+        return $isAdministrator ? $query->leftJoin(Recipe::class, 'k', Join::WITH, $this->firstCopyOfTheReader('r')) : $query;
+    }
+
+    /**
+     * Condition de jointure : `c` est une copie de `$original` faite par le lecteur (`:userId`), la PREMIÈRE s'il en a plusieurs (un réimport
+     * après la suppression de la neutre en laisse deux). Une recette n'a pas de date de création : l'ordre déterministe est celui de
+     * l'identifiant. Le `NOT EXISTS` ne se joue que pour les copies déjà trouvées (une ou deux), jamais par recette de la page.
+     */
+    private function firstCopyOfTheReader(string $original): string
+    {
+        return sprintf(
+            'k.authorId = :userId AND k.originalId = %1$s.id AND NOT EXISTS (SELECT f.id FROM %2$s f WHERE f.authorId = :userId AND f.originalId = %1$s.id AND f.id < k.id)',
+            $original,
+            Recipe::class,
+        );
     }
 
     /**

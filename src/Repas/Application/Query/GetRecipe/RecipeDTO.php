@@ -35,6 +35,10 @@ final readonly class RecipeDTO
         public ?string $originalId,
         #[OA\Property(description: "Vrai si l'utilisateur modifie (`PUT /recipes/{id}`) cette recette : la sienne, ou n'importe quelle recette qu'il lit s'il est administrateur - dont une recette SANS PROPRIÉTAIRE (la neutre d'une recette Marmiton, que lui seul modifie et supprime). Faux pour la recette d'un autre. Toujours écrit, calculé sans requête de plus", example: true)]
         public bool $canEdit,
+        #[OA\Property(description: "Vrai si la recette est SANS PROPRIÉTAIRE (la « version commune » : la neutre d'une recette Marmiton, dont l'auteur est un identifiant réservé qui n'est pas un compte). Le front n'a plus à le deviner. Toujours écrit, lu dans la même instruction", example: false)]
+        public bool $ownerless,
+        #[OA\Property(description: "Quand la recette lue est SANS PROPRIÉTAIRE : l'identifiant de la copie de L'UTILISATEUR QUI LIT (la plus ancienne s'il en a plusieurs), même renommée, d'un autre type ou secrète (c'est la sienne) ; `null` s'il n'en a pas, et toujours `null` pour une recette ordinaire. Toujours écrit, lu dans la même instruction", nullable: true, example: '3f1c2a7e-8d41-4c62-9b0a-5e7d2f6a1b34')]
+        public ?string $copyId,
     ) {
     }
 }

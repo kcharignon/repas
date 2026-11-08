@@ -59,6 +59,8 @@ class GetRecipeApiControllerTest extends QueryBusWebTestCase
             'sourceUrl' => null,
             'originalId' => null,
             'canEdit' => true,
+            'ownerless' => false,
+            'copyId' => null,
         ], $this->jsonBody());
     }
 
@@ -75,6 +77,21 @@ class GetRecipeApiControllerTest extends QueryBusWebTestCase
         // Then
         $body = $this->jsonBody();
         $this->assertSame([$original, false], [$body['originalId'], $body['canEdit']]);
+    }
+
+    public function testTheCommonVersionAndTheCopyOfTheReaderAreAlwaysWritten(): void
+    {
+        // Given
+        $id = UuidGenerator::new();
+        $copy = UuidGenerator::new();
+        $this->queryBus->willReturn(GetRecipeQuery::class, new RecipeDTOBuilder()->withId($id)->asOwnerless($copy)->build());
+
+        // When
+        $this->client->request('GET', "/api/v1/recipes/$id", server: $this->bearerFor($this->savedUser()));
+
+        // Then
+        $body = $this->jsonBody();
+        $this->assertSame([true, $copy], [$body['ownerless'], $body['copyId']]);
     }
 
     public function testTheQueryTellsThatTheReaderIsAnAdministrator(): void

@@ -19,6 +19,8 @@ final readonly class OtherPeopleRecipeDTO
         public bool $fromMarmiton,
         #[OA\Property(description: "Vrai si l'utilisateur a déjà une copie de cette recette. Seul un administrateur reçoit une recette sans propriétaire déjà copiée (il la modifie ou la supprime) : pour lui, le front ne propose pas « Copier » en double. Toujours écrit ; toujours `false` pour un autre utilisateur, dont la liste ne contient que ce qu'il n'a pas copié", example: false)]
         public bool $alreadyCopied,
+        #[OA\Property(description: "L'identifiant de la copie de l'administrateur (la plus ancienne s'il en a plusieurs), même renommée ou d'un autre type ; `null` s'il n'en a pas. `alreadyCopied` est vrai si et seulement si `copyId` n'est pas `null`. Toujours écrit ; toujours `null` pour un autre utilisateur", nullable: true, example: null)]
+        public ?string $copyId = null,
     ) {
     }
 }
