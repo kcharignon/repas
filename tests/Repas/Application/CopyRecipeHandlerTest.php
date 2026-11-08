@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeHandler;
 use Repas\Repas\Application\Service\IngredientSlugResolver;
+use Repas\Repas\Application\Service\RecipeCopier;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Ingredient;
@@ -80,15 +81,18 @@ class CopyRecipeHandlerTest extends TestCase
         ]);
         $this->handler = new CopyRecipeHandler(
             $this->recipes,
-            $this->ingredients,
-            $this->conversions,
-            new IngredientSlugResolver($this->aliases),
-            $this->candidates,
-            new IngredientNameMatcher(),
-            new IngredientSlugPolicy(),
-            new ConversionService($this->conversions, $units),
-            new UuidGenerator(),
-            $this->events,
+            new RecipeCopier(
+                $this->recipes,
+                $this->ingredients,
+                $this->conversions,
+                new IngredientSlugResolver($this->aliases),
+                $this->candidates,
+                new IngredientNameMatcher(),
+                new IngredientSlugPolicy(),
+                new ConversionService($this->conversions, $units),
+                new UuidGenerator(),
+                $this->events,
+            ),
         );
     }
 

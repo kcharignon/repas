@@ -73,7 +73,7 @@ class NamesStartWithACapitalTest extends TestCase
         }
 
         // Then : le test ne doit pas être vide, les écritures existent bien dans l'application
-        foreach (['CreateRecipeHandler', 'UpdateRecipeHandler', 'CreateIngredientHandler', 'UpdateIngredientHandler', 'CopyRecipeHandler', 'CreateShoppingListTypeHandler', 'UpdateShoppingListTypeHandler'] as $handler) {
+        foreach (['CreateRecipeHandler', 'UpdateRecipeHandler', 'CreateIngredientHandler', 'UpdateIngredientHandler', 'RecipeCopier', 'CreateShoppingListTypeHandler', 'UpdateShoppingListTypeHandler'] as $handler) {
             $this->assertNotEmpty(array_filter($writers, static fn(string $path): bool => str_ends_with($path, "/$handler.php")), "$handler n'est plus vu comme une écriture de nom : le garde-fou ne vérifie plus rien.");
         }
     }

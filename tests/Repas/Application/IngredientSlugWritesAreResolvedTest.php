@@ -21,7 +21,7 @@ use Repas\Repas\Application\Command\CheckRowsAddedToDriveBasket\CheckRowsAddedTo
 use Repas\Repas\Application\Command\ChooseIngredientList\ChooseIngredientListCommand;
 use Repas\Repas\Application\Command\ChooseIngredientList\ChooseIngredientListHandler;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
-use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeHandler;
+use Repas\Repas\Application\Service\RecipeCopier;
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
 use Repas\Repas\Application\Command\CreateIngredientConversion\CreateIngredientConversionCommand;
 use Repas\Repas\Application\Command\CreateIngredientConversion\CreateIngredientConversionHandler;
@@ -105,14 +105,14 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
     ];
 
     /**
-     * Les écritures qui reprennent les slugs d'ingrédients d'un agrégat existant pour les poser chez un AUTRE utilisateur, avec le handler qui
+     * Les écritures qui reprennent les slugs d'ingrédients d'un agrégat existant pour les poser chez un AUTRE utilisateur, avec le service qui
      * les rapproche de ce que le copieur possède (`IngredientSlugResolver`, `IngredientMatchCandidates`). Une nouvelle écriture de ce genre
      * (copier une liste, partager une recette…) s'ajoute ici.
      *
      * @var array<class-string, class-string>
      */
     private const array COPIES = [
-        CopyRecipeCommand::class => CopyRecipeHandler::class,
+        CopyRecipeCommand::class => RecipeCopier::class,
     ];
 
     /**
