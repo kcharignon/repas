@@ -122,6 +122,8 @@ class UpdateRecipeWithoutOwnerHandlerTest extends TestCase
                 new IngredientSlugPolicy(),
                 $conversionService,
                 $this->partLinks,
+                new RecipeComponentLockSpy(),
+                new RecipeComponentRules(),
                 new UuidGenerator(),
                 $this->events,
             ),

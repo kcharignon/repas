@@ -106,6 +106,8 @@ class RecipeComponentsHandlersTest extends TestCase
                 new IngredientSlugPolicy(),
                 $conversionService,
                 new IngredientPartLinkInMemoryRepository(),
+                new RecipeComponentLockSpy(),
+                new RecipeComponentRules(),
                 new UuidGenerator(),
                 $events,
             ),

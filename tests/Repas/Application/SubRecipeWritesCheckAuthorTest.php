@@ -12,6 +12,7 @@ use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeHandler;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeCommand;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeHandler;
 use Repas\Repas\Application\Service\RecipeComponentsWriter;
+use Repas\Repas\Application\Service\RecipeCopier;
 use Repas\Repas\Domain\Service\RecipeComponentRules;
 
 /**
@@ -25,7 +26,8 @@ use Repas\Repas\Domain\Service\RecipeComponentRules;
  * le verrou et la lecture en lot.
  *
  * La COPIE d'une recette composée (COMP-003) ne reçoit aucun identifiant : elle copie ceux de l'original, de l'auteur du copieur ou de l'auteur de
- * l'original ; elle est déclarée à part quand elle arrive.
+ * l'original. Elle n'est donc pas dans `DECLARED`, mais `RecipeCopier` a son propre garde-fou ci-dessous : le verrou avant de lire, une lecture en lot,
+ * les règles de `RecipeComponentRules` appliquées à CHAQUE recette utilisée avant de la copier ou de la désigner, le plafond sur « compte + à créer ».
  */
 class SubRecipeWritesCheckAuthorTest extends TestCase
 {
@@ -103,6 +105,36 @@ class SubRecipeWritesCheckAuthorTest extends TestCase
         $this->assertSame(1, substr_count($source, '->findByIds('), 'Les recettes utilisées se lisent EN LOT, jamais une par une.');
         // L'auteur et la visibilité de qui écrit sont comparés à la recette ÉCRITE, jamais à l'administrateur qui la modifie
         $this->assertMatchesRegularExpression('/assertFound\(\$recipe, \$component, \$editorId\)/', $source);
+    }
+
+    public function testTheCopyTakesTheLockThenReadsInOneBatchThenKeepsOnlyWhatTheRulesAllowBeforeCountingTheLimit(): void
+    {
+        // Given
+        $source = (string) file_get_contents((string) new ReflectionClass(RecipeCopier::class)->getFileName());
+
+        // Then : le verrou avant de lire, la lecture en lot des recettes utilisées, les copies déjà faites en lot, les règles, puis le plafond sur le total à créer
+        $positions = [];
+        foreach (['->acquire(', '->findByIds(', '->isKeptByCopy(', '->findUsableCopyIdsOf(', '->authorHasAtLeast($copierId, Recipe::MAX_PER_AUTHOR_WITH_COPIES - $toCreate + 1)'] as $call) {
+            $position = strpos($source, $call);
+            $this->assertNotFalse($position, "RecipeCopier n'appelle plus $call.");
+            $positions[$call] = $position;
+        }
+        $sorted = $positions;
+        asort($sorted);
+        $this->assertSame(array_keys($positions), array_keys($sorted), "L'ordre de la copie n'est plus celui de l'ADR 0040 décisions 33 à 35 (verrou, lecture en lot, règles, copies déjà faites, plafond).");
+        $this->assertSame(1, substr_count($source, '->findByIds('), 'Les recettes utilisées se lisent EN LOT, jamais une par une.');
+        $this->assertSame(1, substr_count($source, '->findUsableCopyIdsOf('), 'Les copies que le copieur a déjà se cherchent EN LOT, jamais une par recette.');
+    }
+
+    public function testTheCopyRuleKeepsOnlyARecipeOfTheSameAuthorThatTheCopierSeesAndThatAnOrdinaryCopyMayUse(): void
+    {
+        // Given
+        $source = (string) file_get_contents((string) new ReflectionClass(RecipeComponentRules::class)->getFileName());
+
+        // Then : le même auteur que l'original, lisible du copieur, secrète seulement sous une copie secrète
+        $this->assertMatchesRegularExpression('/\$used->getAuthorId\(\) === \$original->getAuthorId\(\)/', $source);
+        $this->assertMatchesRegularExpression('/\$used->isVisibleTo\(\$copierId\)/', $source);
+        $this->assertMatchesRegularExpression('/\$original->isSecretWhenCopiedBy\(\$copierId\) \|\| !\$used->isSecret\(\)/', $source);
     }
 
     public function testTheAuthorRuleComparesWithTheAuthorOfTheRecipeAndTheVisibilityOfTheEditor(): void

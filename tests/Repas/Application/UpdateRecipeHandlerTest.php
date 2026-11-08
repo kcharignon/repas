@@ -327,6 +327,8 @@ class UpdateRecipeHandlerTest extends TestCase
                 new IngredientSlugPolicy(),
                 $conversionService,
                 new IngredientPartLinkInMemoryRepository(),
+                new RecipeComponentLockSpy(),
+                new RecipeComponentRules(),
                 new UuidGenerator(),
                 $this->events,
             ),
