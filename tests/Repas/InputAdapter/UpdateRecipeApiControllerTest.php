@@ -4,6 +4,7 @@ namespace Repas\Tests\Repas\InputAdapter;
 
 
 use PHPUnit\Framework\Attributes\DataProvider;
+use Repas\Repas\Application\Command\CreateRecipe\RecipeComponentSubCommand;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeCommand;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeRowSubCommand;
 use Repas\Shared\Domain\Tool\Tab;
@@ -197,9 +198,10 @@ class UpdateRecipeApiControllerTest extends QueryBusWebTestCase
         $this->assertSame([], $commandBus->dispatched());
     }
 
-    public function testRefusesAnEmptyListOfRows(): void
+    public function testAnEmptyListOfRowsReachesTheUseCaseWhichJudgesTheFinalState(): void
     {
-        // Given
+        // Given : une recette peut être faite seulement de recettes utilisées (ADR 0040 décision 9) : « lignes + composants ≥ 1 » est jugé par le cas
+        // d'usage (`422 RECIPE_EMPTY`, voir `RecipeComponentsApiFlowTest`), plus par le corps de la requête
         $commandBus = $this->mockCommandBus();
         $author = $this->savedUser();
         $recipe = $this->savedRecipe($author);
@@ -208,8 +210,114 @@ class UpdateRecipeApiControllerTest extends QueryBusWebTestCase
         $this->put('/api/v1/recipes/' . $recipe->getId(), $author, ['rows' => []] + self::BODY);
 
         // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertCount(1, $commandBus->dispatched());
+        $this->assertTrue($commandBus->dispatched()[0]->rows->empty());
+    }
+
+    public function testRefusesMoreThanAHundredRows(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $author = $this->savedUser();
+        $recipe = $this->savedRecipe($author);
+
+        // When
+        $this->put('/api/v1/recipes/' . $recipe->getId(), $author, ['rows' => array_fill(0, 101, self::BODY['rows'][0])] + self::BODY);
+
+        // Then
         $this->assertSame(422, $this->client->getResponse()->getStatusCode());
         $this->assertSame([], $commandBus->dispatched());
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, list<array{string, float}>|null}> le corps en plus, les composants de la commande
+     */
+    public static function componentsBodies(): iterable
+    {
+        yield 'absent (ancien client) : inchangé' => [[], null];
+        yield '`null` : inchangé' => [['components' => null], null];
+        yield '`[]` : tout retirer' => [['components' => []], []];
+        yield 'deux recettes, dans l\'ordre' => [['components' => [['recipeId' => 'b-recipe', 'multiplier' => 0.5], ['recipeId' => 'a-recipe', 'multiplier' => 2]]], [['b-recipe', 0.5], ['a-recipe', 2.0]]];
+        yield 'un multiplicateur entier JSON' => [['components' => [['recipeId' => 'a-recipe', 'multiplier' => 3]]], [['a-recipe', 3.0]]];
+        yield 'les bornes' => [['components' => [['recipeId' => 'a-recipe', 'multiplier' => 0.01], ['recipeId' => 'b-recipe', 'multiplier' => 100]]], [['a-recipe', 0.01], ['b-recipe', 100.0]]];
+    }
+
+    /**
+     * @param array<string, mixed> $extra
+     * @param list<array{string, float}>|null $expected
+     */
+    #[DataProvider('componentsBodies')]
+    public function testForwardsTheComponentsToTheCommandAndAnAbsentOneStaysNullNeverEmpty(array $extra, ?array $expected): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $author = $this->savedUser();
+        $recipe = $this->savedRecipe($author);
+
+        // When
+        $this->put('/api/v1/recipes/' . $recipe->getId(), $author, $extra + self::BODY);
+
+        // Then : « inchangé » est `null`, jamais `[]` (qui retire tout)
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertCount(1, $commandBus->dispatched());
+        $components = $commandBus->dispatched()[0]->components;
+        $this->assertSame($expected, $components === null ? null : array_map(static fn(RecipeComponentSubCommand $component): array => [$component->recipeId, $component->multiplier], array_values($components->toArray())));
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function invalidComponents(): iterable
+    {
+        yield 'un texte' => ['beaucoup'];
+        yield 'un nombre' => [3];
+        yield 'un élément qui n\'est pas un objet' => [[1]];
+        yield 'sans identifiant' => [[['multiplier' => 1]]];
+        yield 'identifiant vide' => [[['recipeId' => '', 'multiplier' => 1]]];
+        yield 'identifiant trop long' => [[['recipeId' => str_repeat('a', 37), 'multiplier' => 1]]];
+        yield 'identifiant qui n\'est pas un texte' => [[['recipeId' => 12, 'multiplier' => 1]]];
+        yield 'sans multiplicateur' => [[['recipeId' => 'a-recipe']]];
+        yield 'multiplicateur nul (`null`)' => [[['recipeId' => 'a-recipe', 'multiplier' => null]]];
+        yield 'multiplicateur texte' => [[['recipeId' => 'a-recipe', 'multiplier' => '2']]];
+        yield 'multiplicateur booléen' => [[['recipeId' => 'a-recipe', 'multiplier' => true]]];
+        yield 'multiplicateur liste' => [[['recipeId' => 'a-recipe', 'multiplier' => [1]]]];
+        yield 'multiplicateur zéro' => [[['recipeId' => 'a-recipe', 'multiplier' => 0]]];
+        yield 'multiplicateur négatif' => [[['recipeId' => 'a-recipe', 'multiplier' => -1]]];
+        yield 'multiplicateur sous la borne' => [[['recipeId' => 'a-recipe', 'multiplier' => 0.0099]]];
+        yield 'multiplicateur au-dessus de la borne' => [[['recipeId' => 'a-recipe', 'multiplier' => 100.01]]];
+    }
+
+    #[DataProvider('invalidComponents')]
+    public function testRefusesComponentsWhichAreNotAListOfRecipesWithoutDispatching(mixed $components): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $author = $this->savedUser();
+        $recipe = $this->savedRecipe($author);
+
+        // When
+        $this->put('/api/v1/recipes/' . $recipe->getId(), $author, ['components' => $components] + self::BODY);
+
+        // Then
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertArrayHasKey('error', $this->jsonBody());
+        $this->assertSame([], $commandBus->dispatched());
+    }
+
+    public function testMoreThanTenComponentsReachTheUseCaseWhichRefusesThemWithTheirCodeBeforeAnyRead(): void
+    {
+        // Given : le nombre est jugé par le cas d'usage (`RECIPE_COMPONENT_LIMIT_REACHED`), pas par le corps, pour que le message soit le code
+        $commandBus = $this->mockCommandBus();
+        $author = $this->savedUser();
+        $recipe = $this->savedRecipe($author);
+
+        // When
+        $this->put('/api/v1/recipes/' . $recipe->getId(), $author, ['components' => array_map(static fn(int $n): array => ['recipeId' => "recipe-$n", 'multiplier' => 1], range(1, 11))] + self::BODY);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertCount(11, $commandBus->dispatched()[0]->components);
     }
 
     public function testRefusesAnUnauthenticatedRequest(): void

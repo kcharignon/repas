@@ -22,6 +22,8 @@ final readonly class PayloadMessages
     public const string LIST_TYPE_ID = 'Le type de la liste est un identifiant de type de liste, ou absent pour la liste principale.';
     public const string LIST_DESTINATION = 'Le choix de liste doit être « default », « main » ou l\'identifiant d\'un type de liste.';
     public const string TOO_MANY_ROWS = 'Une recette ne peut pas avoir plus de 100 ingrédients.';
+    public const string COMPONENT_RECIPE = 'La recette utilisée doit être un identifiant de recette de 1 à 36 caractères.';
+    public const string COMPONENT_MULTIPLIER = 'Le nombre de fois doit être un nombre compris entre 0,01 et 100.';
 
     private function __construct()
     {

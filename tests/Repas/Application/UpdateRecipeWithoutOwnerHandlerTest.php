@@ -5,11 +5,15 @@ namespace Repas\Tests\Repas\Application;
 
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
+use Repas\Repas\Application\Command\CreateRecipe\RecipeComponentSubCommand;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeCommand;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeHandler;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeRowSubCommand;
 use Repas\Repas\Application\Service\IngredientSlugResolver;
+use Repas\Repas\Application\Service\RecipeComponentsWriter;
 use Repas\Repas\Application\Service\RecipeCopier;
+use Repas\Repas\Domain\Service\RecipeComponentRules;
+use Repas\Tests\Helper\RecipeComponentLockSpy;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Model\AliasKind;
@@ -121,13 +125,17 @@ class UpdateRecipeWithoutOwnerHandlerTest extends TestCase
                 new UuidGenerator(),
                 $this->events,
             ),
+            new RecipeComponentsWriter($this->recipes, $lock = new RecipeComponentLockSpy(), $rules = new RecipeComponentRules()),
+            $rules,
+            $lock,
         );
     }
 
     /**
      * @param list<array{0: string, 1: string, 2: float}> $rows `[ingrédient, unité, quantité]`
+     * @param list<array{0: string, 1: float}>|null $components `[recette utilisée, multiplicateur]` ; `null` : le corps n'en porte pas
      */
-    private function edit(array $rows, string $name = 'tarte corrigée', string $userId = self::ADMIN, bool $byAdministrator = true, ?bool $secret = null, string $recipeId = self::NEUTRAL, string $type = 'dessert', int $serving = 6): void
+    private function edit(array $rows, string $name = 'tarte corrigée', string $userId = self::ADMIN, bool $byAdministrator = true, ?bool $secret = null, string $recipeId = self::NEUTRAL, string $type = 'dessert', int $serving = 6, ?array $components = null): void
     {
         ($this->handler)(new UpdateRecipeCommand(
             $recipeId,
@@ -138,6 +146,7 @@ class UpdateRecipeWithoutOwnerHandlerTest extends TestCase
             secret: $secret,
             userId: $userId,
             byAdministrator: $byAdministrator,
+            components: $components === null ? null : new Tab(array_map(static fn(array $component): RecipeComponentSubCommand => new RecipeComponentSubCommand($component[0], $component[1]), $components), RecipeComponentSubCommand::class),
         ));
     }
 
@@ -347,6 +356,34 @@ class UpdateRecipeWithoutOwnerHandlerTest extends TestCase
         // Then : sans effet et sans erreur
         $this->assertFalse($this->recipes->findOneById(self::NEUTRAL)->isSecret());
         $this->assertSame(['Farine|260|gramme|' . self::RESERVED], $this->rowsOf());
+    }
+
+    public function testTheRecipeWithoutAnOwnerNeverReceivesComponentsButAnEmptyOrAbsentListIsHarmless(): void
+    {
+        // Given : l'administrateur a une recette à lui, qu'il voudrait utiliser dans la neutre
+        $own = new RecipeBuilder()->withId('admin-dough')->withAuthorId(self::ADMIN)->withName('Pâte à moi')->withServing(4)->withRecipeType(new RecipeTypeBuilder()->isMeal())
+            ->addRow(new RecipeRowBuilder()->withIngredient($this->adminFlour)->withUnit(new UnitBuilder()->isGramme())->withQuantity(250))->build();
+        $this->recipes->save($own);
+        $savesBefore = $this->recipes->saves;
+
+        // When & Then : `422 RECIPE_COMPONENT_OWNERLESS`, jugé avant toute lecture, rien n'est enregistré (les doubles rendent LA recette, pas une copie : les
+        // lignes posées avant le refus y restent, voir `assertNothingWritten`)
+        try {
+            $this->edit([[$this->reservedFlour->getSlug(), 'gramme', 300.0]], components: [['admin-dough', 1.0]]);
+            $this->fail('La recette sans propriétaire ne reçoit jamais de composant.');
+        } catch (RecipeException $exception) {
+            $this->assertSame([RecipeException::COMPONENT_OWNERLESS, 422], [$exception->getMessage(), $exception->getCode()]);
+        }
+        $this->assertSame([$savesBefore, 0, $this->ingredientsAtStart, []], [$this->recipes->saves, $this->recipes->batchReads, $this->ingredients->findAll()->count(), $this->events->eventDispatched]);
+
+        // When : `[]` puis absent (le cas de l'éditeur d'aujourd'hui) sont sans effet et sans erreur
+        $this->edit([[$this->reservedFlour->getSlug(), 'gramme', 300.0]], components: []);
+        $this->edit([[$this->reservedFlour->getSlug(), 'gramme', 310.0]]);
+
+        // Then : une modification ordinaire, aucun composant
+        $neutral = $this->recipes->findOneById(self::NEUTRAL);
+        $this->assertSame([[], 0, false], [$neutral->componentIds(), $neutral->getComponentCount(), $neutral->areComponentsChanged()]);
+        $this->assertSame(['Farine|310|gramme|' . self::RESERVED], $this->rowsOf());
     }
 
     public function testAnIngredientOfAnotherAccountIsUnknownToTheAdministratorAndNothingIsWritten(): void

@@ -78,6 +78,18 @@ readonly class RecipeComponentPostgreSQLRepository extends PostgreSQLRepository
         $this->entityManager->flush();
     }
 
+    /**
+     * Écrit les composants d'une recette NEUVE : aucune arête n'existe, il n'y a rien à chercher ni à effacer (l'écriture part au `flush` de l'appelant).
+     *
+     * @param Tab<RecipeComponentModel> $components
+     */
+    public function insertAll(Tab $components): void
+    {
+        foreach ($components as $component) {
+            $this->entityManager->persist(RecipeComponentEntity::fromModel($component));
+        }
+    }
+
     public function deleteByRecipeId(string $recipeId): void
     {
         $this->entityManager->createQueryBuilder()

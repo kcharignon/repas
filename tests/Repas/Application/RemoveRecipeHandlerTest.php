@@ -8,7 +8,6 @@ use Repas\Repas\Application\Command\RemoveRecipe\RemoveRecipeCommand;
 use Repas\Repas\Application\Command\RemoveRecipe\RemoveRecipeHandler;
 use Repas\Shared\Domain\Event\RecipeRemovedEvent;
 use Repas\Repas\Domain\Exception\RecipeException;
-use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
@@ -22,7 +21,7 @@ use Repas\Tests\Helper\MarmitonImportLockSpy;
 class RemoveRecipeHandlerTest extends TestCase
 {
     private readonly RemoveRecipeHandler $handler;
-    private readonly RecipeRepository $recipeRepository;
+    private readonly RecipeInMemoryRepository $recipeRepository;
     private readonly ShoppingListRepository $shoppingListRepository;
     private readonly SpyEventDispatcher $eventDispatcher;
     private readonly MarmitonImportLockSpy $lock;
@@ -36,10 +35,16 @@ class RemoveRecipeHandlerTest extends TestCase
         // La recette sans propriétaire (la neutre d'une recette Marmiton) et la copie qu'en a faite l'utilisateur
         $neutral = new RecipeBuilder()->withId('neutral')->asMarmitonNeutral('22082')->isSoftBoiledEggs()->build();
         $copy = new RecipeBuilder()->withId('copy')->withAuthor($author)->withOriginalId('neutral')->withSourceUrl('https://www.marmiton.org/recettes/recette_tarte_22082.aspx')->isSoftBoiledEggs()->build();
-        $this->recipeRepository = new RecipeInMemoryRepository([$recipeFree, $recipeUsed, $neutral, $copy]);
+        // Les recettes utilisées dans d'autres recettes (ADR 0040) : la tarte utilise la pâte et la crème ; la tarte « du soir » utilise la recette planifiée
+        $dough = new RecipeBuilder()->withId('dough')->withAuthor($author)->isSoftBoiledEggs()->build();
+        $cream = new RecipeBuilder()->withId('cream')->withAuthor($author)->isSoftBoiledEggs()->build();
+        $pie = new RecipeBuilder()->withId('pie')->withAuthor($author)->isSoftBoiledEggs()->withComponent($dough, 2.0)->withComponent($cream, 0.5)->build();
+        $both = new RecipeBuilder()->withId('both')->withAuthor($author)->isSoftBoiledEggs()->build();
+        $evening = new RecipeBuilder()->withId('evening')->withAuthor($author)->isSoftBoiledEggs()->withComponent($both, 1.0)->build();
+        $this->recipeRepository = new RecipeInMemoryRepository([$recipeFree, $recipeUsed, $neutral, $copy, $dough, $cream, $pie, $both, $evening]);
 
         $this->shoppingListRepository = new ShoppingListInMemoryRepository([
-            new ShoppingListBuilder()->withOwner($author)->addRecipe($recipeUsed)->build()
+            new ShoppingListBuilder()->withOwner($author)->addRecipe($recipeUsed)->addRecipe($both)->build()
         ]);
 
         $this->eventDispatcher = new SpyEventDispatcher();
@@ -132,6 +137,62 @@ class RemoveRecipeHandlerTest extends TestCase
         // Then
         $this->assertSame([], $this->lock->acquired);
         $this->assertEquals(new RecipeRemovedEvent('user-id', 'recipe-free'), $this->eventDispatcher->getLastEventDispatched());
+    }
+
+    public function testARecipeThatAnotherRecipeUsesCannotBeRemovedAndNothingHappens(): void
+    {
+        // When & Then : `409 RECIPE_USED_AS_COMPONENT` (ADR 0040 décision 31)
+        try {
+            ($this->handler)(new RemoveRecipeCommand('dough'));
+            $this->fail('Une recette utilisée ne se supprime pas.');
+        } catch (RecipeException $exception) {
+            $this->assertSame([RecipeException::USED_AS_COMPONENT, 409], [$exception->getMessage(), $exception->getCode()]);
+        }
+        $this->assertSame('dough', $this->recipeRepository->findOneById('dough')->getId());
+        $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        $this->assertCount(2, $this->spokenRecipePhraseRepository->all());
+    }
+
+    public function testTheRefusalOfAUsedRecipeComesBeforeTheOneOfTheShoppingLists(): void
+    {
+        // When & Then : la recette « both » est planifiée ET utilisée par « evening » : le refus de l'usage vient d'abord
+        try {
+            ($this->handler)(new RemoveRecipeCommand('both'));
+            $this->fail('Une recette utilisée ne se supprime pas.');
+        } catch (RecipeException $exception) {
+            $this->assertSame(RecipeException::USED_AS_COMPONENT, $exception->getMessage());
+        }
+    }
+
+    public function testAComposedRecipeIsRemovedAndTheRecipesItUsedStayIntact(): void
+    {
+        // When
+        ($this->handler)(new RemoveRecipeCommand('pie'));
+
+        // Then : la tarte est partie (ses arêtes avec elle, dans le dépôt), la pâte et la crème restent ; l'événement des statistiques est celui d'une suppression ordinaire
+        $this->assertEquals(new RecipeRemovedEvent('user-id', 'pie'), $this->eventDispatcher->getLastEventDispatched());
+        $this->assertSame(['dough', 'cream'], array_map(fn(string $id): string => $this->recipeRepository->findOneById($id)->getId(), ['dough', 'cream']));
+        try {
+            $this->recipeRepository->findOneById('pie');
+            $this->fail('La tarte aurait dû être supprimée.');
+        } catch (RecipeException $exception) {
+            $this->assertSame(404, $exception->getCode());
+        }
+
+        // When : la pâte n'est plus utilisée par personne, elle se supprime
+        ($this->handler)(new RemoveRecipeCommand('dough'));
+        $this->assertEquals(new RecipeRemovedEvent('user-id', 'dough'), $this->eventDispatcher->getLastEventDispatched());
+    }
+
+    public function testTheQuestionIsAskedOnceForAnOrdinaryRecipeAndNeverForARecipeWithoutAnOwner(): void
+    {
+        // When
+        ($this->handler)(new RemoveRecipeCommand('recipe-free'));
+        $afterOrdinary = $this->recipeRepository->usedAsComponentChecks;
+        ($this->handler)(new RemoveRecipeCommand('neutral', byAdministrator: true));
+
+        // Then : une requête d'existence pour la recette ordinaire, aucune pour la recette sans propriétaire (jamais utilisée)
+        $this->assertSame([1, 1], [$afterOrdinary, $this->recipeRepository->usedAsComponentChecks]);
     }
 
     public function testFailedHandleRemoveRecipeAlreadyUsedInShoppingList(): void

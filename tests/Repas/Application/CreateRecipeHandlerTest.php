@@ -31,6 +31,9 @@ use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Repas\Application\Service\IngredientSlugResolver;
+use Repas\Repas\Application\Service\RecipeComponentsWriter;
+use Repas\Repas\Domain\Service\RecipeComponentRules;
+use Repas\Tests\Helper\RecipeComponentLockSpy;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
@@ -49,6 +52,7 @@ class CreateRecipeHandlerTest extends TestCase
     private readonly UnitRepository $unitRepository;
     private readonly RecipeRepository $recipeRepository;
     private readonly SpyEventDispatcher $eventDispatcher;
+    private readonly RecipeComponentLockSpy $componentLock;
 
     protected function setUp(): void
     {
@@ -66,6 +70,7 @@ class CreateRecipeHandlerTest extends TestCase
         ]);
         $this->recipeRepository = new RecipeInMemoryRepository();
         $this->eventDispatcher = new SpyEventDispatcher();
+        $this->componentLock = new RecipeComponentLockSpy();
 
         $this->handler = new CreateRecipeHandler(
             $this->recipeTypeRepository,
@@ -75,6 +80,8 @@ class CreateRecipeHandlerTest extends TestCase
             new ConversionService(new ConversionInMemoryRepository(), $this->unitRepository),
             $this->eventDispatcher,
             new IngredientSlugResolver($this->aliasRepository),
+            new RecipeComponentsWriter($this->recipeRepository, $this->componentLock, $rules = new RecipeComponentRules()),
+            $rules,
         );
     }
 

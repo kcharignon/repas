@@ -23,7 +23,8 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 /**
  * La lecture d'une recette qui en utilise une autre (ADR 0040 décision 19, COMP-001) de bout en bout, avec les vrais bus, la vraie base et la vraie
  * sécurité : la clé `components` est TOUJOURS écrite (`[]` sans composant), pour la recette d'un autre aussi ; les lignes de la recette utilisée sont
- * TELLES QU'ELLES SONT ÉCRITES ; `rows` ne contient jamais de ligne aplatie. Aucune route n'écrit de composant (COMP-002).
+ * TELLES QU'ELLES SONT ÉCRITES ; `rows` ne contient jamais de ligne aplatie. Les composants sont posés par le dépôt ; leur écriture par l'API est
+ * éprouvée dans `RecipeComponentsApiFlowTest` (COMP-002).
  */
 class RecipeComponentsReadApiFlowTest extends DatabaseTestCase
 {
@@ -119,26 +120,6 @@ class RecipeComponentsReadApiFlowTest extends DatabaseTestCase
         // Then : `404` et le message d'une recette inconnue, rien de ses composants
         $this->assertSame([404, ['error' => ['message' => RecipeException::notFound($pie->getId())->getMessage()]]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
         $this->assertStringNotContainsString('Pâte sablée', (string) $this->client->getResponse()->getContent());
-    }
-
-    public function testNoRouteWritesAComponentYet(): void
-    {
-        // Given
-        $dough = $this->savedRecipe($this->author, 'Pâte sablée', [[$this->flour, 250.0]]);
-        $pie = $this->savedRecipe($this->author, 'Tarte au citron', [[$this->sugar, 100.0]]);
-
-        // When : un corps qui porte `components` est ignoré par l'écriture d'aujourd'hui (COMP-002 l'ouvre)
-        $this->request('PUT', '/api/v1/recipes/' . $pie->getId(), $this->author, [
-            'name' => 'Tarte au citron', 'serving' => 4, 'typeSlug' => 'dessert',
-            'rows' => [['ingredientSlug' => $this->sugar->getSlug(), 'unitSlug' => 'gramme', 'quantity' => 100]],
-            'components' => [['recipeId' => $dough->getId(), 'multiplier' => 2]],
-        ]);
-        $status = $this->client->getResponse()->getStatusCode();
-        $this->request('GET', '/api/v1/recipes/' . $pie->getId(), $this->author);
-
-        // Then
-        $this->assertContains($status, [200, 204]);
-        $this->assertSame([], $this->jsonBody()['components']);
     }
 
     /**

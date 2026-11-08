@@ -35,7 +35,7 @@ readonly class RemoveRecipeHandler
     }
 
     /**
-     * @throws RecipeException
+     * @throws RecipeException la recette est dans une liste de courses, ou une autre recette l'utilise (ADR 0040 décision 31)
      */
     public function __invoke(RemoveRecipeCommand $command): void
     {
@@ -50,6 +50,14 @@ readonly class RemoveRecipeHandler
 
         if ($recipe->isMarmitonNeutral() && $recipe->getMarmitonId() !== null) {
             $this->marmitonImportLock->acquire($recipe->getMarmitonId());
+        }
+
+        // Une recette qu'une autre recette utilise ne se supprime pas (ADR 0040 décision 31) : une requête d'existence, AVANT le refus des listes. La
+        // recette sans propriétaire n'est jamais utilisée (décision 7) : elle ne fait pas la requête. Supprimer une recette composée efface ses arêtes
+        // (`RecipeRepository::delete`) et laisse intactes les recettes qu'elle utilisait. Le verrou des composants n'est pas pris : un orphelin
+        // éventuel (une arête ajoutée pendant la suppression) est toléré à la lecture et compté par la santé
+        if (!$recipe->isMarmitonNeutral() && $this->recipeRepository->isUsedAsComponent($recipe->getId())) {
+            throw RecipeException::usedAsComponent();
         }
 
         if ($this->shoppingListRepository->isRecipePlanned($recipe->getId())) {

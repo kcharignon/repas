@@ -9,6 +9,7 @@ use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
+use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Tool\Tab;
 
 /**
@@ -16,11 +17,21 @@ use Repas\Shared\Domain\Tool\Tab;
  */
 class RecipeInMemoryRepository extends AbstractInMemoryRepository implements RecipeRepository
 {
-    use SaveModelTrait;
-
     protected static function getClassName(): string
     {
         return Recipe::class;
+    }
+
+    /** Enregistrements de recette : de quoi prouver qu'un refus n'écrit rien. */
+    public int $saves = 0;
+
+    /** Questions « une recette en utilise-t-elle celle-ci ? » : de quoi prouver qu'elles ne sont posées que quand il le faut (ADR 0040 décisions 26 et 31). */
+    public int $usedAsComponentChecks = 0;
+
+    public function save(ModelInterface $model): void
+    {
+        $this->saves++;
+        $this->models[$model->getId()] = clone $model;
     }
 
     /** Lectures de recettes EN LOT (`findByIds`) : de quoi prouver qu'une recette sans composant n'en fait aucune et qu'une recette composée n'en fait qu'une. */
@@ -31,7 +42,8 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
      */
     public function findOneById(string $id): Recipe
     {
-        return $this->models[$id] ?? throw RecipeException::notFound($id);
+        // Une COPIE, comme le vrai dépôt (« un modèle est une copie ») : un cas d'usage qui échoue en cours de route ne laisse rien dans le double
+        return clone ($this->models[$id] ?? throw RecipeException::notFound($id));
     }
 
     /**
@@ -69,6 +81,7 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
 
     public function isUsedAsComponent(string $recipeId): bool
     {
+        $this->usedAsComponentChecks++;
         /** @var Recipe $recipe */
         foreach ($this->models as $recipe) {
             if (in_array($recipeId, $recipe->componentIds(), true)) {

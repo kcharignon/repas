@@ -3,6 +3,7 @@
 namespace Repas\Repas\Application\Command\CreateRecipe;
 
 use Repas\Repas\Application\Service\IngredientSlugResolver;
+use Repas\Repas\Application\Service\RecipeComponentsWriter;
 use Repas\Shared\Domain\Event\RecipeCreatedEvent;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
@@ -16,6 +17,7 @@ use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
+use Repas\Repas\Domain\Service\RecipeComponentRules;
 use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -32,11 +34,14 @@ readonly class CreateRecipeHandler
         private ConversionService $conversionService,
         private EventDispatcherInterface $eventDispatcher,
         private IngredientSlugResolver $slugResolver,
+        private RecipeComponentsWriter $components,
+        private RecipeComponentRules $rules,
     ) {
     }
 
     /**
-     * @throws RecipeException l'auteur a déjà `Recipe::MAX_PER_AUTHOR` recettes
+     * @throws RecipeException l'auteur a déjà `Recipe::MAX_PER_AUTHOR` recettes, les composants sont refusés (ADR 0040, voir `RecipeComponentsWriter`) ou
+     *                         la recette ne contient rien (ni ligne ni recette utilisée)
      * @throws UnitException
      * @throws IngredientException une unité sans chemin de conversion vers l'unité d'achat de son ingrédient
      */
@@ -83,6 +88,14 @@ readonly class CreateRecipeHandler
         foreach ($recipe->getRows() as $row) {
             $this->conversionService->assertConvertibleToPurchaseUnit($row->getIngredient(), $row->getUnit());
         }
+
+        // Les recettes que la nouvelle recette utilise (ADR 0040) : les contrôles, le verrou de l'auteur et la lecture en lot sont ceux du service ;
+        // les unités des recettes utilisées ne sont pas revérifiées (leurs lignes sont déjà enregistrées)
+        if ($command->components !== null) {
+            $this->components->apply($recipe, $command->components, $command->authorId, recipeIsNew: true);
+        }
+        // Une recette contient quelque chose : au moins une ligne ou une recette utilisée (un ancien client qui envoie `rows: []` reçoit toujours `422`)
+        $this->rules->assertNotEmpty($recipe);
 
         $this->recipeRepository->save($recipe);
 

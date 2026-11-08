@@ -95,11 +95,13 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
      */
     public function save(Recipe $recipe): void
     {
+        $isNew = false;
         $recipeEntity = $this->entityRepository->find($recipe->getId());
         if ($recipeEntity === null) {
             $recipeEntity = RecipeEntity::fromModel($recipe);
             $this->entityManager->persist($recipeEntity);
-            // Une recette neuve n'a encore aucune arête : elle écrit celles qu'elle porte
+            // Une recette neuve n'a encore aucune arête : elle écrit celles qu'elle porte, sans rien chercher ni effacer
+            $isNew = true;
             $writeComponents = !$recipe->getComponents()->empty();
         } else {
             // Avant toute écriture : si la recette a changé depuis sa lecture, rien n'est enregistré
@@ -123,7 +125,9 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
         // Ajoute les nouvelles lignes ou modifie les lignes existantes
         $this->recipeRowRepository->saveAll($recipe->getRows());
         if ($writeComponents) {
-            $this->recipeComponentRepository->replace($recipe->getId(), $recipe->getComponents());
+            $isNew
+                ? $this->recipeComponentRepository->insertAll($recipe->getComponents())
+                : $this->recipeComponentRepository->replace($recipe->getId(), $recipe->getComponents());
         }
 
         $this->entityManager->flush();
