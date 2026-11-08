@@ -42,9 +42,11 @@ readonly class RemoveIngredientToShoppingListHandler
         // Un produit inconnu ou à un autre n'a pas de placement : la liste principale (une ligne d'avant la passation peut encore porter un commun)
         $placement = $this->listRoutingRepository->placementsFor($command->ownerId, [$ingredientSlug])[$ingredientSlug] ?? null;
 
+        // Une partie d'ingrédient (ADR 0038) n'a pas de ligne : elle est dans la liste de son parent, dont la ligne porte le total
+        $lineSlug = $placement->partOf ?? $ingredientSlug;
         $activeShoppingList = $this->shoppingListRepository->findOneActiveByOwnerAndType($command->ownerId, $placement?->listTypeId);
-        if (!$activeShoppingList instanceof ShoppingList || $activeShoppingList->findRow($ingredientSlug) === null) {
-            $holding = $this->shoppingListRepository->findOneActiveWithRow($command->ownerId, $ingredientSlug);
+        if (!$activeShoppingList instanceof ShoppingList || $activeShoppingList->findRow($lineSlug) === null) {
+            $holding = $this->shoppingListRepository->findOneActiveWithRow($command->ownerId, $lineSlug);
             if ($holding instanceof ShoppingList) {
                 $activeShoppingList = $holding;
             }
@@ -54,6 +56,14 @@ readonly class RemoveIngredientToShoppingListHandler
         }
         if ($activeShoppingList->getListTypeId() === null) {
             $activeShoppingList->assertVersion($command->expectedVersion);
+        }
+
+        // Ce que la liste a gardé d'une partie se retire du registre, proportionnellement : la ligne du parent perd la différence de son total
+        // (ADR 0038 décisions 8 et 11). Un ingrédient ordinaire n'a pas d'entrée : le retrait d'avant
+        if ($activeShoppingList->subtractPart($ingredientSlug, 1.0) !== null) {
+            $this->shoppingListRepository->save($activeShoppingList);
+
+            return;
         }
 
         $purchaseUnitSlug = $placement->purchaseUnitSlug ?? $this->ingredientRepository->findPurchaseUnitSlug($ingredientSlug);

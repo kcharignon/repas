@@ -45,11 +45,16 @@ final readonly class ListRoutingPostgreSQLRepository implements ListRoutingRepos
             return [];
         }
 
+        // Une PARTIE d'ingrédient (ADR 0038 décision 10) se pose dans la liste de son parent, sur la ligne de son parent : le choix de liste, le
+        // rayon et l'unité d'achat sont ceux du parent (`p`, un ingrédient du même utilisateur), dans la même requête. Sans parent à lui, une
+        // partie se pose comme un ingrédient ordinaire. Un ingrédient ordinaire n'a pas de `p` : tout est lu sur lui-même, comme avant
         $rows = $this->entityManager->getConnection()->fetchAllAssociative(
-            'SELECT i.slug, i.list_destination, i.default_purchase_unit, own.id AS own_type_id, dept.id AS department_type_id'
+            'SELECT i.slug, p.slug AS part_of, CASE WHEN p.slug IS NULL THEN i.list_destination ELSE p.list_destination END AS list_destination,'
+            . ' COALESCE(p.default_purchase_unit, i.default_purchase_unit) AS default_purchase_unit, own.id AS own_type_id, dept.id AS department_type_id'
             . ' FROM ingredient i'
-            . ' LEFT JOIN shopping_list_type own ON own.id = i.list_destination AND own.owner_id = :owner'
-            . ' LEFT JOIN department_list_type dlt ON dlt.owner_id = :owner AND dlt.department_slug = i.department'
+            . ' LEFT JOIN ingredient p ON p.slug = i.parent_slug AND ' . IngredientVisibility::ownedSql('p', 'owner')
+            . ' LEFT JOIN shopping_list_type own ON own.id = (CASE WHEN p.slug IS NULL THEN i.list_destination ELSE p.list_destination END) AND own.owner_id = :owner'
+            . ' LEFT JOIN department_list_type dlt ON dlt.owner_id = :owner AND dlt.department_slug = COALESCE(p.department, i.department)'
             . ' LEFT JOIN shopping_list_type dept ON dept.id = dlt.list_type_id AND dept.owner_id = :owner'
             . ' WHERE ' . IngredientVisibility::ownedSql('i', 'owner') . ' AND i.slug IN (:slugs)',
             ['owner' => $ownerId, 'slugs' => $slugs],
@@ -65,6 +70,7 @@ final readonly class ListRoutingPostgreSQLRepository implements ListRoutingRepos
                     array_values(array_filter([$row['own_type_id'], $row['department_type_id']])),
                 ),
                 $row['default_purchase_unit'],
+                $row['part_of'],
             );
         }
 

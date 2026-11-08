@@ -21,6 +21,7 @@ use Repas\Repas\Application\Command\CheckRowsAddedToDriveBasket\CheckRowsAddedTo
 use Repas\Repas\Application\Command\ChooseIngredientList\ChooseIngredientListCommand;
 use Repas\Repas\Application\Command\ChooseIngredientList\ChooseIngredientListHandler;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
+use Repas\Repas\Application\Service\PreparedLine;
 use Repas\Repas\Application\Service\RecipeCopier;
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
 use Repas\Repas\Application\Command\CreateIngredientConversion\CreateIngredientConversionCommand;
@@ -143,6 +144,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
         CreateConversionCommand::class => "réservée aux administrateurs (#[IsGranted('ROLE_ADMIN')]) et à leurs PROPRES ingrédients (le handler refuse celui d'un autre, D4) : le slug est tel quel",
         UpdateConversionCommand::class => "réservée aux administrateurs (#[IsGranted('ROLE_ADMIN')]) et à leurs PROPRES ingrédients (le handler refuse celui d'un autre, D4) : le slug est tel quel",
         CheckRowsAddedToDriveBasketCommand::class => "reçue de l'Open Host Service `BasketLineCheckCommandOHS`, dont l'appelant (`MarkLinesInBasketHandler`, déclaré ci-dessus) a DÉJÀ traduit les slugs par les alias ; elle ne pose rien sur un ingrédient, elle coche des lignes de la liste envoyée du propriétaire (un slug absent est ignoré)",
+        PreparedLine::class => "construite par `PartAwareLines` depuis un ingrédient DÉJÀ chargé (celui d'une ligne de recette, ou le produit dont le placement vient d'être lu et jugé) : jamais un slug reçu d'un client, rien à traduire",
     ];
 
     public function testEveryApplicationClassThatReceivesAnIngredientSlugIsDeclared(): void

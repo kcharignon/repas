@@ -4,6 +4,7 @@ namespace Repas\Repas\Application\Command\PlannedMeal;
 
 
 use Repas\Repas\Application\Service\ActiveListForType;
+use Repas\Repas\Application\Service\PartAwareLines;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
@@ -11,6 +12,7 @@ use Repas\Repas\Domain\Exception\ShoppingListTypeException;
 use Repas\Repas\Domain\Interface\ListRoutingRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\ShoppingList;
@@ -42,6 +44,7 @@ readonly class PlannedMealHandler
         private UuidGenerator $uuidGenerator,
         private ListRoutingRepository $listRoutingRepository,
         private ActiveListForType $activeListForType,
+        private PartAwareLines $partLines,
     ) {
     }
 
@@ -75,15 +78,20 @@ readonly class PlannedMealHandler
         // On récupere les Ingredients de la recette dans les bonnes proportions
         $rows = $recipe->getRowForServing($command->defaultServing);
 
-        // La destination de chaque produit, en une lecture ; les lignes sont rangées par destination (`''` pour la liste principale), la liste principale d'abord
+        // Les parents des parties de la recette (ADR 0038 décision 10), lus en une fois ; aucune lecture quand aucune ligne n'est une partie
+        $parents = $this->partLines->parentsOf(array_map(static fn(RecipeRow $row): Ingredient => $row->getIngredient(), $rows->toArray()));
+
+        // La destination de chaque produit, en une lecture ; les lignes sont rangées par destination (`''` pour la liste principale), la liste principale
+        // d'abord. Une partie n'a pas de liste à elle : elle suit son parent (ADR 0038 décision 10), donc c'est le parent qu'on interroge
+        $destinationOf = static fn(RecipeRow $row): string => $row->getIngredient()->getParentSlug() ?? $row->getIngredient()->getSlug();
         $destinations = $this->listRoutingRepository->destinationsFor(
             $command->ownerId,
-            array_values(array_unique($rows->map(static fn(RecipeRow $row): string => $row->getIngredient()->getSlug())->toArray())),
+            array_values(array_unique(array_map($destinationOf, $rows->toArray()))),
         );
         $mainRows = [];
         $typedRows = [];
         foreach ($rows as $row) {
-            $typeId = $destinations[$row->getIngredient()->getSlug()] ?? null;
+            $typeId = $destinations[$destinationOf($row)] ?? null;
             if ($typeId === null) {
                 $mainRows[] = $row;
             } else {
@@ -116,11 +124,12 @@ readonly class PlannedMealHandler
         }
 
         // On calcule la quantité dans l'unité d'achat : une conversion manquante refuse tout avant d'avoir ouvert ou modifié une liste
+        // (une partie arrive aussi avec ce qu'elle vaut en unités d'achat de son parent : ADR 0038 décision 4)
         $this->conversionService->preload($rows);
-        $quantities = [];
+        $lines = [];
         foreach ($rowsByDestination as $key => $destinationRows) {
             foreach ($destinationRows as $row) {
-                $quantities[$key][] = $this->conversionService->convertRecipeRowToPurchaseUnit($row);
+                $lines[$key][] = $this->partLines->prepare($row->getIngredient(), $this->conversionService->convertRecipeRowToPurchaseUnit($row), $parents);
             }
         }
 
@@ -143,9 +152,9 @@ readonly class PlannedMealHandler
             $slugs = array_map(static fn(RecipeRow $row): string => $row->getIngredient()->getSlug(), $rowsByDestination[$key]);
             $list->addMeal($this->uuidGenerator->generate(), $recipe, $command->defaultServing, $groupId, $groupId === null ? null : $slugs);
 
-            foreach ($rowsByDestination[$key] as $index => $row) {
-                // On ajoute cette quantité dans la liste d'achat
-                $list->addRow($row->getIngredient()->getSlug(), $row->getIngredient()->getDefaultPurchaseUnit()->getSlug(), $quantities[$key][$index]);
+            foreach ($lines[$key] ?? [] as $line) {
+                // On ajoute cette quantité dans la liste d'achat (une partie, dans la ligne de son parent)
+                $line->addTo($list);
             }
 
             $this->shoppingListRepository->save($list);

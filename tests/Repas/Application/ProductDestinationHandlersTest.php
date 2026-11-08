@@ -34,7 +34,7 @@ class ProductDestinationHandlersTest extends TestCase
     {
         $s = $this->scenario;
 
-        return new AddIngredientToShoppingListHandler($s->lists, new IngredientSlugResolver(new IngredientAliasInMemoryRepository()), $s->typed->routing, $s->typed->activeListForType);
+        return new AddIngredientToShoppingListHandler($s->lists, new IngredientSlugResolver(new IngredientAliasInMemoryRepository()), $s->typed->routing, $s->typed->activeListForType, $s->partLines());
     }
 
     private function remove(): RemoveIngredientToShoppingListHandler

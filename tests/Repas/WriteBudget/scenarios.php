@@ -215,6 +215,37 @@ $butcherWithBacon = static function (WriteBudgetTestCase $t, bool $butcherListOp
     return [$owner, $bacon];
 };
 
+/**
+ * Un utilisateur dont la liste principale planifie les trois recettes typiques, et une recette « Gâteau de cailles » à parties (ADR 0038, SUB-003) :
+ * un parent (« Œuf de caille ») et `$parts` parties (« Jaune de caille », « Blanc de caille »… de ratio 1), la recette portant le parent et chacune des
+ * parties. `$planned` : la recette est déjà planifiée dans la liste (de quoi changer ses personnes ou la retirer).
+ *
+ * @return array{0: \Repas\User\Domain\Model\User, 1: Recipe, 2: Ingredient, 3: ?string} le propriétaire, la recette, la première partie, le repas de la recette
+ */
+$partsRecipe = static function (WriteBudgetTestCase $t, int $parts, bool $planned) : array {
+    $owner = $t->savedUser();
+    $t->savedShoppingList($owner, $t->typicalRecipes($owner));
+    $quail = new IngredientBuilder()->isEgg()->withName('Œuf de caille')->withCreator($owner, true)->build();
+    $t->persister->saveIngredient($quail);
+    $recipe = new RecipeBuilder()->withName('Gâteau de cailles')->withServing(4)
+        ->addRow(new RecipeRowBuilder()->withIngredient($quail)->withUnit(new UnitBuilder()->isUnite())->withQuantity(2));
+    $firstPart = null;
+    for ($i = 0; $i < $parts; $i++) {
+        $part = new IngredientBuilder()->isEgg()->withName("Partie de caille $i")->withCreator($owner, true)->withParent($quail->getSlug(), 1.0)->build();
+        $t->persister->saveIngredient($part);
+        $firstPart ??= $part;
+        $recipe->addRow(new RecipeRowBuilder()->withIngredient($part)->withUnit(new UnitBuilder()->isUnite())->withQuantity(2 + $i));
+    }
+    $recipe = $t->savedRecipe($owner, $recipe);
+    $mealId = null;
+    if ($planned) {
+        $t->service(CommandBusInterface::class)->dispatch(new PlannedMealCommand($owner->getId(), $recipe->getId(), $owner->getDefaultServing()));
+        $mealId = $t->service(ShoppingListRepository::class)->findOneActivateByOwner($owner->getId())->mealOf($recipe)->getId();
+    }
+
+    return [$owner, $recipe, $firstPart, $mealId];
+};
+
 /** @return Tab<CreateRecipeRowSubCommand> */
 $createRows = static fn(Recipe $recipe): Tab => new Tab(
     array_map(
@@ -292,6 +323,30 @@ return [
         [$owner, $basque] = $plannedSplitRecipe($t);
 
         return new removeMealFromPlanCommand($owner->getId(), $basque->getId());
+    },
+    // Les sous-ingrédients (ADR 0038, SUB-003) : une recette de deux parties d'un parent est planifiée dans la liste principale, qui planifie déjà trois
+    // recettes. Les parties vont au registre de la liste et à la ligne du parent ; le parent et leurs conversions se lisent en une fois, quel que soit
+    // le nombre de parties (tests/Repas/WriteBudget/PartsReadsAreConstantTest). Les budgets des recettes sans partie ne changent pas.
+    'planifier-recette-avec-parties' => static function (WriteBudgetTestCase $t) use ($partsRecipe): object {
+        [$owner, $recipe] = $partsRecipe($t, 2, false);
+
+        return new PlannedMealCommand($owner->getId(), $recipe->getId(), $owner->getDefaultServing());
+    },
+    'modifier-portions-repas-avec-parties' => static function (WriteBudgetTestCase $t) use ($partsRecipe): object {
+        [, , , $mealId] = $partsRecipe($t, 2, true);
+
+        return new UpdateServingMealCommand($mealId, 6);
+    },
+    'retirer-repas-avec-parties' => static function (WriteBudgetTestCase $t) use ($partsRecipe): object {
+        [$owner, $recipe] = $partsRecipe($t, 2, true);
+
+        return new removeMealFromPlanCommand($owner->getId(), $recipe->getId());
+    },
+    // Ajouter une partie à la main : 1 va au registre de la liste du parent, la ligne du parent grandit
+    'ajouter-partie-a-la-liste' => static function (WriteBudgetTestCase $t) use ($partsRecipe): object {
+        [$owner, , $part] = $partsRecipe($t, 2, true);
+
+        return new AddIngredientToShoppingListCommand($owner->getId(), $part->getSlug());
     },
     'retirer-repas' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();

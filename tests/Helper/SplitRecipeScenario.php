@@ -7,6 +7,7 @@ use Repas\Repas\Application\Command\PlannedMeal\PlannedMealCommand;
 use Repas\Repas\Application\Command\PlannedMeal\PlannedMealHandler;
 use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanHandler;
 use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealHandler;
+use Repas\Repas\Application\Service\PartAwareLines;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\Recipe;
@@ -103,12 +104,17 @@ final class SplitRecipeScenario
 
     public function planned(): PlannedMealHandler
     {
-        return new PlannedMealHandler($this->lists, $this->recipes, $this->conversions, new UuidGenerator(), $this->typed->routing, $this->typed->activeListForType);
+        return new PlannedMealHandler($this->lists, $this->recipes, $this->conversions, new UuidGenerator(), $this->typed->routing, $this->typed->activeListForType, $this->partLines());
+    }
+
+    public function partLines(): PartAwareLines
+    {
+        return PartLines::for($this->ingredients, $this->conversions);
     }
 
     public function serving(): UpdateServingMealHandler
     {
-        return new UpdateServingMealHandler($this->lists, $this->recipes, $this->conversions, $this->typed->group);
+        return new UpdateServingMealHandler($this->lists, $this->recipes, $this->conversions, $this->typed->group, $this->partLines());
     }
 
     public function removal(): removeMealFromPlanHandler

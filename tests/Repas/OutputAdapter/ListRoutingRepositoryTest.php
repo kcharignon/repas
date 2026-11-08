@@ -217,6 +217,59 @@ class ListRoutingRepositoryTest extends DatabaseTestCase
         $this->assertSame(1, $counter->count());
     }
 
+    public function testAPartIsPlacedWithItsParentInTheSameQuery(): void
+    {
+        // Given (ADR 0038 décision 10) : « Boucherie » tient le rayon de la viande ; « Œuf » est choisi pour le Marché, mesuré en plaquette ;
+        // « Jaune » est du rayon de la viande avec un choix pour la liste principale, et une autre unité : tout cela est ignoré, il suit son parent
+        $this->savedType('butcher', 'Boucherie', ['viande']);
+        $this->savedType('market', 'Marché', []);
+        $egg = $this->savedIngredient('Œuf', new DepartmentBuilder()->isMiscellaneous(), 'market');
+        $yolk = $this->savedPart('Jaune', $egg, new DepartmentBuilder()->isMeat(), 'main');
+        $this->entityManager->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $placements = $this->routing->placementsFor($this->owner->getId(), [$yolk->getSlug(), $egg->getSlug()]);
+        $destinations = $this->routing->destinationsFor($this->owner->getId(), [$yolk->getSlug(), $egg->getSlug()]);
+
+        // Then : la partie dit son parent, sa destination et l'unité d'achat de la ligne qu'elle alimente (celle du parent) ; le parent ne dit rien de plus
+        $this->assertSame(2, $counter->count());
+        $this->assertSame(
+            [$yolk->getSlug() => ['market', $egg->getDefaultPurchaseUnit()->getSlug(), $egg->getSlug()], $egg->getSlug() => ['market', $egg->getDefaultPurchaseUnit()->getSlug(), null]],
+            array_map(static fn($placement): array => [$placement->listTypeId, $placement->purchaseUnitSlug, $placement->partOf], $placements),
+        );
+        $this->assertSame([$yolk->getSlug() => 'market', $egg->getSlug() => 'market'], $destinations);
+    }
+
+    public function testAPartFollowsTheDepartmentTypeOfItsParent(): void
+    {
+        // Given : « Boucherie » tient le rayon de la viande ; le parent est du rayon de la viande, la partie du rayon divers
+        $this->savedType('butcher', 'Boucherie', ['viande']);
+        $bird = $this->savedIngredient('Volaille', new DepartmentBuilder()->isMeat());
+        $liver = $this->savedPart('Foie', $bird, new DepartmentBuilder()->isMiscellaneous());
+
+        // When / Then
+        $this->assertSame([$liver->getSlug() => 'butcher'], $this->routing->destinationsFor($this->owner->getId(), [$liver->getSlug()]));
+    }
+
+    public function testAPartWhoseParentIsNotTheirsIsPlacedLikeAnOrdinaryProduct(): void
+    {
+        // Given : la partie désigne un ingrédient d'un autre compte, ou un ingrédient qui n'existe pas (donnée forgée ou abîmée)
+        $this->savedType('market', 'Marché', []);
+        $theirs = $this->savedIngredient('Œuf', new DepartmentBuilder()->isMiscellaneous(), 'market', $this->other);
+        $first = $this->savedPart('Jaune', $theirs, new DepartmentBuilder()->isMiscellaneous(), 'main');
+        $second = $this->savedPart('Blanc', $first, new DepartmentBuilder()->isMiscellaneous());
+        $this->entityManager->getConnection()->executeStatement('UPDATE ingredient SET parent_slug = ? WHERE slug = ?', ['disparu', $second->getSlug()]);
+        $this->entityManager->clear();
+
+        // When
+        $placements = $this->routing->placementsFor($this->owner->getId(), [$first->getSlug(), $second->getSlug()]);
+
+        // Then : aucun parent à eux, leur propre destination et leur propre unité
+        $this->assertEquals([$first->getSlug() => [null, null], $second->getSlug() => [null, null]], array_map(static fn($placement): array => [$placement->listTypeId, $placement->partOf], $placements));
+    }
+
     /**
      * @param list<string> $departmentSlugs
      */
@@ -239,5 +292,13 @@ class ListRoutingRepositoryTest extends DatabaseTestCase
         $this->persister->saveIngredient($ingredient);
 
         return $ingredient;
+    }
+
+    private function savedPart(string $name, Ingredient $parent, DepartmentBuilder $department, ?string $listDestination = null): Ingredient
+    {
+        $part = new IngredientBuilder()->withName($name)->withDepartment($department)->withCreator($this->owner, true)->withListDestination($listDestination)->withParent($parent->getSlug(), 1.0)->build();
+        $this->persister->saveIngredient($part);
+
+        return $part;
     }
 }

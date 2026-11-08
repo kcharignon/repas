@@ -85,8 +85,8 @@ readonly class removeMealFromPlanHandler
 
         foreach ($members as $index => $member) {
             foreach ($deductions[$index] as [$ingredientSlug, $quantity]) {
-                // On enleve cette quantité dans la liste d'achat
-                $member->shoppingList->subtractRow($ingredientSlug, $quantity);
+                // On enleve cette quantité dans la liste d'achat (le registre de la liste dit si c'est une partie, ADR 0038 décision 9)
+                $member->shoppingList->subtractLine($ingredientSlug, $quantity);
             }
 
             $member->shoppingList->removeMeal($recipe);
