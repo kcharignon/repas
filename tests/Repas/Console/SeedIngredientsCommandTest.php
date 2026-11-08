@@ -138,7 +138,7 @@ class SeedIngredientsCommandTest extends DatabaseTestCase
 
         // Then : succès, « rien à faire » et santé verte en fin de lancement
         $this->assertSame(Command::SUCCESS, $status, $this->display());
-        $this->assertStringContainsString('Rien à faire : 0 à copier, 0 à repointer, empreintes identiques à celles d\'avant.', $this->display());
+        $this->assertStringContainsString('Rien à faire : 0 à copier, 0 à repointer, 0 à relier, empreintes identiques à celles d\'avant.', $this->display());
         // …mais la santé reste rouge pour un seul motif : le compte désactivé a deux lignes de recette sur les anciens communs (il n'est servi que sur demande)
         $this->assertStringContainsString('comptes actifs sans amorçage (hors propriétaire) : 0', $this->display());
         $this->assertStringContainsString('recettes : 2 lignes du propriétaire', $this->display());
@@ -249,7 +249,7 @@ class SeedIngredientsCommandTest extends DatabaseTestCase
         $this->assertSame(Command::SUCCESS, $second, $secondOutput);
         $this->assertSame($afterFirst, $this->dataset->adoption->tableHashes());
         $this->assertSame(Command::SUCCESS, $check, $this->display());
-        $this->assertStringContainsString('Rien à faire : 0 à copier, 0 à repointer, la requête de santé est verte.', $this->display());
+        $this->assertStringContainsString('Rien à faire : 0 à copier, 0 à repointer, 0 à relier, la requête de santé est verte.', $this->display());
         $this->assertStringContainsString('Comptes : 9 dont 1 propriétaire du catalogue et 0 retenu(s)', $this->display());
     }
 

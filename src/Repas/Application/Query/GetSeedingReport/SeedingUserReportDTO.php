@@ -32,6 +32,8 @@ final readonly class SeedingUserReportDTO
      * @param int $toSeedReferenced dont copiés seulement parce que ses lignes les référencent
      * @param int $reusable déjà copiés par le compte (copie conforme sans alias), désignés par l'alias sans nouvelle copie
      * @param int $slugCollisions copies dont le slug naturel est déjà pris par un ingrédient du compte (elles prendront `-2`, `-3`…)
+     * @param int $linksToCreate liens de sous-ingrédients qu'`--apply` poserait (ADR 0038 décision 22) : entre les copies que le compte a déjà
+     *        et celles qu'il va recevoir, par la même règle que l'écriture (`PartLinkSql`)
      * @param list<string> $blockingAnomalies interdisent d'écrire ; jamais d'identifiant ni de nom d'ingrédient personnel
      */
     public function __construct(
@@ -63,6 +65,7 @@ final readonly class SeedingUserReportDTO
         public int $driveProducts = 0,
         public string $fingerprint = '',
         public array $blockingAnomalies = [],
+        public int $linksToCreate = 0,
     ) {
     }
 
@@ -75,10 +78,10 @@ final readonly class SeedingUserReportDTO
     }
 
     /**
-     * Rien à copier, rien à repointer : « 0 à copier, 0 à repointer ».
+     * Rien à copier, rien à repointer, rien à relier : « 0 à copier, 0 à repointer, 0 à relier ».
      */
     public function isNothingToDo(): bool
     {
-        return $this->toSeed === 0 && $this->linesToRepoint() === 0 && $this->driveChoicesToRepoint === 0;
+        return $this->toSeed === 0 && $this->linesToRepoint() === 0 && $this->driveChoicesToRepoint === 0 && $this->linksToCreate === 0;
     }
 }

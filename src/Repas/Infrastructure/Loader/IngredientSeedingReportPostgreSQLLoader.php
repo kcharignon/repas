@@ -11,10 +11,12 @@ use Repas\Repas\Application\Query\GetSeedingReport\SeedingHealthDTO;
 use Repas\Repas\Application\Query\GetSeedingReport\SeedingReportDTO;
 use Repas\Repas\Application\Query\GetSeedingReport\SeedingUserReportDTO;
 use Repas\Repas\Domain\Model\AdoptionSnapshot;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\IngredientToSeed;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Service\IngredientSlugPolicy;
 use Repas\Repas\Infrastructure\Adoption\AdoptionSnapshotReader;
+use Repas\Repas\Infrastructure\Adoption\PartLinkSql;
 use Repas\Repas\Infrastructure\Adoption\SeedingSourceReader;
 use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
 use Repas\Repas\Application\Port\DriveChoicesQueryPort;
@@ -171,6 +173,7 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
             $anomalies[] = sprintf('%d slug(s) de copie dépasseraient 255 caractères', $tooLong);
         }
         $conversionsToCopy = $copied === [] ? 0 : (int) $connection->fetchOne('SELECT count(*) FROM conversion WHERE ingredient IN (?)', [$copied], [ArrayParameterType::STRING]);
+        $linksToCreate = $this->linksToCreate($userId, $copied);
 
         // Ce qui serait repointé : les lignes qui référencent un ingrédient à copier, par table, et les choix du drive
         $snapshot = $this->snapshotReader->read($userId, $sourceSlugs);
@@ -199,7 +202,25 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
             driveProducts: $drive->products,
             fingerprint: $snapshot->contentFingerprint(),
             blockingAnomalies: $anomalies,
+            linksToCreate: $linksToCreate,
         );
+    }
+
+    /**
+     * Les liens de sous-ingrédients qu'`--apply` poserait pour ce compte (ADR 0038 décision 22) : entre les copies qu'il a déjà et celles qu'il
+     * va recevoir (imaginées, une par origine à copier), par la MÊME règle que l'écriture (`PartLinkSql`). Lecture seule. Un compte qui n'a rien
+     * à copier ne lit que ses copies.
+     *
+     * @param list<string> $copiedOrigins les origines dont le compte va recevoir une copie
+     */
+    private function linksToCreate(string $userId, array $copiedOrigins): int
+    {
+        $params = ['u' => $userId, 'max' => Ingredient::MAX_PARTS];
+        if ($copiedOrigins !== []) {
+            $params['virtual'] = json_encode($copiedOrigins, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        }
+
+        return (int) $this->connection()->fetchOne('SELECT count(*) FROM (' . PartLinkSql::ofOneAccount($copiedOrigins !== []) . ') x', $params);
     }
 
     /**
@@ -344,6 +365,10 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
             foreignLines: array_map('intval', $lines),
             ownerForeignLines: $ownerIncluded ? array_map('intval', $ownerLines) : null,
             ingredientsWithoutCreator: $withoutCreator,
+            partsToLink: (int) $connection->fetchOne(
+                'SELECT count(*) FROM (' . PartLinkSql::ofEveryAccount() . ') x',
+                ['marmiton' => Recipe::MARMITON_OWNER_ID, 'max' => Ingredient::MAX_PARTS],
+            ),
         );
     }
 

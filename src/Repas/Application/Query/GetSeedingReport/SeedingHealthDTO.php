@@ -18,6 +18,8 @@ final readonly class SeedingHealthDTO
      *        propriétaire qui désignent un ingrédient qui n'est pas à lui (un autre compte, ou aucun), par table ; seulement les non nulles
      * @param ?array<string, int> $ownerForeignLines 4. la même chose pour le propriétaire ; `null` : sans objet, il n'y a pas de propriétaire du catalogue
      * @param int $ingredientsWithoutCreator 5. ingrédients dont le créateur n'est aucun compte existant (attendu : 0)
+     * @param int $partsToLink 6. copies de sous-ingrédients qui attendent leur lien (ADR 0038 décision 22) : une copie sans parent dont l'origine en
+     *        a un et dont le compte a la copie de ce parent, tous comptes confondus (attendu : 0 ; `--complete --user` les relie)
      */
     public function __construct(
         public int $activeNotSeeded,
@@ -25,6 +27,7 @@ final readonly class SeedingHealthDTO
         public array $foreignLines,
         public ?array $ownerForeignLines,
         public int $ingredientsWithoutCreator,
+        public int $partsToLink = 0,
     ) {
     }
 
@@ -34,6 +37,7 @@ final readonly class SeedingHealthDTO
             && $this->activeWithoutIngredient === 0
             && $this->foreignLines === []
             && ($this->ownerForeignLines ?? []) === []
-            && $this->ingredientsWithoutCreator === 0;
+            && $this->ingredientsWithoutCreator === 0
+            && $this->partsToLink === 0;
     }
 }
