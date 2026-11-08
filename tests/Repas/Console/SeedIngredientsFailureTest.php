@@ -98,6 +98,37 @@ class SeedIngredientsFailureTest extends DatabaseTestCase
         $this->assertStringNotContainsString($bigId, $output);
     }
 
+    public function testAFailureOfTheSubIngredientLinkingRollsBackTheWholeSeedingOfThatAccount(): void
+    {
+        // Given : le catalogue a découpé « Œuf » (la partie est « de base ») et une faute fait échouer la liaison du gros compte seulement (SUB-002, ADR 0038 décision 24)
+        $connection = $this->dataset->adoption->connection;
+        $connection->insert('ingredient', [
+            'slug' => 'jaune-d-oeuf', 'name' => "Jaune d'œuf", 'image' => '', 'slugged_name' => 'jaune-d-oeuf', 'department' => 'rayon-a', 'default_cooking_unit' => 'gramme',
+            'default_purchase_unit' => 'kilo', 'creator' => $this->dataset->ownerId, 'compatible_units' => '["gramme","kilo"]', 'adopted_from' => null, 'is_base' => 1,
+            'parent_slug' => 'oeuf', 'parent_ratio' => 1,
+        ]);
+        $bigId = $this->dataset->adoption->bigId;
+        $connection->executeStatement(
+            "CREATE FUNCTION test_link_boom() RETURNS trigger AS \$\$ BEGIN IF NEW.creator = '" . $bigId . "' AND NEW.parent_slug IS NOT NULL THEN RAISE EXCEPTION 'liaison refusée'; END IF; RETURN NEW; END \$\$ LANGUAGE plpgsql",
+        );
+        $connection->executeStatement('CREATE TRIGGER test_link_boom BEFORE UPDATE ON ingredient FOR EACH ROW EXECUTE FUNCTION test_link_boom()');
+        $bigBefore = $this->dataset->adoption->hashOfUser($bigId);
+
+        // When
+        $status = $this->tester->execute(['--apply' => true, '--accept-sent' => true, '--keep-going' => true]);
+        $output = $this->display();
+
+        // Then : le gros compte n'a rien reçu (ni copie, ni alias, ni ligne repointée), les autres sont servis, œuf et jaune reliés
+        $this->assertSame(Command::FAILURE, $status);
+        $this->assertStringContainsString('ÉCHEC, transaction annulée pour ce compte, rien n\'est écrit', $output);
+        $this->assertStringContainsString('liaison refusée', $output);
+        $this->assertSame($bigBefore, $this->dataset->adoption->hashOfUser($bigId));
+        $this->assertSame(0, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ? AND adopted_from IS NOT NULL', [$bigId]));
+        $this->assertSame(0, (int) $connection->fetchOne('SELECT count(*) FROM ingredient_alias WHERE user_id = ?', [$bigId]));
+        $linked = $connection->fetchOne("SELECT parent_slug FROM ingredient WHERE creator = ? AND adopted_from = 'jaune-d-oeuf'", [$this->dataset->freshId]);
+        $this->assertSame($connection->fetchOne("SELECT slug FROM ingredient WHERE creator = ? AND adopted_from = 'oeuf'", [$this->dataset->freshId]), $linked);
+    }
+
     public function testAFailureInTheMiddleLeavesAnAccountThatACommandRerunServesCompletely(): void
     {
         // Given : le premier lancement échoue pour le gros compte, la faute est ensuite levée

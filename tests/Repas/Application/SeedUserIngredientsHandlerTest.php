@@ -19,6 +19,7 @@ use Repas\Repas\Infrastructure\Acl\DriveChoicesCommandAdapter;
 use Repas\Repas\Infrastructure\Acl\SeedingAccountCommandAdapter;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\IngredientChoiceInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\IngredientPartLinkInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\User\Application\OpenHostService\CatalogOwnerCommandOHS;
 use Repas\User\Application\OpenHostService\UserAccountCommandOHS;
@@ -39,6 +40,7 @@ class SeedUserIngredientsHandlerTest extends TestCase
     private const string NOW = '2026-10-21 03:00:00';
 
     private IngredientAdoptionBulkInMemoryRepository $bulk;
+    private IngredientPartLinkInMemoryRepository $partLinks;
     private IngredientChoiceInMemoryRepository $drive;
     private UserInMemoryRepository $accounts;
     private SpyLogger $logger;
@@ -47,6 +49,7 @@ class SeedUserIngredientsHandlerTest extends TestCase
     protected function setUp(): void
     {
         $this->bulk = new IngredientAdoptionBulkInMemoryRepository();
+        $this->partLinks = new IngredientPartLinkInMemoryRepository();
         $this->drive = new IngredientChoiceInMemoryRepository();
         $this->accounts = new UserInMemoryRepository([
             new UserBuilder()->withId(self::OWNER)->isCatalogOwner()->build(),
@@ -428,6 +431,88 @@ class SeedUserIngredientsHandlerTest extends TestCase
         $this->assertSame(SeedOutcome::NOTHING_TO_ADD, $again->outcome);
     }
 
+    // --- La liaison des sous-ingrédients (ADR 0038 décisions 5, 21 à 24, SUB-002) : une seule fois, après tout le reste, jamais sans raison
+
+    public function testTheSubIngredientsAreLinkedOnceAfterTheCopiesTheirConversionsAndTheRepointing(): void
+    {
+        // Given : ce que le dépôt de masse a déjà fait au moment où la liaison est demandée
+        $callsWhenLinking = null;
+        $this->partLinks->links = 2;
+        $this->partLinks->onLink = function () use (&$callsWhenLinking): void {
+            $callsWhenLinking = $this->bulk->calls;
+        };
+
+        // When
+        $result = $this->seed();
+
+        // Then : une fois, pour ce compte, après les copies, leurs conversions et le repointage ; le nombre de liens est dans le résultat
+        $this->assertSame([self::USER], $this->partLinks->linkedUsers);
+        $this->assertSame(['lockSeeding', 'writeAliases', 'copyCatalogIngredients', 'copyConversions', 'repointToCopies'], $callsWhenLinking);
+        $this->assertSame(2, $result->partsLinked);
+        $this->assertSame(SeedOutcome::SEEDED, $result->outcome);
+    }
+
+    public function testAFailureOfTheLinkingMakesTheWholeSeedingFailSoTheBusRollsItBack(): void
+    {
+        // Given : la liaison échoue (une anomalie de la base, par exemple)
+        $this->partLinks->failure = new \RuntimeException('liaison impossible');
+
+        // Then : le handler ne l'attrape pas et ne rend aucun résultat : le bus transactionnel annule les copies, les alias et l'activation
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('liaison impossible');
+        $this->seed();
+    }
+
+    public function testNothingIsLinkedForAnAccountThatIsNotConcernedAlreadySeededOrWithoutACatalog(): void
+    {
+        // Given : le propriétaire, un compte déjà amorcé (sans l'option), un compte inconnu
+        $this->seed();
+        $this->partLinks->linkedUsers = [];
+
+        // When
+        ($this->handler)(new SeedUserIngredientsCommand(self::OWNER, 'rattrapage-test', complete: true));
+        ($this->handler)(new SeedUserIngredientsCommand(self::USER, 'rattrapage-test'));
+        ($this->handler)(new SeedUserIngredientsCommand('ghost', 'activation'));
+
+        // Then
+        $this->assertSame([], $this->partLinks->linkedUsers);
+    }
+
+    public function testCompleteLinksTheCopiesAnAccountAlreadyHasEvenWhenThereIsNothingToCopy(): void
+    {
+        // Given : un compte amorcé qui a tout ; le catalogue a découpé ses ingrédients depuis (ses copies attendent leur lien)
+        $this->seed();
+        $this->partLinks->linkedUsers = [];
+        $this->partLinks->links = 2;
+        $state = [$this->bulk->ingredients, $this->bulk->aliases];
+
+        // When
+        $without = ($this->handler)(new SeedUserIngredientsCommand(self::USER, 'rattrapage-test'));
+        $with = ($this->handler)(new SeedUserIngredientsCommand(self::USER, 'rattrapage-test', complete: true));
+
+        // Then : sans l'option on n'y touche pas ; avec, aucune copie mais les liens, et le résultat dit qu'il a écrit
+        $this->assertSame([SeedOutcome::ALREADY_SEEDED, 0, false], [$without->outcome, $without->partsLinked, $without->wroteSomething()]);
+        $this->assertSame([SeedOutcome::NOTHING_TO_ADD, 2, true], [$with->outcome, $with->partsLinked, $with->wroteSomething()]);
+        $this->assertSame([self::USER], $this->partLinks->linkedUsers);
+        $this->assertSame($state, [$this->bulk->ingredients, $this->bulk->aliases], 'aucune copie de plus');
+    }
+
+    public function testCompleteLinksOnceWhenItAlsoCopiesWhatTheCatalogHasMore(): void
+    {
+        // Given : un compte amorcé, puis un nouvel ingrédient « de base » (une partie, par exemple)
+        $this->seed();
+        $this->catalog('jaune', 'Jaune', base: true);
+        $this->partLinks->linkedUsers = [];
+        $this->partLinks->links = 1;
+
+        // When
+        $result = ($this->handler)(new SeedUserIngredientsCommand(self::USER, 'rattrapage-test', complete: true));
+
+        // Then : la copie PUIS une seule liaison
+        $this->assertSame([SeedOutcome::SEEDED, 1, 1], [$result->outcome, $result->seeded, $result->partsLinked]);
+        $this->assertSame([self::USER], $this->partLinks->linkedUsers);
+    }
+
     public function testCompleteOnAnAccountThatNeedsNothingWritesNothing(): void
     {
         // Given : un compte amorcé dont les lignes sont sur ses copies
@@ -548,7 +633,7 @@ class SeedUserIngredientsHandlerTest extends TestCase
             }
         };
 
-        return new SeedUserIngredientsHandler($this->bulk, new CatalogOwnerCommandAdapter(new CatalogOwnerCommandOHS($accounts, UserBuilder::CATALOG_OWNER_EMAIL)), new SeedingAccountCommandAdapter(new UserAccountCommandOHS($accounts)), new DriveChoicesCommandAdapter(new IngredientChoiceCommandOHS($this->drive)), new IngredientSlugPolicy(), $uuids, new FrozenClock(new DateTimeImmutable(self::NOW)), new AdoptionVerifier(), $this->logger);
+        return new SeedUserIngredientsHandler($this->bulk, $this->partLinks, new CatalogOwnerCommandAdapter(new CatalogOwnerCommandOHS($accounts, UserBuilder::CATALOG_OWNER_EMAIL)), new SeedingAccountCommandAdapter(new UserAccountCommandOHS($accounts)), new DriveChoicesCommandAdapter(new IngredientChoiceCommandOHS($this->drive)), new IngredientSlugPolicy(), $uuids, new FrozenClock(new DateTimeImmutable(self::NOW)), new AdoptionVerifier(), $this->logger);
     }
 
     private function catalog(string $slug, string $name, bool $base): void

@@ -6,7 +6,7 @@
  * @return array<string, int>
  */
 return [
-    'activer-compte-amorcage' => 29,
+    'activer-compte-amorcage' => 30,
     'ajouter-article-dit-a-alexa' => 18,
     'ajouter-article-dit-a-alexa-dans-un-type' => 21,
     'ajouter-article-dit-a-alexa-introuvable' => 4,
@@ -21,7 +21,7 @@ return [
     'ajouter-partie-a-la-liste' => 15,
     'ajouter-produit-a-un-type' => 14,
     'ajouter-produit-a-un-type-ouvert-a-la-demande' => 18,
-    'amorcer-compte' => 27,
+    'amorcer-compte' => 28,
     'assurer-liste-active' => 6,
     'changer-portions-repas-dit-a-alexa' => 26,
     'changer-statut-compte' => 4,
@@ -35,7 +35,7 @@ return [
     'choix-drive-recherche' => 7,
     'cocher-lignes-du-panier-drive' => 4,
     'confirmation-email' => 4,
-    'confirmer-adresse-amorcage' => 30,
+    'confirmer-adresse-amorcage' => 31,
     'copier-recette' => 20,
     'copier-recette-ingredient-personnel' => 21,
     'copier-recette-ingredient-rapproche' => 17,

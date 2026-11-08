@@ -28,6 +28,8 @@ final readonly class SeedResult
         public int $sentShoppingListsRepointed = 0,
         /** Somme de contrôle du contenu (comptages, sommes, contenu des recettes et des listes), identique avant et après. */
         public string $fingerprint = '',
+        /** Liens posés entre les copies du compte et leurs parents, par provenance (ADR 0038 décision 21, `IngredientPartLinkRepository::linkCopies`). */
+        public int $partsLinked = 0,
     ) {
     }
 
@@ -36,8 +38,11 @@ final readonly class SeedResult
         return new self($outcome);
     }
 
+    /**
+     * Le compte a reçu des copies, ou (`--complete` d'un compte qui avait déjà tout) des liens de sous-ingrédients.
+     */
     public function wroteSomething(): bool
     {
-        return $this->outcome === SeedOutcome::SEEDED;
+        return $this->outcome === SeedOutcome::SEEDED || $this->partsLinked > 0;
     }
 }
