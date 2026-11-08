@@ -115,7 +115,7 @@ Faits relevés dans le code (2026-11-08) :
 
 ## Ce qui reste incertain
 
-- La phrase de la ligne de liste (« dont 2 jaunes d'œuf et 2 blancs d'œuf ») : à valider sur la maquette avec le propriétaire.
+- La phrase de la ligne de liste : « Comprend 2 jaunes d'œuf et 2 blancs d'œuf. » (maquette du 2026-11-08, SUB-007) ; « dont » est écarté (les jaunes et les blancs viennent des mêmes œufs). À faire valider par le propriétaire sur la maquette.
 - Un jaune dit à la voix quand la liste n'a aucun œuf : « 1 œuf » est rendu, ce qui peut surprendre ; à essayer sur l'enceinte.
 - Combien de comptes ont déjà un « Jaune d'œuf » à eux (doublon à fusionner) : à relever par le rapport `seed --check` avant le rattrapage.
 - Les parties qui ne sont pas des unités (« zeste de citron » d'un citron, 1 citron = 1 zeste) fonctionnent avec le même ratio, mais le propriétaire n'a pas demandé de les prévoir ; à voir à l'usage.
