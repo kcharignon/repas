@@ -1,4 +1,4 @@
-name: Release
+name: Back release
 
 # Publier une release GitHub (tag vX.Y.Z) construit l'image du back, la publie sur GHCR et la déploie en production
 # (ADR 0017). Le front a son propre workflow, dans le dépôt repas-front.
