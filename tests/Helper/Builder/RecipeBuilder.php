@@ -23,6 +23,8 @@ class RecipeBuilder implements Builder
     private int $version = 1;
     private bool $secret = false;
     private bool $favorite = false;
+    private ?string $marmitonId = null;
+    private ?string $sourceUrl = null;
 
 
     public function build(): Recipe
@@ -40,7 +42,33 @@ class RecipeBuilder implements Builder
             'version' => $this->version,
             'secret' => $this->secret,
             'favorite' => $this->favorite,
+            'marmiton_id' => $this->marmitonId,
+            'source_url' => $this->sourceUrl,
         ]);
+    }
+
+    /**
+     * La recette Marmiton neutre de l'identifiant `$marmitonId` (ADR 0037) : sans propriétaire (`Recipe::MARMITON_OWNER_ID`), originale, ordinaire,
+     * avec son tag et son lien d'origine. Les ingrédients des lignes sont à régler par l'appelant (`IngredientBuilder::withCreatorId`).
+     */
+    public function asMarmitonNeutral(string $marmitonId = '22082', ?string $sourceUrl = null): self
+    {
+        $this->authorId = Recipe::MARMITON_OWNER_ID;
+        $this->originalId = null;
+        $this->secret = false;
+        $this->marmitonId = $marmitonId;
+        $this->sourceUrl = $sourceUrl ?? sprintf('https://www.marmiton.org/recettes/recette_tarte-au-citron_%s.aspx', $marmitonId);
+
+        return $this;
+    }
+
+    /**
+     * Le lien d'origine Marmiton d'une copie (ADR 0037 décision 10).
+     */
+    public function withSourceUrl(?string $sourceUrl): self
+    {
+        $this->sourceUrl = $sourceUrl;
+        return $this;
     }
 
     public function isPastaCarbonara(): self

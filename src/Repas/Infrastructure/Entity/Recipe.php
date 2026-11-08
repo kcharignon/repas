@@ -9,6 +9,8 @@ use Repas\Shared\Domain\Tool\StringTool;
 #[ORM\Entity]
 #[ORM\Table(name: 'recipe')]
 #[ORM\Index(name: 'idx_recipe_author', columns: ['author'])]
+// Une seule recette neutre par recette Marmiton (ADR 0037 décision 3) : unique quand le tag est présent, rien à dire des autres recettes
+#[ORM\UniqueConstraint(name: 'uniq_recipe_marmiton_id', columns: ['marmiton_id'], options: ['where' => '(marmiton_id IS NOT NULL)'])]
 class Recipe
 {
     #[ORM\Id]
@@ -45,6 +47,14 @@ class Recipe
     #[ORM\Column(type: 'boolean', options: ['default' => false])]
     private bool $favorite = false;
 
+    // Tag de la recette Marmiton neutre (l'identifiant de la page, ADR 0037) ; vide pour toute autre recette, copies comprises
+    #[ORM\Column(name: 'marmiton_id', type: 'string', length: 32, nullable: true)]
+    private ?string $marmitonId = null;
+
+    // Adresse canonique de la page Marmiton dont la recette vient, reprise par ses copies ; écrite par le seul import
+    #[ORM\Column(name: 'source_url', type: 'string', length: 255, nullable: true)]
+    private ?string $sourceUrl = null;
+
     public function __construct(
         ?string $id,
         ?string $name,
@@ -54,6 +64,8 @@ class Recipe
         ?string $original,
         bool    $secret = false,
         bool    $favorite = false,
+        ?string $marmitonId = null,
+        ?string $sourceUrl = null,
     ) {
         $this->id = $id;
         $this->name = $name;
@@ -64,6 +76,8 @@ class Recipe
         $this->originalId = $original;
         $this->secret = $secret;
         $this->favorite = $favorite;
+        $this->marmitonId = $marmitonId;
+        $this->sourceUrl = $sourceUrl;
     }
 
     public function getId(): ?string
@@ -166,6 +180,16 @@ class Recipe
         return $this;
     }
 
+    public function getMarmitonId(): ?string
+    {
+        return $this->marmitonId;
+    }
+
+    public function getSourceUrl(): ?string
+    {
+        return $this->sourceUrl;
+    }
+
     public function getOriginalId(): ?string
     {
         return $this->originalId;
@@ -188,6 +212,8 @@ class Recipe
             original: $recipe->getOriginalId(),
             secret: $recipe->isSecret(),
             favorite: $recipe->isFavorite(),
+            marmitonId: $recipe->getMarmitonId(),
+            sourceUrl: $recipe->getSourceUrl(),
         );
     }
 

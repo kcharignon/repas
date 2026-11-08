@@ -36,6 +36,13 @@ final class Recipe implements ModelInterface
     public const int MAX_PER_AUTHOR_WITH_COPIES = 2 * self::MAX_PER_AUTHOR;
 
     /**
+     * L'auteur d'une recette Marmiton NEUTRE (ADR 0037 décision 4) : un identifiant réservé qui n'est PAS un compte (aucune ligne `user`,
+     * aucune connexion possible, rien à purger, jamais listé). La neutre et ses ingrédients lui appartiennent ; personne, administrateur
+     * compris, ne les modifie. Ne jamais comparer cette valeur à un compte : elle ne désigne personne.
+     */
+    public const string MARMITON_OWNER_ID = '00000000-0000-4000-8000-4d41524d4954';
+
+    /**
      * @param Tab<RecipeRow> $rows
      */
     private function __construct(
@@ -49,6 +56,8 @@ final class Recipe implements ModelInterface
         private int     $version = 1,
         private bool    $secret = false,
         private bool    $favorite = false,
+        private ?string $marmitonId = null,
+        private ?string $sourceUrl = null,
     ) {
     }
 
@@ -171,6 +180,7 @@ final class Recipe implements ModelInterface
 
     public function setName(string $name): Recipe
     {
+        $this->assertNotFrozen();
         $this->name = $name;
         return $this;
     }
@@ -180,6 +190,7 @@ final class Recipe implements ModelInterface
      */
     public function setServing(int $serving): Recipe
     {
+        $this->assertNotFrozen();
         self::assertServing($serving);
         $this->serving = $serving;
         return $this;
@@ -187,6 +198,7 @@ final class Recipe implements ModelInterface
 
     public function setType(Type $type): Recipe
     {
+        $this->assertNotFrozen();
         $this->type = $type;
         return $this;
     }
@@ -197,6 +209,7 @@ final class Recipe implements ModelInterface
      */
     public function setRows(Tab $rows): Recipe
     {
+        $this->assertNotFrozen();
         self::assertRowCount($rows->count());
         $this->rows = $rows;
         return $this;
@@ -226,7 +239,86 @@ final class Recipe implements ModelInterface
             version: $datas['version'] ?? 1,
             secret: $datas['secret'] ?? false,
             favorite: $datas['favorite'] ?? false,
+            marmitonId: $datas['marmiton_id'] ?? null,
+            sourceUrl: $datas['source_url'] ?? null,
         );
+    }
+
+    /**
+     * La recette Marmiton NEUTRE (ADR 0037 décisions 3 à 5) : créée une fois pour tous au premier import d'un identifiant, elle n'appartient à
+     * personne (`MARMITON_OWNER_ID`), est toujours ORDINAIRE (jamais secrète, donc visible de tous dans « Recettes des autres ») et ORIGINALE
+     * (c'est Marmiton qui l'est), figée (aucun passe-droit pour la modifier) ; on la copie. `marmiton_id` est son tag (unique) et l'adresse
+     * canonique de la page, son lien d'origine, que ses copies reprennent. Ses ingrédients sont ceux du même propriétaire.
+     *
+     * @param Tab<RecipeRow> $rows
+     * @throws RecipeException le nombre de personnes est hors de 1 à 100, ou il y a plus de lignes que `MAX_ROWS`
+     * @throws IngredientException un ingrédient n'est pas celui du propriétaire des recettes Marmiton
+     */
+    public static function createMarmitonNeutral(
+        string $id,
+        string $name,
+        int $servings,
+        Type $recipeType,
+        Tab $rows,
+        MarmitonUrl $url,
+    ): self {
+        self::assertServing($servings);
+        self::assertRowCount($rows->count());
+
+        $recipe = new self(
+            $id,
+            $name,
+            $servings,
+            self::MARMITON_OWNER_ID,
+            $recipeType,
+            $rows,
+            null,
+            marmitonId: $url->id,
+            sourceUrl: $url->canonical(),
+        );
+        foreach ($rows as $row) {
+            $recipe->assertIngredientIsAvailable($row->getIngredient());
+        }
+
+        return $recipe;
+    }
+
+    /**
+     * Cette recette est une recette Marmiton neutre : sans propriétaire, figée pour tous (ADR 0037 décision 5).
+     */
+    public function isMarmitonNeutral(): bool
+    {
+        return $this->authorId === self::MARMITON_OWNER_ID;
+    }
+
+    /**
+     * Le tag Marmiton de la recette neutre (l'identifiant de la page) ; `null` pour toute autre recette, copies comprises.
+     */
+    public function getMarmitonId(): ?string
+    {
+        return $this->marmitonId;
+    }
+
+    /**
+     * L'adresse canonique de la page Marmiton dont la recette vient (ADR 0037 décision 10), reprise par chacune de ses copies ; `null` pour
+     * toute autre recette. Écrite par le seul import, jamais reçue d'un corps de requête.
+     */
+    public function getSourceUrl(): ?string
+    {
+        return $this->sourceUrl;
+    }
+
+    /**
+     * Une recette Marmiton neutre ne se modifie ni ne se supprime, par personne : on la copie (ADR 0037 décision 5). Le droit est refusé en
+     * amont (`RECIPE_OWNER`) ; cette garde le répète pour qu'aucun cas d'usage ne puisse l'oublier.
+     *
+     * @throws RecipeException la recette est la neutre d'une recette Marmiton
+     */
+    public function assertNotFrozen(): void
+    {
+        if ($this->isMarmitonNeutral()) {
+            throw RecipeException::frozen();
+        }
     }
 
     /**
@@ -294,6 +386,8 @@ final class Recipe implements ModelInterface
             originalId: $original->getId(),
             // L'original n'est visible du copieur que s'il est ordinaire ou à lui : secrète ici, il en est l'auteur
             secret: $original->isSecret() && $original->getAuthorId() === $authorId,
+            // Le lien d'origine voyage avec la copie, copie de copie comprise (ADR 0037 décision 10) ; le tag `marmiton_id`, lui, reste sur la neutre
+            sourceUrl: $original->getSourceUrl(),
         );
         foreach ($copy->rows as $row) {
             $copy->assertIngredientIsAvailable($row->getIngredient());
@@ -342,6 +436,7 @@ final class Recipe implements ModelInterface
      */
     public function update(string $name, RecipeType $type, int $serving): void
     {
+        $this->assertNotFrozen();
         self::assertServing($serving);
 
         $this->name = $name;
@@ -355,6 +450,7 @@ final class Recipe implements ModelInterface
      */
     public function addRow(Ingredient $ingredient, Unit $unit, float $quantity): void
     {
+        $this->assertNotFrozen();
         self::assertRowCount($this->rows->count() + 1);
         $this->assertIngredientIsAvailable($ingredient);
 

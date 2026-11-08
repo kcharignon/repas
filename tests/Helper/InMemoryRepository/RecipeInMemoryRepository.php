@@ -41,6 +41,30 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
         throw new Exception("Not implemented");
     }
 
+    public function findMarmitonNeutralId(string $marmitonId): ?string
+    {
+        /** @var Recipe $recipe */
+        foreach ($this->models as $recipe) {
+            if ($recipe->getMarmitonId() === $marmitonId) {
+                return $recipe->getId();
+            }
+        }
+
+        return null;
+    }
+
+    public function findCopyIdOf(string $originalId, string $authorId): ?string
+    {
+        /** @var Recipe $recipe */
+        foreach ($this->models as $recipe) {
+            if ($recipe->getOriginalId() === $originalId && $recipe->getAuthorId() === $authorId) {
+                return $recipe->getId();
+            }
+        }
+
+        return null;
+    }
+
     public function authorHasAtLeast(string $authorId, int $count): bool
     {
         return $this->findByAuthor($authorId)->count() >= $count;

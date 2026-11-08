@@ -78,6 +78,38 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
         $this->entityManager->flush();
     }
 
+    public function findMarmitonNeutralId(string $marmitonId): ?string
+    {
+        $id = $this->entityManager->createQueryBuilder()
+            ->select('r.id')
+            ->from(RecipeEntity::class, 'r')
+            ->where('r.marmitonId = :marmitonId')
+            ->setParameter('marmitonId', $marmitonId)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $id === null ? null : $id['id'];
+    }
+
+    public function findCopyIdOf(string $originalId, string $authorId): ?string
+    {
+        // Du plus ancien au plus récent : s'il y en a plusieurs (deux imports simultanés d'avant le verrou), la même réponse à chaque appel
+        $copy = $this->entityManager->createQueryBuilder()
+            ->select('r.id')
+            ->from(RecipeEntity::class, 'r')
+            ->where('r.originalId = :originalId')
+            ->andWhere('r.authorId = :authorId')
+            ->orderBy('r.id', 'ASC')
+            ->setParameter('originalId', $originalId)
+            ->setParameter('authorId', $authorId)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $copy === null ? null : $copy['id'];
+    }
+
     /**
      * @throws RecipeException
      */
@@ -96,6 +128,8 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
             'version' => $entity->getVersion(),
             'secret' => $entity->isSecret(),
             'favorite' => $entity->isFavorite(),
+            'marmiton_id' => $entity->getMarmitonId(),
+            'source_url' => $entity->getSourceUrl(),
         ]);
     }
 

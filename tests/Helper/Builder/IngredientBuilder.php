@@ -31,6 +31,7 @@ class IngredientBuilder implements Builder
     private bool $isBase = false;
     private ?string $listDestination = null;
     private bool $withoutCreator = false;
+    private ?string $creatorId = null;
     /** @var Tab<Unit>  */
     private Tab $compatibleUnits;
 
@@ -89,7 +90,7 @@ class IngredientBuilder implements Builder
             'default_purchase_unit' => $this->defaultPurchaseUnitBuilder->build(),
             'creator_id' => $this->withoutCreator
                 ? null
-                : (($this->creator instanceof UserBuilder ? $this->creator->build() : $this->creator)?->getId() ?? self::DEFAULT_CREATOR_ID),
+                : ($this->creatorId ?? (($this->creator instanceof UserBuilder ? $this->creator->build() : $this->creator)?->getId() ?? self::DEFAULT_CREATOR_ID)),
             'compatible_units' => $this->compatibleUnits,
             'adopted_from' => $this->adoptedFrom,
             'is_base' => $this->isBase,
@@ -226,6 +227,19 @@ class IngredientBuilder implements Builder
         $this->creator = $creator;
         if ($refreshSlug) {
             $this->slug = $this->calculateSlug();
+        }
+        return $this;
+    }
+
+    /**
+     * Un ingrédient dont le créateur est un identifiant qui n'est pas un compte (le propriétaire des recettes Marmiton, ADR 0037), avec le slug
+     * qu'aurait une création de ce créateur.
+     */
+    public function withCreatorId(string $creatorId, bool $refreshSlug = true): self
+    {
+        $this->creatorId = $creatorId;
+        if ($refreshSlug) {
+            $this->slug = StringTool::slugify($this->name . $creatorId);
         }
         return $this;
     }

@@ -33,6 +33,7 @@ class NamesStartWithACapitalTest extends TestCase
     /** Les écritures d'un nom : l'appel porte lui-même la règle. */
     private const array NAME_WRITERS = [
         '/\bRecipe::create\(/',
+        '/\bRecipe::createMarmitonNeutral\(/',
         '/\bIngredient::create\(/',
         '/\bnew Ingredient\(/',
         '/\$(?:recipe|ingredient|copy|\w+Recipe|\w+Ingredient|\w+Copy)->(?:update|setName)\(/',
@@ -122,7 +123,7 @@ class NamesStartWithACapitalTest extends TestCase
     public function testTheModelsOnlyAcceptANameThroughTheMethodsThisTestKnows(): void
     {
         // Then : une nouvelle méthode publique qui reçoit un `$name` est une nouvelle porte d'entrée pour le nom : l'ajouter ici (et au test ci-dessus)
-        $this->assertSame(['create', 'setName', 'update'], self::methodsAcceptingAName(Recipe::class));
+        $this->assertSame(['create', 'createMarmitonNeutral', 'setName', 'update'], self::methodsAcceptingAName(Recipe::class));
         $this->assertSame(['__construct', 'create', 'setName', 'update'], self::methodsAcceptingAName(Ingredient::class));
         $this->assertSame(['create', 'rename'], self::methodsAcceptingAName(ShoppingListType::class));
     }

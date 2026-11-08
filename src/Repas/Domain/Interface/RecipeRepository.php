@@ -23,6 +23,18 @@ interface RecipeRepository
     public function save(Recipe $recipe): void;
 
     /**
+     * L'identifiant de la recette neutre de cet identifiant Marmiton (ADR 0037 décision 3), ou `null` si elle n'a jamais été importée. Une seule
+     * requête, sans hydrater la recette : l'import ne lit la neutre en entier que s'il doit la copier.
+     */
+    public function findMarmitonNeutralId(string $marmitonId): ?string;
+
+    /**
+     * L'identifiant de la copie que cet auteur a faite de cette recette (la recette dont `original_id` est `$originalId`), ou `null` s'il n'en a
+     * pas : c'est ce qui rend l'import d'un même lien idempotent (ADR 0037 décision 9). Une seule requête, sans hydrater la recette.
+     */
+    public function findCopyIdOf(string $originalId, string $authorId): ?string;
+
+    /**
      * L'auteur a-t-il au moins `$count` recettes ? La lecture s'arrête à la `$count`-ième : jamais un décompte complet (plafond de recettes,
      * `Recipe::MAX_PER_AUTHOR`).
      */
