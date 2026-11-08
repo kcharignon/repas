@@ -66,6 +66,20 @@ Taille : S (quelques heures), M (une journée), L (plusieurs jours). Effort : le
 - [x] [ING-016](tickets/ING-016-meme-nom-par-rayon-et-icone-de-rayon.md) (A : PR #356 ; B : seconde PR) back · M · **high** · A : un nom est unique par propriétaire ET par rayon (`409 INGREDIENT_NAME_ALREADY_USED`, création et modification, slug libre `…-2…`, aucune migration) ; B : `department.icon` (`snowflake`, `can`), lue dans les rayons, réglée par l'administrateur, et le rayon dans les DTO qui montrent un nom d'ingrédient · deux PR (A puis B) · dépend de : —
 - [x] [ING-017](tickets/ING-017-icones-de-rayon-et-creation-dans-la-recette.md) (front PR #275 et #277, fusionnées ; pas encore déployé) **front** · M · **high** · A : l'icône du rayon distingue deux ingrédients de même nom (choix, recette, liste, écran des rayons), réglage sur l'écran des rayons, texte de `INGREDIENT_NAME_ALREADY_USED` ; B : créer un ingrédient sans quitter la recette (feuille « Nouvel ingrédient ») · dépend de : ING-016 B en production
 
+### I8 — Sous-ingrédients (ADR 0038, demande du propriétaire du 2026-11-08, issue #437)
+
+Une partie (« Jaune d'œuf ») est un ingrédient du compte relié à un parent (« Œuf ») par un ratio, jamais une ligne de liste : le total du parent est `quantité directe + max(équivalent des parties)`. **L'implémentation passe après l'import Marmiton (MAR-003)** ; MAR-003 ne change pas.
+
+- [ ] [SUB-001](tickets/SUB-001-modele-et-decoupage.md) back · L · **xhigh** · Modèle (`parent_slug`, `parent_ratio`), découpage `PUT|DELETE /ingredients/{slug}/parent`, lectures · dépend de : MAR-003
+- [ ] [SUB-002](tickets/SUB-002-copie-aux-comptes.md) back · M · **xhigh** · Le découpage voyage : amorçage, copie de recette, rattrapage `seed --complete` · dépend de : 001
+- [ ] [SUB-003](tickets/SUB-003-calcul-dans-la-liste.md) back · L · **xhigh** · Le total du parent dans la liste (`part_shares`, `addPart|subtractPart`, handlers, détail), drive prouvé · dépend de : 001
+- [ ] [SUB-004](tickets/SUB-004-fusion-suppression-et-registre.md) back · M · **xhigh** · Fusion, suppression, couverture du schéma · dépend de : 001, 003
+- [ ] [SUB-005](tickets/SUB-005-voix.md) back · M · **high** · Alexa : ajouter, retirer, demander une partie · dépend de : 003
+- [ ] [SUB-006](tickets/SUB-006-donnees-de-reference-et-exploitation.md) back (documents) + opérations de l'humain · S · **xhigh** · Jaune et blanc d'œuf du catalogue, rattrapage des comptes, recette · dépend de : 001 à 004 en production
+- [ ] [SUB-007](tickets/SUB-007-front-decouper-un-ingredient.md) **front** · L · **high** · Découper un ingrédient, « 5 œufs » et ce qu'ils contiennent (maquette du designer d'abord) · dépend de : 001 et 003 en production
+
+Ordre : `MAR-003 ► SUB-001 ► (SUB-002 ‖ SUB-003) ► SUB-004 ► SUB-005`, puis release du back, `SUB-006` (humain), `SUB-007` et release du site. Deux agents du back en même temps touchent `migrations/`, `budgets.php` et `openapi.json` : SUB-002 et SUB-003 se rebasent l'un sur l'autre.
+
 ### Transverse
 
 - [x] [ING-010](tickets/ING-010-documentation-recette-exploitation.md) (recette écrite : [`recette.md`](recette.md), **relue et validée par le propriétaire le 2026-10-24** ; le reste fait au fil des PR) back · S · **medium** · `CLAUDE.md`, skills, `docs/production.md`, pas à pas d'exploitation, recette · se fait au fil des autres, se clôt après 015 *(réécrit)*
