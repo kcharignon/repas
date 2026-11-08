@@ -78,8 +78,12 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
         return $this->models->find(fn(Ingredient $ingredient) => $ingredient->getSlug() === $slug) ?? throw IngredientException::notFound($slug);
     }
 
+    /** Lectures groupées (`findBySlugs`) : les parents des parties se lisent en une seule (ADR 0038 décision 14). */
+    public int $batchReads = 0;
+
     public function findBySlugs(Tab $slugs): Tab
     {
+        $this->batchReads++;
         $ingredients = Tab::newEmptyTyped(Ingredient::class);
         foreach ($slugs->unique() as $slug) {
             $ingredients[] = $this->findOneBySlug($slug);

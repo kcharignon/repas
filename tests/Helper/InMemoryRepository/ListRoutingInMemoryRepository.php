@@ -59,15 +59,29 @@ class ListRoutingInMemoryRepository implements ListRoutingRepository
             if ($ingredient->getCreatorId() !== $ownerId) {
                 continue;
             }
+            // Une partie se pose chez son parent (ADR 0038 décision 10) : même règle que la requête SQL, le parent doit être au même utilisateur
+            $source = $ingredient;
+            $partOf = null;
+            if ($ingredient->isPart()) {
+                try {
+                    $parent = $this->ingredients->findOneBySlug($ingredient->getParentSlug());
+                    if ($parent->getCreatorId() === $ownerId) {
+                        $source = $parent;
+                        $partOf = $parent->getSlug();
+                    }
+                } catch (IngredientException) {
+                }
+            }
             $departmentType = null;
             foreach ($ownerTypes as $type) {
-                if (in_array($ingredient->getDepartment()->getSlug(), $type->getDepartmentSlugs(), true)) {
+                if (in_array($source->getDepartment()->getSlug(), $type->getDepartmentSlugs(), true)) {
                     $departmentType = $type->getId();
                 }
             }
             $placements[$slug] = new ProductPlacement(
-                $resolver->resolve($ingredient->getListDestination(), $departmentType, $existing),
-                $ingredient->getDefaultPurchaseUnit()->getSlug(),
+                $resolver->resolve($source->getListDestination(), $departmentType, $existing),
+                $source->getDefaultPurchaseUnit()->getSlug(),
+                $partOf,
             );
         }
 

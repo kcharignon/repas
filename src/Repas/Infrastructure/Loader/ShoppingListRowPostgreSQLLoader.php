@@ -9,6 +9,7 @@ use Repas\Repas\Application\Query\GetShoppingList\ShoppingListRowDTO;
 use Repas\Repas\Domain\Exception\ShoppingListRowException;
 use Repas\Repas\Infrastructure\Entity\Department;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
+use Repas\Repas\Infrastructure\Entity\ShoppingList;
 use Repas\Repas\Infrastructure\Entity\ShoppingListRow;
 use Repas\Repas\Infrastructure\Entity\Unit;
 
@@ -16,17 +17,20 @@ final readonly class ShoppingListRowPostgreSQLLoader implements ShoppingListRowL
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
+        private ShoppingListPartIncludes $partIncludes,
     ) {
     }
 
     public function get(string $rowId): ShoppingListRowDTO
     {
+        // Le registre des parties de la liste est lu avec la ligne (jointure externe : une liste sans registre ne coûte rien de plus)
         $row = $this->entityManager->createQueryBuilder()
-            ->select('r.id AS id', 'r.quantity AS quantity', 'r.checked AS checked', 'i.slug AS ingredientSlug', 'i.name AS ingredientName', 'u.slug AS unitSlug', 'u.symbol AS unitSymbol', 'd.slug AS departmentSlug', 'd.name AS departmentName')
+            ->select('r.id AS id', 'r.quantity AS quantity', 'r.checked AS checked', 'i.slug AS ingredientSlug', 'i.name AS ingredientName', 'u.slug AS unitSlug', 'u.symbol AS unitSymbol', 'd.slug AS departmentSlug', 'd.name AS departmentName', 'l.partShares AS partShares')
             ->from(ShoppingListRow::class, 'r')
             ->innerJoin(Ingredient::class, 'i', Join::WITH, 'i.slug = r.ingredientSlug')
             ->innerJoin(Department::class, 'd', Join::WITH, 'd.slug = i.departmentSlug')
             ->innerJoin(Unit::class, 'u', Join::WITH, 'u.slug = r.unitSlug')
+            ->leftJoin(ShoppingList::class, 'l', Join::WITH, 'l.id = r.shoppingListId')
             ->where('r.id = :id')
             ->setParameter('id', $rowId)
             ->getQuery()
@@ -46,6 +50,7 @@ final readonly class ShoppingListRowPostgreSQLLoader implements ShoppingListRowL
             unitSlug: $row['unitSlug'],
             departmentSlug: $row['departmentSlug'],
             departmentName: $row['departmentName'],
+            includes: $this->partIncludes->byParent($row['partShares'])[$row['ingredientSlug']] ?? [],
         );
     }
 }

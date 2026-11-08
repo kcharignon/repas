@@ -49,6 +49,33 @@ readonly class ConversionService
                 $missing[$ingredient->getSlug()] = $ingredient;
             }
         }
+
+        $this->loadGraphs($missing);
+    }
+
+    /**
+     * La même lecture pour des ingrédients dont on convertira l'unité de recette en unité d'achat sans avoir de ligne de recette sous la main : les
+     * parents des parties (ADR 0038 décision 4, `PartEquivalence`). Un parent dont les deux unités sont les mêmes (l'œuf) ne demande aucune lecture.
+     *
+     * @param iterable<Ingredient> $ingredients
+     */
+    public function preloadIngredients(iterable $ingredients): void
+    {
+        $missing = [];
+        foreach ($ingredients as $ingredient) {
+            if ($ingredient->getDefaultCookingUnit()->getId() !== $ingredient->getDefaultPurchaseUnit()->getId() && !isset($this->graphs[$ingredient->getSlug()])) {
+                $missing[$ingredient->getSlug()] = $ingredient;
+            }
+        }
+
+        $this->loadGraphs($missing);
+    }
+
+    /**
+     * @param array<string, Ingredient> $missing les ingrédients dont le graphe n'est pas encore connu, par slug
+     */
+    private function loadGraphs(array $missing): void
+    {
         if ($missing === []) {
             return;
         }

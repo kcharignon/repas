@@ -3,14 +3,18 @@
 namespace Repas\Repas\Application\Command\UpdateServingMeal;
 
 
+use Closure;
 use Repas\Repas\Application\Service\GroupedMeal;
+use Repas\Repas\Application\Service\PartAwareLines;
 use Repas\Repas\Application\Service\PlannedMealGroup;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\RecipeRow;
+use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Service\ConversionService;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -27,6 +31,7 @@ readonly class UpdateServingMealHandler
         private RecipeRepository $recipeRepository,
         private ConversionService $conversionService,
         private PlannedMealGroup $plannedMealGroup,
+        private PartAwareLines $partLines,
     ) {
     }
 
@@ -60,6 +65,15 @@ readonly class UpdateServingMealHandler
 
         // Les quantités de chaque repas, calculées avant la première écriture : une conversion manquante refuse tout
         $this->conversionService->preload($recipe->getRows());
+        // Ajouter des personnes ajoute des parties au registre (ADR 0038 décision 9) : leurs parents sont lus, en une fois, seulement dans ce cas ;
+        // en retirer se décide d'après la liste (`subtractLine`) et ne lit rien de plus
+        $parents = [];
+        foreach ($changing as $member) {
+            if ($command->serving > $member->meal->getServing()) {
+                $parents = $this->partLines->parentsOf(array_map(static fn(RecipeRow $row): Ingredient => $row->getIngredient(), $recipe->getRows()->toArray()));
+                break;
+            }
+        }
         $changes = [];
         foreach ($changing as $member) {
             // Le coefficient de difference = Nouveau Serving - Ancien Serving
@@ -68,27 +82,43 @@ readonly class UpdateServingMealHandler
 
             // On récupere les Ingredients de la recette dans les bonnes proportions, ceux que ce repas a posés dans sa liste
             $rows = $recipe->getRowForServing(abs($coefficient))->filter(static fn(RecipeRow $row): bool => $member->meal->places($row->getIngredient()->getSlug()));
-            $changes[] = [$member, $coefficient > 0, array_map(
-                // On calcule la quantité dans l'unité d'achat
-                fn(RecipeRow $row): array => [$row->getIngredient()->getSlug(), $row->getIngredient()->getDefaultPurchaseUnit()->getSlug(), $this->conversionService->convertRecipeRowToPurchaseUnit($row)],
+            $changes[] = [$member, array_map(
+                fn(RecipeRow $row): Closure => $this->lineChange($coefficient > 0, $row, $parents),
                 array_values($rows->toArray()),
             )];
         }
 
-        foreach ($changes as [$member, $increase, $lines]) {
-            foreach ($lines as [$ingredientSlug, $purchaseUnitSlug, $quantity]) {
-                if ($increase) {
-                    // On ajoute cette quantité dans la liste d'achat
-                    $member->shoppingList->addRow($ingredientSlug, $purchaseUnitSlug, $quantity);
-                } else {
-                    // On déduit cette quantité dans la liste d'achat
-                    $member->shoppingList->subtractRow($ingredientSlug, $quantity);
-                }
+        foreach ($changes as [$member, $lineChanges]) {
+            foreach ($lineChanges as $lineChange) {
+                $lineChange($member->shoppingList);
             }
 
             $member->meal->setServing($command->serving);
 
             $this->shoppingListRepository->save($member->shoppingList);
         }
+    }
+
+    /**
+     * La quantité d'une ligne de recette, calculée MAINTENANT dans l'unité d'achat (une conversion manquante refuse tout avant la première écriture),
+     * et ce qu'il faudra en faire sur la liste : l'ajouter (une partie, dans la ligne de son parent) ou la déduire (le registre de la liste dit si
+     * c'est une partie).
+     *
+     * @param array<string, Ingredient> $parents
+     *
+     * @return Closure(ShoppingList): void
+     */
+    private function lineChange(bool $increase, RecipeRow $row, array $parents): Closure
+    {
+        $quantity = $this->conversionService->convertRecipeRowToPurchaseUnit($row);
+        if ($increase) {
+            $line = $this->partLines->prepare($row->getIngredient(), $quantity, $parents);
+
+            return static fn(ShoppingList $list) => $line->addTo($list);
+        }
+
+        $ingredientSlug = $row->getIngredient()->getSlug();
+
+        return static fn(ShoppingList $list) => $list->subtractLine($ingredientSlug, $quantity);
     }
 }

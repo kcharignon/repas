@@ -33,6 +33,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
+        private ShoppingListPartIncludes $partIncludes,
     ) {
     }
 
@@ -169,7 +170,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
     public function get(string $id): ShoppingListDetailDTO
     {
         $list = $this->entityManager->createQueryBuilder()
-            ->select('l.id AS id', 'l.name AS name', 'l.status AS status', 'l.createdAt AS createdAt', 'l.sentAt AS sentAt', 'l.version AS version')
+            ->select('l.id AS id', 'l.name AS name', 'l.status AS status', 'l.createdAt AS createdAt', 'l.sentAt AS sentAt', 'l.version AS version', 'l.partShares AS partShares')
             ->from(ShoppingList::class, 'l')
             ->where('l.id = :id')
             ->setParameter('id', $id)
@@ -220,11 +221,11 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
     }
 
     /**
-     * @param array{id: string, name: ?string, status: ShoppingListStatus, createdAt: DateTimeImmutable, sentAt: ?DateTimeImmutable, version: int} $list
+     * @param array{id: string, name: ?string, status: ShoppingListStatus, createdAt: DateTimeImmutable, sentAt: ?DateTimeImmutable, version: int, partShares: mixed} $list
      */
     private function buildDetail(array $list): ShoppingListDetailDTO
     {
-        $departments = $this->loadDepartments($list['id']);
+        $departments = $this->loadDepartments($list['id'], $list['partShares']);
         $recipeTypes = $this->loadRecipeTypes($list['id']);
         $dateLabel = $this->dateFormatter()->format($list['createdAt']);
         $status = $list['status'];
@@ -253,10 +254,17 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
      * Rayons triés par slug, lignes de chaque rayon triées par slug d'ingrédient (tri PHP, comme l'ancien modèle de domaine :
      * la collation PostgreSQL ordonne autrement les slugs à tirets).
      *
+     * Chaque ligne de parent dit les parties qu'elle contient (`includes`, ADR 0038 décision 15) d'après le registre de la liste, lu avec la liste :
+     * aucune lecture de plus tant que le registre est vide.
+     *
+     * @param mixed $storedPartShares le registre des parties de la liste, tel qu'elle le garde
+     *
      * @return list<ShoppingListDepartmentDTO>
      */
-    private function loadDepartments(string $shoppingListId): array
+    private function loadDepartments(string $shoppingListId, mixed $storedPartShares): array
     {
+        $includes = $this->partIncludes->byParent($storedPartShares);
+
         $rows = $this->entityManager->createQueryBuilder()
             ->select(
                 'r.id AS id', 'r.quantity AS quantity', 'r.checked AS checked',
@@ -288,6 +296,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
                 unitSlug: $row['unitSlug'],
                 departmentSlug: $row['departmentSlug'],
                 departmentName: $row['departmentName'],
+                includes: $includes[$row['ingredientSlug']] ?? [],
             );
         }
         ksort($groups, SORT_STRING);

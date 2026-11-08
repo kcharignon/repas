@@ -4,6 +4,7 @@ namespace Repas\Tests\Helper\Builder\DTO;
 
 
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListRowDTO;
+use Repas\Repas\Application\Query\GetShoppingList\ShoppingListRowIncludeDTO;
 use Repas\Tests\Helper\Builder\Builder;
 
 class ShoppingListRowDTOBuilder implements Builder
@@ -17,6 +18,8 @@ class ShoppingListRowDTOBuilder implements Builder
     private string $unitSlug = 'unite';
     private string $departmentSlug = 'divers';
     private string $departmentName = 'divers';
+    /** @var list<ShoppingListRowIncludeDTO> */
+    private array $includes = [];
 
     public function withId(string $id): self
     {
@@ -67,8 +70,15 @@ class ShoppingListRowDTOBuilder implements Builder
         return $this;
     }
 
+    /** Les parties d'ingrédient que la ligne contient (ADR 0038). */
+    public function withIncludes(ShoppingListRowIncludeDTO ...$includes): self
+    {
+        $this->includes = array_values($includes);
+        return $this;
+    }
+
     public function build(): ShoppingListRowDTO
     {
-        return new ShoppingListRowDTO($this->id, $this->ingredientName, $this->quantity, $this->unitSymbol, $this->checked, $this->ingredientSlug, $this->unitSlug, $this->departmentSlug, $this->departmentName);
+        return new ShoppingListRowDTO($this->id, $this->ingredientName, $this->quantity, $this->unitSymbol, $this->checked, $this->ingredientSlug, $this->unitSlug, $this->departmentSlug, $this->departmentName, $this->includes);
     }
 }

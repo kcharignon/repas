@@ -4,6 +4,7 @@ namespace Repas\Repas\Infrastructure\Entity;
 
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
+use Repas\Repas\Domain\Model\PartShare;
 use Repas\Repas\Domain\Model\ShoppingList as ShoppingListModel;
 use Repas\Repas\Domain\Model\ShoppingListStatus as Status;
 
@@ -40,6 +41,17 @@ class ShoppingList
     #[ORM\Column(type: 'integer', updatable: false)]
     private int $version = 1;
 
+    /**
+     * Le registre caché des parties d'ingrédient de la liste (ADR 0038 décision 6) : `{ "<slug de la partie>": {parent, quantity, equivalent} }`,
+     * `null` pour toute liste qui n'a pas de partie. Du JSON gardé tel quel : le modèle le lit comme une entrée non fiable (`PartShare::registryFrom`),
+     * donc la propriété n'est pas typée (une valeur de la base qui n'est pas un objet ne doit jamais empêcher de lire la liste).
+     */
+    #[ORM\Column(name: 'part_shares', type: 'json', nullable: true, options: ['jsonb' => true])]
+    private mixed $partShares = null;
+
+    /**
+     * @param ?array<string, mixed> $partShares
+     */
     public function __construct(
         string            $id,
         string            $ownerId,
@@ -48,6 +60,7 @@ class ShoppingList
         ?string            $name,
         ?DateTimeImmutable $sentAt = null,
         ?string            $listTypeId = null,
+        ?array             $partShares = null,
     ) {
         $this->id = $id;
         $this->ownerId = $ownerId;
@@ -56,6 +69,7 @@ class ShoppingList
         $this->name = $name;
         $this->sentAt = $sentAt;
         $this->listTypeId = $listTypeId;
+        $this->partShares = $partShares;
     }
 
     public static function fromModel(ShoppingListModel $shoppingListModel): static
@@ -68,6 +82,7 @@ class ShoppingList
             name: $shoppingListModel->getName(),
             sentAt: $shoppingListModel->getSentAt(),
             listTypeId: $shoppingListModel->getListTypeId(),
+            partShares: PartShare::registryToArray($shoppingListModel->getPartShares()),
         );
     }
 
@@ -77,6 +92,21 @@ class ShoppingList
         $this->name = $shoppingListModel->getName();
         $this->sentAt = $shoppingListModel->getSentAt();
         $this->listTypeId = $shoppingListModel->getListTypeId();
+
+        // Comparaison large (`!=`) : la base rend `2` là où le modèle écrit `2.0` et jsonb range les clés à sa façon, ce qui n'est pas un changement
+        // (Doctrine compare strictement et écrirait la colonne à chaque enregistrement d'une liste qui a des parties)
+        $partShares = PartShare::registryToArray($shoppingListModel->getPartShares());
+        if ($this->partShares != $partShares) {
+            $this->partShares = $partShares;
+        }
+    }
+
+    /**
+     * @return ?array<string, mixed>
+     */
+    public function getPartShares(): mixed
+    {
+        return $this->partShares;
     }
 
     public function getId(): ?string

@@ -6914,6 +6914,32 @@
                 },
                 "type": "object"
             },
+            "ShoppingListRowIncludeDTO": {
+                "required": [
+                    "name",
+                    "quantity",
+                    "unitSymbol"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "Nom de la partie",
+                        "type": "string",
+                        "example": "Jaune d'\u0153uf"
+                    },
+                    "quantity": {
+                        "description": "Quantit\u00e9 de la partie dans la liste, dans l'unit\u00e9 d'achat de la partie",
+                        "type": "number",
+                        "format": "float",
+                        "example": 2
+                    },
+                    "unitSymbol": {
+                        "description": "Symbole de l'unit\u00e9 d'achat de la partie (peut \u00eatre vide)",
+                        "type": "string",
+                        "example": ""
+                    }
+                },
+                "type": "object"
+            },
             "ShoppingListRowDTO": {
                 "required": [
                     "id",
@@ -6924,7 +6950,8 @@
                     "ingredientSlug",
                     "unitSlug",
                     "departmentSlug",
-                    "departmentName"
+                    "departmentName",
+                    "includes"
                 ],
                 "properties": {
                     "id": {
@@ -6970,6 +6997,13 @@
                         "description": "Nom du rayon de l'ingr\u00e9dient",
                         "type": "string",
                         "example": "Surgel\u00e9"
+                    },
+                    "includes": {
+                        "description": "Les parties d'ingr\u00e9dient que cette ligne contient (ADR 0038) : \u00ab Comprend 2 jaunes d'\u0153uf et 2 blancs d'\u0153uf \u00bb pour une ligne \u00ab \u0152uf 5 \u00bb. Tri\u00e9es par nom, `[]` quand la ligne ne contient aucune partie (cl\u00e9 toujours \u00e9crite)",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ShoppingListRowIncludeDTO"
+                        }
                     }
                 },
                 "type": "object"

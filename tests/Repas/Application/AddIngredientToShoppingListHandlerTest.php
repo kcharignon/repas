@@ -18,9 +18,13 @@ use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Repas\Application\Service\IngredientSlugResolver;
+use Repas\Repas\Domain\Service\ConversionService;
+use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
+use Repas\Tests\Helper\PartLines;
 use Repas\Tests\Helper\TypedLists;
 
 class AddIngredientToShoppingListHandlerTest extends TestCase
@@ -43,6 +47,7 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
             slugResolver: new IngredientSlugResolver($this->aliasRepository),
             listRoutingRepository: $typedLists->routing,
             activeListForType: $typedLists->activeListForType,
+            partLines: PartLines::for($this->ingredientRepository, new ConversionService(new ConversionInMemoryRepository(), new UnitInMemoryRepository())),
         );
     }
 

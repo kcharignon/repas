@@ -290,6 +290,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             'version' => $shoppingListEntity->getVersion(),
             'sent_at' => $shoppingListEntity->getSentAt(),
             'list_type_id' => $shoppingListEntity->getListTypeId(),
+            'part_shares' => $shoppingListEntity->getPartShares(),
         ]);
     }
 

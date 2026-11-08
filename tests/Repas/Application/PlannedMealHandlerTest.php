@@ -28,6 +28,7 @@ use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
+use Repas\Tests\Helper\PartLines;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\Tests\Helper\TypedLists;
 
@@ -64,7 +65,8 @@ class PlannedMealHandlerTest extends TestCase
             $this->unitRepository,
         );
 
-        $typedLists = new TypedLists($this->shoppingListRepository, new IngredientInMemoryRepository());
+        $ingredients = new IngredientInMemoryRepository();
+        $typedLists = new TypedLists($this->shoppingListRepository, $ingredients);
         $this->handler = new PlannedMealHandler(
             $this->shoppingListRepository,
             $this->recipeRepository,
@@ -72,6 +74,7 @@ class PlannedMealHandlerTest extends TestCase
             new UuidGenerator(),
             $typedLists->routing,
             $typedLists->activeListForType,
+            PartLines::for($ingredients, $this->conversionService),
         );
     }
 
