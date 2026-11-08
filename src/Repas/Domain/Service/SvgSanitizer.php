@@ -15,9 +15,13 @@ use XMLWriter;
  * un script, charger une ressource distante ou une autre page ; servi depuis NOTRE origine et ouvert directement, il s'exécuterait. Il n'est donc JAMAIS gardé
  * tel qu'il arrive : le fichier est lu, ce qui est connu et sûr est copié dans un arbre neuf, et c'est cet arbre qui est ré-écrit.
  *
- * 1. **Lecture sans danger** : aucune entité ni DTD (`DOCTYPE` refusé, jamais `LIBXML_NOENT` ni de chargement externe, `LIBXML_NONET`), pas de XXE ni de
- *    « billion laughs ». Avant même de construire un arbre, un passage en flux (`XMLReader`) compte les éléments et la profondeur et s'arrête au premier
- *    dépassement : au plus 10 000 éléments et 32 niveaux (`tooLarge`).
+ * 1. **Lecture sans danger** : aucune entité, aucune DTD chargée, jamais `LIBXML_NOENT`, `LIBXML_DTDLOAD` ni `LIBXML_DTDATTR`, `LIBXML_NONET` : pas de XXE,
+ *    pas de « billion laughs », aucun accès au réseau ni aux fichiers. **Un `DOCTYPE` simple est accepté et IGNORÉ** (l'en-tête classique d'Illustrator ou
+ *    d'Inkscape, `<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">`, ou `SYSTEM "…"`) : il est retiré du
+ *    texte AVANT l'analyse, qui ne le voit jamais ; la sortie n'en a pas. Sont refusés (`unsupported`) : un `DOCTYPE` avec sous-ensemble interne (`[ … ]`) ou
+ *    d'une autre forme, plus d'un `DOCTYPE`, tout `<!ENTITY` (interne ou externe), toute référence d'entité personnalisée (`&xxe;` : le XML n'est pas bien
+ *    formé sans déclaration), une instruction `<?xml-stylesheet?>` dont l'`href` n'est pas interne. Avant de construire un arbre, un passage en flux
+ *    (`XMLReader`) compte les éléments et la profondeur et s'arrête au premier dépassement : au plus 10 000 éléments et 32 niveaux (`tooLarge`).
  * 2. **Liste blanche d'éléments** (espace de noms SVG seulement) : `svg g path circle ellipse rect line polyline polygon defs linearGradient radialGradient
  *    stop clipPath mask symbol use title desc style`. Tout autre élément, et tout ce qu'il contient, est retiré : jamais `script`, `foreignObject`,
  *    `iframe`, `image`, `animate`, `set`, `a`, ni un élément d'un autre espace de noms (Inkscape, métadonnées).
@@ -53,6 +57,10 @@ final readonly class SvgSanitizer
 
     private const string XLINK_NAMESPACE = 'http://www.w3.org/1999/xlink';
     private const string REFERENCE = '#[A-Za-z_][A-Za-z0-9_.:-]{0,99}';
+    /** Le prologue d'un document : marque d'ordre des octets, blancs, déclaration XML et commentaires (aucun DOCTYPE, aucune entité, aucun élément). */
+    private const string PROLOG = '~\A(?:\xEF\xBB\xBF)?(?>[ \t\r\n]|<\?xml(?=[ \t\r\n])[^>]*\?>|<!--(?:(?!--).)*-->)*+\z~s';
+    /** Un `DOCTYPE` simple d'un SVG, tel qu'on l'ignore : jamais de sous-ensemble interne (`[`), jamais de `<` ni `>` dans les identificateurs. */
+    private const string PLAIN_DOCTYPE = '~\G<!DOCTYPE[ \t\r\n]+svg(?:[ \t\r\n]+PUBLIC[ \t\r\n]+(?:"[^"<>\[\]]*"|\'[^\'<>\[\]]*\')[ \t\r\n]+(?:"[^"<>\[\]]*"|\'[^\'<>\[\]]*\')|[ \t\r\n]+SYSTEM[ \t\r\n]+(?:"[^"<>\[\]]*"|\'[^\'<>\[\]]*\'))?[ \t\r\n]*>~';
 
     /** @var array<string, true> */
     private const array ELEMENTS = [
@@ -90,17 +98,15 @@ final readonly class SvgSanitizer
     private const array FORBIDDEN_FRAGMENTS = ['javascript:', 'vbscript:', 'data:', 'expression(', 'behavior', '-moz-binding', '@import'];
 
     /**
-     * @throws ImageException `notAnImage` (XML mal formé), `unsupported` (DOCTYPE ou entité, racine qui n'est pas un SVG, rien d'exploitable après
-     *                        assainissement), `tooLarge` (trop d'éléments, trop profond)
+     * @throws ImageException `notAnImage` (XML mal formé, entité non déclarée), `unsupported` (DOCTYPE qui n'est pas simple, entité déclarée, feuille de style
+     *                        distante, racine qui n'est pas un SVG, rien d'exploitable après assainissement), `tooLarge` (trop d'éléments, trop profond)
      */
     public function sanitize(string $svg): ProcessedImage
     {
         if (trim($svg) === '') {
             throw ImageException::notAnImage();
         }
-        if (preg_match('/<!(?:DOCTYPE|ENTITY)/i', $svg) === 1) {
-            throw ImageException::unsupported();
-        }
+        $svg = $this->withoutPlainDoctype($svg);
 
         $previous = libxml_use_internal_errors(true);
         try {
@@ -132,7 +138,39 @@ final readonly class SvgSanitizer
     }
 
     /**
-     * Un passage en flux avant toute construction d'arbre : le document est bien formé, il n'a ni DOCTYPE ni entité, et il tient dans les plafonds.
+     * Retire du texte le `DOCTYPE` d'un SVG ordinaire, avant que l'analyseur ne le voie : `<!DOCTYPE svg>`, `<!DOCTYPE svg PUBLIC "…" "…">` ou
+     * `<!DOCTYPE svg SYSTEM "…">`, sans sous-ensemble interne, dans le prologue (après la déclaration XML, des commentaires et des blancs, avant la racine).
+     * Les identificateurs ne sont que des chaînes : rien n'est jamais chargé. Tout le reste est refusé : un `DOCTYPE` d'une autre forme (sous-ensemble interne
+     * `[ … ]`, autre racine, minuscules), plus d'un, un `DOCTYPE` qui n'est pas dans le prologue (dans un commentaire, par exemple) et tout `<!ENTITY`, même
+     * dans un commentaire (au moindre doute on refuse).
+     *
+     * @throws ImageException `unsupported`
+     */
+    private function withoutPlainDoctype(string $svg): string
+    {
+        if (preg_match('/<!ENTITY/i', $svg) === 1) {
+            throw ImageException::unsupported();
+        }
+
+        $count = preg_match_all('/<!DOCTYPE/i', $svg, $found, PREG_OFFSET_CAPTURE);
+        if ($count === 0) {
+            return $svg;
+        }
+        if ($count !== 1) {
+            throw ImageException::unsupported();
+        }
+
+        $offset = $found[0][0][1];
+        if (preg_match(self::PROLOG, substr($svg, 0, $offset)) !== 1 || preg_match(self::PLAIN_DOCTYPE, $svg, $doctype, 0, $offset) !== 1) {
+            throw ImageException::unsupported();
+        }
+
+        return substr($svg, 0, $offset) . substr($svg, $offset + strlen($doctype[0]));
+    }
+
+    /**
+     * Un passage en flux avant toute construction d'arbre : le document est bien formé, il n'a ni DOCTYPE restant (un autre encodage que celui qu'on a su lire),
+     * ni entité, ni feuille de style distante, et il tient dans les plafonds.
      *
      * @throws ImageException
      */
@@ -151,6 +189,11 @@ final readonly class SvgSanitizer
                     case XMLReader::ENTITY_REF:
                     case XMLReader::ENTITY:
                         throw ImageException::unsupported();
+                    case XMLReader::PI:
+                        if ($reader->name === 'xml-stylesheet' && !$this->isInternalStylesheet($reader->value)) {
+                            throw ImageException::unsupported();
+                        }
+                        break;
                     case XMLReader::ELEMENT:
                         if (++$elements > self::MAX_ELEMENTS || $reader->depth >= self::MAX_DEPTH || $reader->attributeCount > self::MAX_ATTRIBUTES) {
                             throw ImageException::tooLarge();
@@ -170,6 +213,16 @@ final readonly class SvgSanitizer
         if ($elements === 0) {
             throw ImageException::notAnImage();
         }
+    }
+
+    /** Une feuille de style `<?xml-stylesheet href="#id"?>` renvoie à ce fichier ; sans `href`, il n'y a rien à charger. Toute autre adresse est distante. */
+    private function isInternalStylesheet(string $data): bool
+    {
+        if (preg_match('/href\s*=\s*(?:"([^"]*)"|\'([^\']*)\')/', $data, $href) !== 1) {
+            return true;
+        }
+
+        return str_starts_with($href[1] !== '' ? $href[1] : ($href[2] ?? ''), '#');
     }
 
     /**

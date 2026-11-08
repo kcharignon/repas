@@ -224,8 +224,10 @@ check "il est servi en image/webp" bash -c "curl -sk -D - -o /dev/null --resolve
 docker compose exec -T php php -r '$i = imagecreatetruecolor(8, 8); imagejpeg($i);' < /dev/null > smoke.jpg
 jpeg_response=$(curl_app -w '\n%{http_code}' -X POST -H "Authorization: Bearer $admin_token" -F 'file=@smoke.jpg;type=image/jpeg' "https://$app:$port/api/v1/images" || true)
 check "un JPEG est refusé en 422 (IMAGE_UNSUPPORTED)" bash -c "tail -n 1 <<< \"\$1\" | grep -q '^422\$' && grep -q IMAGE_UNSUPPORTED <<< \"\$1\"" _ "$jpeg_response"
-# Un SVG piégé : il est assaini (jamais gardé tel quel), puis servi avec la politique qui l'empêche de rien exécuter même ouvert directement.
+# Un SVG piégé, avec l'en-tête classique des exports (DOCTYPE simple, ignoré) : il est assaini (jamais gardé tel quel), puis servi avec la politique qui l'empêche de rien exécuter même ouvert directement.
 cat > smoke.svg << 'SVG'
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" onload="alert(1)"><script>alert(2)</script><rect width="10" height="10" fill="#0a0" onclick="alert(3)"/></svg>
 SVG
 svg_body=$(upload_file smoke.svg image/svg+xml)
@@ -235,7 +237,14 @@ svg_headers=$(curl_app -D - -o served.svg "https://$app:$port/$svg_path" || true
 check "le SVG est servi en image/svg+xml" grep -qi '^content-type: image/svg+xml' <<< "$svg_headers"
 check "avec nosniff, une seule fois" header_is "$svg_headers" x-content-type-options nosniff
 check "et la politique qui l'empêche de rien exécuter, une seule fois" header_is "$svg_headers" content-security-policy "default-src 'none'; style-src 'unsafe-inline'; sandbox"
-check "le SVG gardé est assaini : ni script, ni gestionnaire d'événement, mais sa forme" bash -c "! grep -qi -E 'script|onload|onclick|alert' served.svg && grep -q '<rect' served.svg"
+check "le SVG gardé est assaini : ni script, ni gestionnaire d'événement, ni DOCTYPE, mais sa forme" bash -c "! grep -qi -E 'script|onload|onclick|alert|doctype' served.svg && grep -q '<rect' served.svg"
+# Un DOCTYPE qui déclare une entité externe (XXE) est refusé en 422, sans que le serveur ne lise ni n'appelle rien.
+cat > smoke-xxe.svg << 'SVG'
+<?xml version="1.0"?>
+<!DOCTYPE svg [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title>&xxe;</title><rect width="10" height="10"/></svg>
+SVG
+check "un SVG qui déclare une entité (XXE) est refusé en 422" test "$(curl_app -o /dev/null -w '%{http_code}' -X POST -H "Authorization: Bearer $admin_token" -F 'file=@smoke-xxe.svg;type=image/svg+xml' "https://$app:$port/api/v1/images")" = 422
 printf 'ceci est du texte' > smoke.txt
 check "un fichier qui n'est pas une image est refusé en 422" test "$(curl_app -o /dev/null -w '%{http_code}' -X POST -H "Authorization: Bearer $admin_token" -F 'file=@smoke.txt;type=image/png' "https://$app:$port/api/v1/images")" = 422
 check "un lien vers une adresse IP est refusé en 422, sans aucun appel sortant" test "$(curl_app -o /dev/null -w '%{http_code}' -X POST -H "Authorization: Bearer $admin_token" -H 'Content-Type: application/json' -d '{"url":"https://127.0.0.1/a.png"}' "https://$app:$port/api/v1/images/from-url")" = 422

@@ -23,9 +23,47 @@ class SvgSanitizerTest extends TestCase
 
     private SvgSanitizer $sanitizer;
 
+    /** @var list<string> les ressources externes que libxml a demandé à charger (fichier, adresse, DTD), dans l'ordre */
+    private array $externalLoads = [];
+    /** @var resource un serveur TCP local : toute tentative de connexion de l'analyseur y serait reçue */
+    private $listener;
+
     protected function setUp(): void
     {
         $this->sanitizer = new SvgSanitizer();
+
+        // Le piège : libxml demande ce chargeur pour TOUT chargement externe (DTD, entité externe, fichier ou adresse) ; il note et refuse
+        $this->externalLoads = [];
+        libxml_set_external_entity_loader(function (?string $public, string $system): null {
+            $this->externalLoads[] = $system;
+
+            return null;
+        });
+        $listener = stream_socket_server('tcp://127.0.0.1:0', $errorNumber, $errorMessage);
+        $this->assertIsResource($listener, (string) $errorMessage);
+        $this->listener = $listener;
+    }
+
+    protected function tearDown(): void
+    {
+        libxml_set_external_entity_loader(null);
+        fclose($this->listener);
+    }
+
+    /** L'adresse du serveur d'essai : une analyse qui la suivrait y laisserait une connexion. */
+    private function trapAddress(): string
+    {
+        return (string) stream_socket_get_name($this->listener, false);
+    }
+
+    /**
+     * Preuve qu'aucune ressource externe n'a été demandée : ni le chargeur de libxml (fichier, DTD, entité externe), ni le réseau (aucune connexion reçue).
+     */
+    private function assertNothingWasLoaded(): void
+    {
+        $this->assertSame([], $this->externalLoads, 'libxml a demandé une ressource externe.');
+        $connection = @stream_socket_accept($this->listener, 0);
+        $this->assertFalse($connection, 'Le serveur d\'essai a reçu une connexion.');
     }
 
     private function clean(string $svg): string
@@ -183,7 +221,7 @@ class SvgSanitizerTest extends TestCase
         yield 'un attribut inconnu' => ['<rect width="3" height="3" data-x="1" aria-label="a" tabindex="0" contenteditable="true"/>', ['data-x', 'aria-label', 'tabindex', 'contenteditable']];
         yield 'des attributs d\'éditeur (Inkscape)' => ['<rect width="3" height="3" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" inkscape:label="calque" xml:space="preserve"/>', ['inkscape', 'calque', 'xml:space']];
         yield 'des métadonnées RDF' => ['<metadata><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description about="x"/></rdf:RDF></metadata>', ['metadata', 'rdf', 'Description']];
-        yield 'une instruction de traitement' => ['<?xml-stylesheet href="http://evil.example/x.css" type="text/css"?>', ['xml-stylesheet', 'evil.example']];
+        yield 'une instruction de traitement qui ne charge rien' => ['<?adobe-edition version="2"?><?xml-stylesheet type="text/css"?><?xml-stylesheet href="#interne"?>', ['adobe-edition', 'xml-stylesheet', 'interne']];
         yield 'un commentaire' => ['<!-- onload=alert(1) -->', ['<!--', 'onload']];
         yield 'une section CDATA hors d\'un style' => ['<g><![CDATA[<script>alert(1)</script>]]></g>', ['CDATA', 'alert']];
     }
@@ -434,41 +472,191 @@ SVG;
         $this->assertSame(SvgSanitizer::MAX_USES, substr_count($clean, '<use '));
     }
 
-    // ---------------------------------------------------------------- les entités et le DOCTYPE
+    // ---------------------------------------------------------------- le DOCTYPE : simple, ignoré ; sinon refusé
 
     /**
      * @return iterable<string, array{string}>
      */
-    public static function doctypes(): iterable
+    public static function plainDoctypes(): iterable
     {
-        yield 'une entité externe (XXE) qui lit un fichier' => ['<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title>&xxe;</title><rect width="1" height="1"/></svg>'];
-        yield 'une entité externe qui appelle le réseau' => ['<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY xxe SYSTEM "http://169.254.169.254/latest/meta-data/">]><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title>&xxe;</title><rect width="1" height="1"/></svg>'];
-        yield 'une DTD externe' => ['<?xml version="1.0"?><!DOCTYPE svg SYSTEM "http://evil.example/x.dtd"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="1" height="1"/></svg>'];
-        yield 'le DOCTYPE habituel d\'un SVG (refusé aussi)' => ['<?xml version="1.0"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="1" height="1"/></svg>'];
-        yield 'un DOCTYPE sans entité' => ['<!DOCTYPE svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="1" height="1"/></svg>'];
-        yield 'un DOCTYPE en minuscules' => ['<!doctype svg [ <!entity a "b"> ]><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="1" height="1"/></svg>'];
-        yield 'des entités qui se multiplient (billion laughs)' => [self::billionLaughs()];
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="4" height="4" fill="#0a0"/></svg>';
+
+        yield 'l\'en-tête classique d\'Illustrator et d\'Inkscape' => ["<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- Generator: Adobe Illustrator 16.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n" . $svg];
+        yield 'avec un standalone, comme httpbin' => ["<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n" . $svg];
+        yield 'SVG 1.0' => ['<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN" "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">' . $svg];
+        yield 'avec des apostrophes' => ["<!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.1//EN' 'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'>" . $svg];
+        yield 'avec SYSTEM' => ['<!DOCTYPE svg SYSTEM "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">' . $svg];
+        yield 'sans identificateur' => ['<!DOCTYPE svg>' . $svg];
+        yield 'des blancs et des retours à la ligne partout' => ["\xEF\xBB\xBF<?xml version=\"1.0\"?>\n  \n<!DOCTYPE\n svg\n PUBLIC\n \"-//W3C//DTD SVG 1.1//EN\"\n \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\"\n >\n" . $svg];
+        yield 'après plusieurs commentaires' => ["<!-- un -->\n<!-- deux -->\n<!DOCTYPE svg>\n" . $svg];
+        yield 'un identificateur vers un autre site (jamais appelé)' => ['<!DOCTYPE svg PUBLIC "-//EVIL//DTD//EN" "https://evil.example/svg.dtd">' . $svg];
+        yield 'un identificateur vers un fichier (jamais lu)' => ['<!DOCTYPE svg SYSTEM "file:///etc/passwd">' . $svg];
     }
 
-    #[DataProvider('doctypes')]
-    public function testADoctypeOrAnEntityIsRefusedAndNothingIsExpanded(string $svg): void
+    #[DataProvider('plainDoctypes')]
+    public function testAPlainDoctypeIsIgnoredAndTheShapesAreKept(string $svg): void
     {
-        // Given
-        $memory = memory_get_peak_usage(true);
+        // When
+        $image = $this->sanitizer->sanitize($svg);
+
+        // Then : la forme est là, le DOCTYPE non, l'écriture est celle de la liste blanche
+        $this->assertSame('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="4" height="4" fill="#0a0"/></svg>', $image->bytes);
+        $this->assertStringNotContainsString('DOCTYPE', $image->bytes);
+        $this->assertSame([10, 10], [$image->width, $image->height]);
+        $this->assertNothingWasLoaded();
+    }
+
+    public function testAnIllustratorFileKeepsItsShapes(): void
+    {
+        // Given : un export d'Illustrator (DOCTYPE simple, attributs d'éditeur, espace de noms xlink inutilisé)
+        $svg = <<<'SVG'
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 19.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Calque_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="64px" height="64px" viewBox="0 0 64 64" enable-background="new 0 0 64 64" xml:space="preserve">
+<g>
+	<circle fill="#FFFFFF" stroke="#231F20" stroke-width="2" stroke-miterlimit="10" cx="32" cy="32" r="20"/>
+	<path fill="#E53935" d="M20,32h24"/>
+</g>
+</svg>
+SVG;
+
+        // When
+        $image = $this->sanitizer->sanitize($svg);
 
         // Then
-        $this->assertRefused($svg, ImageException::UNSUPPORTED);
-        $this->assertLessThan(8 * 1024 * 1024, memory_get_peak_usage(true) - $memory);
+        $this->assertSame('<svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="Calque_1" x="0px" y="0px" width="64px" height="64px" viewBox="0 0 64 64"><g><circle fill="#FFFFFF" stroke="#231F20" stroke-width="2" stroke-miterlimit="10" cx="32" cy="32" r="20"/><path fill="#E53935" d="M20,32h24"/></g></svg>', $image->bytes);
+        $this->assertSame([64, 64], [$image->width, $image->height]);
+        $this->assertNothingWasLoaded();
+    }
+
+    public function testTheOutputOfADocumentWithADoctypeIsIdempotent(): void
+    {
+        // Given
+        $svg = "<?xml version=\"1.0\"?>\n<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n" . Images::svg();
+
+        // When
+        $once = $this->sanitizer->sanitize($svg);
+        $twice = $this->sanitizer->sanitize($once->bytes);
+
+        // Then : la sortie n'a pas de DOCTYPE et son assainissement ne change rien
+        $this->assertStringNotContainsString('DOCTYPE', $once->bytes);
+        $this->assertSame($once->bytes, $twice->bytes);
+        $this->assertSame($once->fileName(), $this->sanitizer->sanitize(Images::svg())->fileName(), 'Avec ou sans DOCTYPE, le même dessin est le même fichier.');
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function hostileDocuments(): iterable
+    {
+        yield 'une entité externe qui lit un fichier (XXE)' => ['<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY xxe SYSTEM "file://SECRET">]><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title>&xxe;</title><rect width="1" height="1"/></svg>'];
+        yield 'une entité externe qui appelle le réseau' => ['<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY xxe SYSTEM "http://TRAP/entite">]><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title>&xxe;</title><rect width="1" height="1"/></svg>'];
+        yield 'les métadonnées d\'un nuage' => ['<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY xxe SYSTEM "http://169.254.169.254/latest/meta-data/">]><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title>&xxe;</title><rect width="1" height="1"/></svg>'];
+        yield 'une entité de paramètre qui charge une DTD' => ['<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY % dtd SYSTEM "http://TRAP/x.dtd"> %dtd;]><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="1" height="1"/></svg>'];
+        yield 'une DTD distante ET une entité' => ['<!DOCTYPE svg SYSTEM "http://TRAP/x.dtd" [<!ENTITY a "b">]><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="1" height="1"/></svg>'];
+        yield 'des entités qui se multiplient (billion laughs)' => [self::billionLaughs()];
+        yield 'une feuille de style distante' => ['<?xml version="1.0"?><?xml-stylesheet href="http://TRAP/x.css" type="text/css"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="1" height="1"/></svg>'];
+        yield 'une feuille de style distante après la racine' => ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="1" height="1"/></svg><?xml-stylesheet href="http://TRAP/x.css"?>'];
+        yield 'une feuille de style qui est un fichier' => ['<?xml-stylesheet href="file://SECRET" type="text/css"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="1" height="1"/></svg>'];
+        yield 'une feuille de style avec des apostrophes' => ["<?xml-stylesheet type='text/css' href='//TRAP/x.css'?><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><rect width=\"1\" height=\"1\"/></svg>"];
+    }
+
+    #[DataProvider('hostileDocuments')]
+    public function testEntitiesDtdAndRemoteStylesheetsAreRefusedWithoutAnyAccess(string $svg): void
+    {
+        // Given : un fichier secret réel et un serveur d'essai réel, nommés dans le document
+        $secret = tempnam(sys_get_temp_dir(), 'secret');
+        file_put_contents($secret, 'SECRET-DU-FICHIER');
+        $svg = str_replace(['file://SECRET', 'TRAP'], ['file://' . $secret, $this->trapAddress()], $svg);
+
+        try {
+            // When / Then : refusé (jamais une image gardée, rien du secret)
+            try {
+                $image = $this->sanitizer->sanitize($svg);
+                $this->fail('Le document aurait dû être refusé, il a donné : ' . $image->bytes);
+            } catch (ImageException $exception) {
+                $this->assertContains($exception->getMessage(), [ImageException::UNSUPPORTED, ImageException::NOT_AN_IMAGE]);
+                $this->assertStringNotContainsString('SECRET', $exception->getMessage());
+            }
+
+            // Et : ni fichier lu, ni DTD ou entité chargée, ni connexion reçue
+            $this->assertNothingWasLoaded();
+        } finally {
+            unlink($secret);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function refusedDoctypes(): iterable
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="1" height="1"/></svg>';
+
+        yield 'un sous-ensemble interne vide' => ['<!DOCTYPE svg []>' . $svg, ImageException::UNSUPPORTED];
+        yield 'un sous-ensemble interne sans entité' => ['<!DOCTYPE svg [<!ELEMENT svg ANY>]>' . $svg, ImageException::UNSUPPORTED];
+        yield 'un sous-ensemble interne avec PUBLIC' => ['<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" [<!ELEMENT svg ANY>]>' . $svg, ImageException::UNSUPPORTED];
+        yield 'une entité interne (le piège d\'Illustrator ancien)' => ['<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" [<!ENTITY ns_extend "http://ns.adobe.com/Extensibility/1.0/">]>' . $svg, ImageException::UNSUPPORTED];
+        yield 'une entité en minuscules' => ['<!doctype svg [ <!entity a "b"> ]>' . $svg, ImageException::UNSUPPORTED];
+        yield 'une autre racine' => ['<!DOCTYPE html>' . $svg, ImageException::UNSUPPORTED];
+        yield 'une autre racine avec PUBLIC' => ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">' . $svg, ImageException::UNSUPPORTED];
+        yield 'le mot-clé en minuscules (le XML est sensible à la casse)' => ['<!doctype svg>' . $svg, ImageException::UNSUPPORTED];
+        yield 'un nom de racine en majuscules' => ['<!DOCTYPE SVG>' . $svg, ImageException::UNSUPPORTED];
+        yield 'deux DOCTYPE' => ['<!DOCTYPE svg><!DOCTYPE svg>' . $svg, ImageException::UNSUPPORTED];
+        yield 'un DOCTYPE dans un commentaire' => ['<!-- <!DOCTYPE svg> -->' . $svg, ImageException::UNSUPPORTED];
+        yield 'un DOCTYPE après la racine' => [$svg . '<!DOCTYPE svg>', ImageException::UNSUPPORTED];
+        yield 'un DOCTYPE dans le contenu' => ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title><!DOCTYPE svg></title><rect width="1" height="1"/></svg>', ImageException::UNSUPPORTED];
+        yield 'un DOCTYPE après un élément' => ['<?xml version="1.0"?><x/><!DOCTYPE svg>' . $svg, ImageException::UNSUPPORTED];
+        yield 'un identificateur avec un crochet' => ['<!DOCTYPE svg PUBLIC "a[b" "c">' . $svg, ImageException::UNSUPPORTED];
+        yield 'un identificateur avec un chevron' => ['<!DOCTYPE svg SYSTEM "a>b">' . $svg, ImageException::UNSUPPORTED];
+        yield 'un DOCTYPE qui n\'est pas fermé' => ['<!DOCTYPE svg ' . $svg, ImageException::UNSUPPORTED];
+        yield 'une entité déclarée dans un commentaire (au moindre doute)' => ['<!-- <!ENTITY a "b"> -->' . $svg, ImageException::UNSUPPORTED];
+        yield 'une référence d\'entité personnalisée, sans déclaration' => ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title>&xxe;</title><rect width="1" height="1"/></svg>', ImageException::NOT_AN_IMAGE];
+        yield 'une référence d\'entité personnalisée derrière un DOCTYPE simple' => ['<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title>&ns_extend;</title><rect width="1" height="1"/></svg>', ImageException::NOT_AN_IMAGE];
+    }
+
+    #[DataProvider('refusedDoctypes')]
+    public function testAnythingButAPlainDoctypeInThePrologueIsRefused(string $svg, string $message): void
+    {
+        // When / Then
+        $this->assertRefused($svg, $message);
+        $this->assertNothingWasLoaded();
     }
 
     public function testADoctypeHiddenInUtf16IsRefusedToo(): void
     {
-        // Given : le même piège écrit en UTF-16 (l'expression de repérage des octets ne le voit pas, l'analyseur, si)
-        $xml = '<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE svg [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title>&xxe;</title><rect width="1" height="1"/></svg>';
+        // Given : le même piège écrit en UTF-16 (les expressions de repérage des octets ne le voient pas, l'analyseur, si), avec un serveur d'essai et un fichier
+        $xml = '<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE svg [<!ENTITY xxe SYSTEM "http://' . $this->trapAddress() . '/x">]><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title>&xxe;</title><rect width="1" height="1"/></svg>';
         $utf16 = "\xFF\xFE" . mb_convert_encoding($xml, 'UTF-16LE', 'UTF-8');
 
         // Then
         $this->assertRefused($utf16, ImageException::UNSUPPORTED);
+        $this->assertNothingWasLoaded();
+    }
+
+    public function testAPlainDoctypeInUtf16IsRefusedToo(): void
+    {
+        // Given : l'ignorer demande de le reconnaître dans le texte ; dans un autre encodage il reste vu par l'analyseur, qui le refuse
+        $xml = '<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="1" height="1"/></svg>';
+
+        // Then
+        $this->assertRefused("\xFF\xFE" . mb_convert_encoding($xml, 'UTF-16LE', 'UTF-8'), ImageException::UNSUPPORTED);
+        $this->assertNothingWasLoaded();
+    }
+
+    public function testBillionLaughsIsRefusedWithoutBeingExpanded(): void
+    {
+        // Given
+        $memory = memory_get_peak_usage(true);
+        $started = hrtime(true);
+
+        // Then : refusé sans que l'analyseur n'ait déplié quoi que ce soit (mémoire et temps)
+        $this->assertRefused(self::billionLaughs(), ImageException::UNSUPPORTED);
+        $this->assertLessThan(8 * 1024 * 1024, memory_get_peak_usage(true) - $memory);
+        $this->assertLessThan(1.0, (hrtime(true) - $started) / 1e9);
+        $this->assertNothingWasLoaded();
     }
 
     public function testAnUndefinedEntityIsNotAnImage(): void
@@ -486,6 +674,33 @@ SVG;
         $this->assertStringContainsString('<title>&lt;a&gt; &amp; é A</title>', $clean);
     }
 
+    public function testAStylesheetPointingInsideTheFileIsIgnored(): void
+    {
+        // When : une feuille de style interne, ou sans adresse, ne charge rien : elle disparaît avec les instructions de traitement
+        $clean = $this->clean('<?xml-stylesheet href="#style" type="text/css"?>' . $this->wrap(''));
+
+        // Then
+        $this->assertStringNotContainsString('stylesheet', $clean);
+        $this->assertStringContainsString('<rect id="legitime"', $clean);
+        $this->assertNothingWasLoaded();
+    }
+
+    public function testTheTrapsWork(): void
+    {
+        // Given : le même piège que ci-dessus, mais avec un analyseur qui chargerait la DTD
+        $document = new DOMDocument();
+        @$document->loadXML('<!DOCTYPE svg SYSTEM "http://' . $this->trapAddress() . '/x.dtd"><svg/>', LIBXML_DTDLOAD);
+
+        // Then : le chargeur de libxml a été appelé, avec l'adresse
+        $this->assertSame(['http://' . $this->trapAddress() . '/x.dtd'], $this->externalLoads);
+
+        // Et le serveur d'essai reçoit bien une connexion quand on s'y connecte
+        $client = stream_socket_client('tcp://' . $this->trapAddress());
+        $this->assertNotFalse(@stream_socket_accept($this->listener, 0));
+        fclose($client);
+        $this->externalLoads = [];
+    }
+
     private static function billionLaughs(): string
     {
         $entities = '<!ENTITY a0 "lol">';
@@ -495,7 +710,6 @@ SVG;
 
         return '<?xml version="1.0"?><!DOCTYPE svg [' . $entities . ']><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title>&a9;</title><rect width="1" height="1"/></svg>';
     }
-
     // ---------------------------------------------------------------- les plafonds de complexité
 
     public function testTenThousandElementsAreAccepted(): void
