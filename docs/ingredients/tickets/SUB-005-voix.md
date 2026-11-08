@@ -5,7 +5,7 @@
 - **Taille** : M
 - **Effort recommandé pour l'agent** : **high** (textes de la voix, ports et OHS du contexte `Voice`, aucun contact avec Amazon)
 - **Dépend de** : SUB-003 fusionné
-- **Statut** : fait (2026-11-08)
+- **Statut** : fait (2026-11-08, PR #454)
 - **Lire d'abord** : [ADR 0038](../../adr/0038-sous-ingredients.md) décisions 11 et 33 ; `docs/voice/alexa.md` ; `CLAUDE.md` (puces « Webhook d'Alexa », « Retirer un produit… », « Voix et listes d'un type », « Contextes étanches ») ; `AddSpokenIngredientHandler`, `RemoveSpokenIngredientHandler`, `ActiveListLookup`, `SpokenListAnswerer`, `VoiceReplies` ; skill `repas-dev`. **Aucun agent ne contacte Amazon** (le modèle d'interaction ne change pas).
 
 ## À livrer
