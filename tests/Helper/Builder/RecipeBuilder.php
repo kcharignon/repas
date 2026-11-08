@@ -4,6 +4,7 @@ namespace Repas\Tests\Helper\Builder;
 
 
 use Repas\Repas\Domain\Model\Recipe;
+use Repas\Repas\Domain\Model\RecipeComponent;
 use Repas\Repas\Domain\Model\RecipeType;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
@@ -25,13 +26,27 @@ class RecipeBuilder implements Builder
     private bool $favorite = false;
     private ?string $marmitonId = null;
     private ?string $sourceUrl = null;
+    /** @var list<array{Recipe|RecipeBuilder, float}> les recettes utilisées (ADR 0040) et leur multiplicateur, dans l'ordre de leur position */
+    private array $components = [];
 
 
     public function build(): Recipe
     {
         $this->initialize();
         $authorId = $this->authorId ?? ($this->author instanceof User ? $this->author : $this->author->build())->getId();
+        $components = $this->components === [] ? null : Tab::fromArray(array_map(
+            fn(array $component, int $position): RecipeComponent => RecipeComponent::load([
+                'id' => UuidGenerator::new(),
+                'recipe_id' => $this->id,
+                'component_id' => $component[0] instanceof RecipeBuilder ? $component[0]->idOf() : $component[0]->getId(),
+                'multiplier' => $component[1],
+                'position' => $position,
+            ]),
+            $this->components,
+            array_keys($this->components),
+        ));
         return Recipe::load([
+            'components' => $components,
             'id' => $this->id,
             'name' => $this->name,
             'serving' => $this->serving,
@@ -138,6 +153,25 @@ class RecipeBuilder implements Builder
         $this->author ??= new UserBuilder();
         $this->type ??= new RecipeTypeBuilder();
         $this->rows ??= Tab::newEmptyTyped(RecipeRowBuilder::class);
+    }
+
+    /**
+     * La recette UTILISE une autre recette, `$multiplier` fois (ADR 0040) : les composants se posent dans l'ordre des appels. La recette utilisée
+     * est une recette construite ou un builder (dont l'identifiant est alors fixé tout de suite). Rien n'est jugé ici : le builder reconstruit,
+     * comme `Recipe::load`, un état qui peut être invalide pour qu'un test le provoque ; `Recipe::setComponents` est la voie qui juge.
+     */
+    public function withComponent(Recipe|RecipeBuilder $recipe, float $multiplier = 1.0): self
+    {
+        $this->components[] = [$recipe, $multiplier];
+        return $this;
+    }
+
+    /**
+     * L'identifiant de la recette, fixé s'il ne l'était pas.
+     */
+    public function idOf(): string
+    {
+        return $this->id ??= UuidGenerator::new();
     }
 
     public function withAuthor(UserBuilder|User $author): self
