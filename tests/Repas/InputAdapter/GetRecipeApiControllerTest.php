@@ -55,6 +55,7 @@ class GetRecipeApiControllerTest extends QueryBusWebTestCase
                 'departmentName' => 'épicerie',
                 'partOfName' => null,
             ]],
+            'components' => [],
             'version' => 3,
             'sourceUrl' => null,
             'originalId' => null,

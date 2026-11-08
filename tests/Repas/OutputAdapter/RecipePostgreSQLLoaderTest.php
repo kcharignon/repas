@@ -926,6 +926,162 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(2, $everywhere->totalItems);
     }
 
+
+    // ---- Les recettes utilisées dans d'autres recettes (ADR 0040, COMP-001) ----
+
+    public function testGetWritesAnEmptyListOfComponentsForARecipeWithoutAny(): void
+    {
+        // Given
+        $recipe = $this->savedRecipe($this->savedUser(), 'zzz tarte', new RecipeTypeBuilder()->isDessert());
+
+        // When
+        $result = $this->recipeLoader->get($recipe->getId(), $recipe->getAuthorId());
+
+        // Then : la clé est toujours là
+        $this->assertSame([], $result->components);
+    }
+
+    public function testGetReturnsTheComponentsInTheOrderOfTheirPositionWithTheirRowsAsWrittenAndTheRecipeKeepsItsOwnRows(): void
+    {
+        // Given : une tarte qui utilise la crème (une demi-fois) puis la pâte (deux fois) ; la pâte est écrite pour 6 avec 250 g de farine
+        $author = $this->savedUser();
+        $flour = new IngredientBuilder()->withName('zzz farine')->withImage('images/farine.png')->withCreator($author, true)->withDefaultCookingUnit(new UnitBuilder()->isGramme())->withDefaultPurchaseUnit(new UnitBuilder()->isKilo())->build();
+        $this->persister->saveConversion(new ConversionBuilder()->isKiloToGramme()->build());
+        $sugar = new IngredientBuilder()->withName('zzz sucre')->withCreator($author, true)->build();
+        $dough = new RecipeBuilder()->withAuthor($author)->withName('zzz pâte')->withServing(6)
+            ->addRow(new RecipeRowBuilder()->withIngredient($flour)->withUnit(new UnitBuilder()->isGramme())->withQuantity(250))
+            ->build();
+        $cream = new RecipeBuilder()->withAuthor($author)->withName('zzz crème')->withServing(2)
+            ->addRow(new RecipeRowBuilder()->withIngredient($sugar)->withUnit(new UnitBuilder()->isUnite())->withQuantity(3))
+            ->build();
+        $this->persister->saveRecipe($dough);
+        $this->persister->saveRecipe($cream);
+        $pie = new RecipeBuilder()->withAuthor($author)->withName('zzz tarte')->withServing(4)
+            ->addRow(new RecipeRowBuilder()->withIngredient($sugar)->withUnit(new UnitBuilder()->isUnite())->withQuantity(1))
+            ->withComponent($cream, 0.5)
+            ->withComponent($dough, 2.0)
+            ->build();
+        $this->persister->saveRecipe($pie);
+
+        // When
+        $this->entityManager->clear();
+        $result = $this->recipeLoader->get($pie->getId(), $author->getId());
+
+        // Then : les recettes utilisées, dans l'ordre des positions, avec nom, personnes, multiplicateur et secret
+        $this->assertSame(
+            [[$cream->getId(), 'zzz crème', 2, 0.5, false], [$dough->getId(), 'zzz pâte', 6, 2.0, false]],
+            array_map(static fn($component): array => [$component->recipeId, $component->name, $component->serving, $component->multiplier, $component->secret], $result->components),
+        );
+        // leurs lignes TELLES QU'ELLES SONT ÉCRITES : jamais multipliées
+        $this->assertSame([3.0], array_map(static fn(RecipeRowDTO $row): float => $row->quantity, $result->components[0]->rows));
+        $this->assertSame(['zzz farine', 250.0, 'gramme', 'kilo'], [$result->components[1]->rows[0]->ingredientName, $result->components[1]->rows[0]->quantity, $result->components[1]->rows[0]->unitSlug, $result->components[1]->rows[0]->purchaseUnitSlug]);
+        $this->assertSame(['images/farine.png', 'conserve'], [$result->components[1]->rows[0]->ingredientImage, $result->components[1]->rows[0]->departmentSlug]);
+        // les lignes de la recette restent ses seules lignes propres : jamais aplaties (un ancien client les renverrait au PUT)
+        $this->assertSame(['zzz sucre'], array_map(static fn(RecipeRowDTO $row): string => $row->ingredientName, $result->rows));
+        $this->assertSame(1.0, $result->rows[0]->quantity);
+    }
+
+    public function testAComponentIsConvertibleOnlyWhenEveryLineOfTheUsedRecipeIs(): void
+    {
+        // Given : la farine se convertit (gramme > kilo par la conversion universelle), le sel en cuillère non
+        $author = $this->savedUser();
+        $this->persister->saveConversion(new ConversionBuilder()->isKiloToGramme()->build());
+        $flour = new IngredientBuilder()->withName('zzz farine')->withCreator($author, true)->withDefaultCookingUnit(new UnitBuilder()->isGramme())->withDefaultPurchaseUnit(new UnitBuilder()->isKilo())->build();
+        $salt = new IngredientBuilder()->withName('zzz sel')->withCreator($author, true)->withDefaultCookingUnit(new UnitBuilder()->isGramme())->withDefaultPurchaseUnit(new UnitBuilder()->isKilo())->build();
+        $good = new RecipeBuilder()->withAuthor($author)->withName('zzz bonne pâte')
+            ->addRow(new RecipeRowBuilder()->withIngredient($flour)->withUnit(new UnitBuilder()->isGramme())->withQuantity(250))
+            ->build();
+        $bad = new RecipeBuilder()->withAuthor($author)->withName('zzz pâte à régler')
+            ->addRow(new RecipeRowBuilder()->withIngredient($flour)->withUnit(new UnitBuilder()->isGramme())->withQuantity(250))
+            ->addRow(new RecipeRowBuilder()->withIngredient($salt)->withUnit(new UnitBuilder()->isSoupSpoon())->withQuantity(1))
+            ->build();
+        $this->persister->saveRecipe($good);
+        $this->persister->saveRecipe($bad);
+        $pie = new RecipeBuilder()->withAuthor($author)->withName('zzz tarte')->withComponent($good)->withComponent($bad)->build();
+        $this->persister->saveRecipe($pie);
+
+        // When
+        $this->entityManager->clear();
+        $result = $this->recipeLoader->get($pie->getId(), $author->getId());
+
+        // Then : une seule ligne qui ne se convertit pas suffit ; chaque ligne le dit aussi
+        $this->assertSame([true, false], array_map(static fn($component): bool => $component->convertible, $result->components));
+        $this->assertSame([true, true, false], array_map(static fn(RecipeRowDTO $row): bool => $row->convertible, [...$result->components[0]->rows, ...$result->components[1]->rows]));
+    }
+
+    public function testAComponentWhoseRecipeNoLongerExistsIsLeftOutWithoutError(): void
+    {
+        // Given : aucune clé étrangère, la pâte a été supprimée sous la tarte
+        $author = $this->savedUser();
+        $dough = $this->savedRecipe($author, 'zzz pâte', new RecipeTypeBuilder()->isDessert());
+        $cream = $this->savedRecipe($author, 'zzz crème', new RecipeTypeBuilder()->isDessert());
+        $pie = new RecipeBuilder()->withAuthor($author)->withName('zzz tarte')->withComponent($dough)->withComponent($cream)->build();
+        $this->persister->saveRecipe($pie);
+        $this->entityManager->getConnection()->executeStatement('DELETE FROM recipe WHERE id = ?', [$dough->getId()]);
+
+        // When
+        $this->entityManager->clear();
+        $result = $this->recipeLoader->get($pie->getId(), $author->getId());
+
+        // Then
+        $this->assertSame([$cream->getId()], array_map(static fn($component): string => $component->recipeId, $result->components));
+    }
+
+    public function testASecretComponentIsHiddenFromAReaderWhoIsNotItsAuthorAndShownToTheAuthor(): void
+    {
+        // Given : l'état que les règles interdisent (une ordinaire qui utilise une secrète) ne doit jamais montrer la secrète à un autre
+        $author = $this->savedUser();
+        $other = $this->savedUser();
+        $secret = $this->savedRecipe($author, 'zzz glaçage secret', new RecipeTypeBuilder()->isDessert(), secret: true);
+        $open = $this->savedRecipe($author, 'zzz pâte', new RecipeTypeBuilder()->isDessert());
+        $pie = new RecipeBuilder()->withAuthor($author)->withName('zzz tarte')->withComponent($open)->withComponent($secret)->build();
+        $this->persister->saveRecipe($pie);
+
+        // When
+        $this->entityManager->clear();
+        $forOther = $this->recipeLoader->get($pie->getId(), $other->getId());
+        $this->entityManager->clear();
+        $forAuthor = $this->recipeLoader->get($pie->getId(), $author->getId());
+
+        // Then
+        $this->assertSame([$open->getId()], array_map(static fn($component): string => $component->recipeId, $forOther->components));
+        $this->assertSame([[$open->getId(), false], [$secret->getId(), true]], array_map(static fn($component): array => [$component->recipeId, $component->secret], $forAuthor->components));
+    }
+
+    public function testAnotherUsersOrdinaryRecipeShowsItsComponentsBeforeItIsCopied(): void
+    {
+        // Given
+        $author = $this->savedUser();
+        $reader = $this->savedUser();
+        $dough = $this->savedRecipe($author, 'zzz pâte', new RecipeTypeBuilder()->isDessert());
+        $pie = new RecipeBuilder()->withAuthor($author)->withName('zzz tarte')->withComponent($dough, 2.0)->build();
+        $this->persister->saveRecipe($pie);
+
+        // When
+        $this->entityManager->clear();
+        $result = $this->recipeLoader->get($pie->getId(), $reader->getId());
+
+        // Then
+        $this->assertSame([[$dough->getId(), 2.0]], array_map(static fn($component): array => [$component->recipeId, $component->multiplier], $result->components));
+        $this->assertFalse($result->canEdit);
+    }
+
+    public function testTheComponentsDoNotChangeWhoReadsTheRecipeItselfButSecretOne(): void
+    {
+        // Given : la recette secrète d'un autre reste introuvable, composants ou non
+        $author = $this->savedUser();
+        $other = $this->savedUser();
+        $dough = $this->savedRecipe($author, 'zzz pâte', new RecipeTypeBuilder()->isDessert(), secret: true);
+        $pie = new RecipeBuilder()->withAuthor($author)->withName('zzz tarte secrète')->asSecret()->withComponent($dough)->build();
+        $this->persister->saveRecipe($pie);
+
+        // Then
+        $this->expectExceptionObject(RecipeException::notFound($pie->getId()));
+
+        // When
+        $this->recipeLoader->get($pie->getId(), $other->getId());
+    }
+
     private function searchQueryCount(User $me): int
     {
         $counter = static::getContainer()->get(QueryCounter::class);
