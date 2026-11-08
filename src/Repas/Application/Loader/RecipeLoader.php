@@ -4,6 +4,7 @@ namespace Repas\Repas\Application\Loader;
 
 use Repas\Repas\Application\Query\GetRecipe\RecipeDTO;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipesDTO;
+use Repas\Repas\Application\Query\ListOtherPeopleRecipeTypes\OtherPeopleRecipeTypesDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeSummaryDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeTypeRecipesDTO;
 use Repas\Repas\Domain\Exception\RecipeException;
@@ -50,5 +51,12 @@ interface RecipeLoader
      * TOUJOURS, copiées ou non, et chacune dit s'il en a déjà une copie (`alreadyCopied`, pour ne pas lui proposer « Copier » en double) ; les
      * autres recettes, les secrètes et les recherches ne changent pas. Pour tout autre utilisateur, la page, le total et la réponse ne changent pas.
      */
-    public function listOfOtherPeople(string $userId, int $limit, int $offset, ?string $search = null, bool $isAdministrator = false): OtherPeopleRecipesDTO;
+    public function listOfOtherPeople(string $userId, int $limit, int $offset, ?string $search = null, bool $isAdministrator = false, ?string $typeSlug = null): OtherPeopleRecipesDTO;
+
+    /**
+     * Les catégories (types de recette) qui ont au moins une recette que l'utilisateur peut copier, avec leur nombre, dans l'ordre des types
+     * (`sequence`, puis slug). Le nombre d'une catégorie est EXACTEMENT celui de `listOfOtherPeople(…, typeSlug: …)->totalItems` : la même règle
+     * de visibilité, une seule requête quel que soit le nombre de types ou de recettes.
+     */
+    public function listOtherPeopleTypes(string $userId, bool $isAdministrator = false): OtherPeopleRecipeTypesDTO;
 }

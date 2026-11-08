@@ -8,6 +8,7 @@ use Repas\Repas\Application\Loader\RecipeLoader;
 use Repas\Repas\Application\Query\GetRecipe\RecipeRowDTO;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipeDTO;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipesDTO;
+use Repas\Repas\Application\Query\ListOtherPeopleRecipeTypes\OtherPeopleRecipeTypesDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeSummaryDTO;
 use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeDTO;
 use Repas\Repas\Domain\Exception\RecipeException;
@@ -738,6 +739,191 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         // Then : par identifiant à pertinence et nom égaux, d'un appel à l'autre et d'une page à l'autre
         $this->assertSame($full, $pages);
         $this->assertSame(1, $this->searchQueryCount($me));
+    }
+
+    // --- Recettes des autres par catégorie --------------------------------------------------------------------------------------------------
+
+    public function testOtherPeopleTypesCountsWhatThePageOfEachTypeSaysInTheOrderOfTheTypesAndOmitsTheEmptyOnes(): void
+    {
+        // Given : trois catégories créées dans le désordre, une quatrième sans recette à copier
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $this->savedRecipe($other, 'tarte', new RecipeTypeBuilder()->isDessert());
+        $this->savedRecipe($other, 'flan', new RecipeTypeBuilder()->isDessert());
+        $this->savedRecipe($other, 'carbonara', new RecipeTypeBuilder()->isMeal());
+        $this->savedRecipe($other, 'salade', new RecipeTypeBuilder()->isStarter());
+        $this->savedRecipe($other, 'gratin', new RecipeTypeBuilder()->isMeal());
+        $this->savedRecipe($other, 'riz', new RecipeTypeBuilder()->isMeal());
+        $this->persister->saveRecipeType(new RecipeTypeBuilder()->withName('boisson')->build());
+        $this->savedRecipe($me, 'ma recette de boisson', new RecipeTypeBuilder()->withName('boisson'));
+
+        // When
+        $types = $this->recipeLoader->listOtherPeopleTypes($me->getId());
+
+        // Then : dans l'ordre des types (sequence), seulement ceux qui ont des recettes, et le compte est le total de la page du type
+        $this->assertSame([['entrée', 'entree', 1], ['plat', 'plat', 3], ['dessert', 'dessert', 2]], array_map(static fn($type): array => [$type->typeSlug, $type->typeName, $type->count], $types->member));
+        $this->assertSame(3, $types->totalItems);
+        foreach ($types->member as $type) {
+            $this->assertSame($type->count, $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0, null, false, $type->typeSlug)->totalItems);
+        }
+        $this->assertSame(6, array_sum(array_map(static fn($type): int => $type->count, $types->member)));
+        $this->assertSame(6, $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0)->totalItems);
+    }
+
+    public function testOtherPeopleTypesAppliesTheRulesOfThePage(): void
+    {
+        // Given : la sienne, la secrète d'un autre, une copie d'un tiers et celle qu'il a déjà copiée ne comptent pas
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $kept = $this->savedRecipe($other, 'carbonara', new RecipeTypeBuilder()->isMeal());
+        $this->savedRecipe($me, 'ma recette', new RecipeTypeBuilder()->isMeal());
+        $this->savedRecipe($other, 'secrète', new RecipeTypeBuilder()->isMeal(), secret: true);
+        $this->savedRecipe($other, 'copie d\'un tiers', new RecipeTypeBuilder()->isMeal(), originalId: $kept->getId());
+        $copied = $this->savedRecipe($other, 'déjà copiée', new RecipeTypeBuilder()->isDessert());
+        $this->savedRecipe($me, 'déjà copiée', new RecipeTypeBuilder()->isDessert(), originalId: $copied->getId());
+
+        // When
+        $types = $this->recipeLoader->listOtherPeopleTypes($me->getId());
+
+        // Then : un type qui ne contient plus que des recettes déjà copiées disparaît
+        $this->assertSame([['plat', 1]], array_map(static fn($type): array => [$type->typeSlug, $type->count], $types->member));
+    }
+
+    public function testACopiedRecipeLeavesTheCountOfItsType(): void
+    {
+        // Given
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $first = $this->savedRecipe($other, 'carbonara', new RecipeTypeBuilder()->isMeal());
+        $this->savedRecipe($other, 'gratin', new RecipeTypeBuilder()->isMeal());
+        $this->assertSame(2, $this->recipeLoader->listOtherPeopleTypes($me->getId())->member[0]->count);
+
+        // When
+        $this->savedRecipe($me, 'carbonara', new RecipeTypeBuilder()->isMeal(), originalId: $first->getId());
+
+        // Then
+        $this->assertSame(1, $this->recipeLoader->listOtherPeopleTypes($me->getId())->member[0]->count);
+    }
+
+    public function testTheAdministratorCountsTheRecipesWithoutOwnerEvenAlreadyCopiedAnOrdinaryUserDoesNot(): void
+    {
+        // Given : une recette sans propriétaire que les deux ont copiée, une recette ordinaire que l'administrateur a copiée
+        $admin = $this->savedUser();
+        $user = $this->savedUser();
+        $other = $this->savedUser();
+        $neutral = new RecipeBuilder()->asMarmitonNeutral('1')->withName('tarte')->withRecipeType(new RecipeTypeBuilder()->isDessert())->build();
+        $this->persister->saveRecipe($neutral);
+        $this->savedRecipe($admin, 'tarte', new RecipeTypeBuilder()->isDessert(), originalId: $neutral->getId());
+        $this->savedRecipe($user, 'tarte', new RecipeTypeBuilder()->isDessert(), originalId: $neutral->getId());
+        $ordinary = $this->savedRecipe($other, 'flan', new RecipeTypeBuilder()->isDessert());
+        $this->savedRecipe($admin, 'flan', new RecipeTypeBuilder()->isDessert(), originalId: $ordinary->getId());
+
+        // When
+        $asAdmin = $this->recipeLoader->listOtherPeopleTypes($admin->getId(), true);
+        $asUser = $this->recipeLoader->listOtherPeopleTypes($user->getId());
+
+        // Then : la même règle que la page, copiée ou non
+        $this->assertSame([['dessert', 1]], array_map(static fn($type): array => [$type->typeSlug, $type->count], $asAdmin->member));
+        $this->assertSame($asAdmin->member[0]->count, $this->recipeLoader->listOfOtherPeople($admin->getId(), 200, 0, null, true, 'dessert')->totalItems);
+        $this->assertSame([['dessert', 1]], array_map(static fn($type): array => [$type->typeSlug, $type->count], $asUser->member));
+        $this->assertSame([$ordinary->getId()], array_column($this->recipeLoader->listOfOtherPeople($user->getId(), 200, 0, null, false, 'dessert')->member, 'id'));
+    }
+
+    public function testOtherPeopleTypesOfAUserWhoSeesNothingIsEmpty(): void
+    {
+        // Given
+        $me = $this->savedUser();
+        $this->savedRecipe($this->savedUser(), 'secrète', new RecipeTypeBuilder()->isMeal(), secret: true);
+
+        // When
+        $types = $this->recipeLoader->listOtherPeopleTypes($me->getId());
+
+        // Then
+        $this->assertEquals(new OtherPeopleRecipeTypesDTO([], 0), $types);
+    }
+
+    public function testOtherPeopleTypesIsOneQueryWhateverTheNumberOfTypesAndRecipes(): void
+    {
+        // Given
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $this->savedRecipe($other, 'tarte', new RecipeTypeBuilder()->isDessert());
+        $counter->reset();
+        $this->recipeLoader->listOtherPeopleTypes($me->getId());
+        $withOneType = $counter->count();
+
+        // When : deux types de plus et beaucoup plus de recettes
+        $this->savedRecipe($other, 'carbonara', new RecipeTypeBuilder()->isMeal());
+        $this->savedRecipe($other, 'salade', new RecipeTypeBuilder()->isStarter());
+        for ($index = 0; $index < 10; $index++) {
+            $this->savedRecipe($other, 'tarte ' . $index, new RecipeTypeBuilder()->isDessert());
+        }
+        $counter->reset();
+        $types = $this->recipeLoader->listOtherPeopleTypes($me->getId());
+        $withThreeTypes = $counter->count();
+
+        // Then
+        $this->assertCount(3, $types->member);
+        $this->assertSame(1, $withOneType, implode("\n", $counter->statements()));
+        $this->assertSame(1, $withThreeTypes, implode("\n", $counter->statements()));
+    }
+
+    public function testListOfOtherPeopleRestrictedToACategoryGivesItsPageAndItsRealTotal(): void
+    {
+        // Given
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $dessert1 = $this->savedRecipe($other, 'aaa tarte', new RecipeTypeBuilder()->isDessert());
+        $dessert2 = $this->savedRecipe($other, 'bbb flan', new RecipeTypeBuilder()->isDessert());
+        $dessert3 = $this->savedRecipe($other, 'ccc crème', new RecipeTypeBuilder()->isDessert());
+        $this->savedRecipe($other, 'carbonara', new RecipeTypeBuilder()->isMeal());
+
+        // When
+        $all = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0, null, false, 'dessert');
+        $firstPage = $this->recipeLoader->listOfOtherPeople($me->getId(), 2, 0, null, false, 'dessert');
+        $secondPage = $this->recipeLoader->listOfOtherPeople($me->getId(), 2, 2, null, false, 'dessert');
+
+        // Then
+        $this->assertSame([$dessert1->getId(), $dessert2->getId(), $dessert3->getId()], array_column($all->member, 'id'));
+        $this->assertSame(3, $all->totalItems);
+        $this->assertSame([[$dessert1->getId(), $dessert2->getId()], 3], [array_column($firstPage->member, 'id'), $firstPage->totalItems]);
+        $this->assertSame([[$dessert3->getId()], 3], [array_column($secondPage->member, 'id'), $secondPage->totalItems]);
+    }
+
+    public function testAnUnknownCategoryGivesAnEmptyPageNotAnError(): void
+    {
+        // Given
+        $me = $this->savedUser();
+        $this->savedRecipe($this->savedUser(), 'carbonara', new RecipeTypeBuilder()->isMeal());
+
+        // When
+        $page = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0, null, false, 'inconnu');
+        $search = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0, 'carbonara', false, 'inconnu');
+
+        // Then
+        $this->assertEquals(new OtherPeopleRecipesDTO([], 0), $page);
+        $this->assertEquals(new OtherPeopleRecipesDTO([], 0), $search);
+    }
+
+    public function testASearchWithACategoryLooksInThatCategoryOnly(): void
+    {
+        // Given : deux « tarte » dans deux catégories
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $dessert = $this->savedRecipe($other, 'tarte au citron', new RecipeTypeBuilder()->isDessert());
+        $meal = $this->savedRecipe($other, 'tarte aux poireaux', new RecipeTypeBuilder()->isMeal());
+
+        // When
+        $inDessert = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0, 'tarte', false, 'dessert');
+        $inMeal = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0, 'tarte', false, 'plat');
+        $everywhere = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0, 'tarte');
+
+        // Then : sans catégorie la recherche reste sur toutes
+        $this->assertSame([[$dessert->getId()], 1], [array_column($inDessert->member, 'id'), $inDessert->totalItems]);
+        $this->assertSame([[$meal->getId()], 1], [array_column($inMeal->member, 'id'), $inMeal->totalItems]);
+        $this->assertEqualsCanonicalizing([$dessert->getId(), $meal->getId()], array_column($everywhere->member, 'id'));
+        $this->assertSame(2, $everywhere->totalItems);
     }
 
     private function searchQueryCount(User $me): int

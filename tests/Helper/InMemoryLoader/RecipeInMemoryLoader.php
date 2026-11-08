@@ -6,6 +6,7 @@ namespace Repas\Tests\Helper\InMemoryLoader;
 use Repas\Repas\Application\Loader\RecipeLoader;
 use Repas\Repas\Application\Query\GetRecipe\RecipeDTO;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipesDTO;
+use Repas\Repas\Application\Query\ListOtherPeopleRecipeTypes\OtherPeopleRecipeTypesDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeSummaryDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeTypeRecipesDTO;
 use Repas\Repas\Domain\Exception\RecipeException;
@@ -24,8 +25,11 @@ class RecipeInMemoryLoader implements RecipeLoader
     /** @var list<string> */
     public array $listFavoritesOfAuthorCalls = [];
 
-    /** @var list<array{string, int, int, string|null, bool}> */
+    /** @var list<array{string, int, int, string|null, bool, string|null}> */
     public array $listOfOtherPeopleCalls = [];
+
+    /** @var list<array{string, bool}> */
+    public array $listOtherPeopleTypesCalls = [];
 
     public function __construct(
         private readonly ?RecipeDTO $recipe = null,
@@ -33,6 +37,7 @@ class RecipeInMemoryLoader implements RecipeLoader
         private readonly OtherPeopleRecipesDTO $otherPeopleRecipes = new OtherPeopleRecipesDTO([], 0),
         /** @var list<RecipeSummaryDTO> */
         private readonly array $favorites = [],
+        private readonly OtherPeopleRecipeTypesDTO $otherPeopleTypes = new OtherPeopleRecipeTypesDTO([], 0),
     ) {
     }
 
@@ -57,10 +62,17 @@ class RecipeInMemoryLoader implements RecipeLoader
         return $this->favorites;
     }
 
-    public function listOfOtherPeople(string $userId, int $limit, int $offset, ?string $search = null, bool $isAdministrator = false): OtherPeopleRecipesDTO
+    public function listOfOtherPeople(string $userId, int $limit, int $offset, ?string $search = null, bool $isAdministrator = false, ?string $typeSlug = null): OtherPeopleRecipesDTO
     {
-        $this->listOfOtherPeopleCalls[] = [$userId, $limit, $offset, $search, $isAdministrator];
+        $this->listOfOtherPeopleCalls[] = [$userId, $limit, $offset, $search, $isAdministrator, $typeSlug];
 
         return $this->otherPeopleRecipes;
+    }
+
+    public function listOtherPeopleTypes(string $userId, bool $isAdministrator = false): OtherPeopleRecipeTypesDTO
+    {
+        $this->listOtherPeopleTypesCalls[] = [$userId, $isAdministrator];
+
+        return $this->otherPeopleTypes;
     }
 }

@@ -33,16 +33,17 @@ final class ListOtherPeopleRecipesApiController extends AbstractController
     #[OA\Parameter(name: 'limit', in: 'query', required: false, description: 'Nombre de recettes de la page, de 1 à 200', schema: new OA\Schema(type: 'integer', default: 200, minimum: 1, maximum: 200))]
     #[OA\Parameter(name: 'offset', in: 'query', required: false, description: 'Nombre de recettes sautées, dans l\'ordre de la réponse', schema: new OA\Schema(type: 'integer', default: 0, minimum: 0, maximum: 1000000))]
     #[OA\Parameter(name: 'q', in: 'query', required: false, description: 'Texte cherché dans le nom des recettes, 100 caractères au plus ; ni la casse ni les accents ne comptent et une faute de frappe est tolérée. Absent ou vide : pas de recherche. Un texte sans lettre ni chiffre ne trouve rien (liste vide)', schema: new OA\Schema(type: 'string', maxLength: 100), example: 'carbonnara')]
+    #[OA\Parameter(name: 'typeSlug', in: 'query', required: false, description: "Identifiant (slug) d'une catégorie de recette, 100 caractères au plus : la page, le total et la recherche se restreignent à cette catégorie (voir `GET /recipes/other-people/types`). Absent ou vide : toutes les catégories. Une catégorie inconnue rend une page vide, jamais une erreur", schema: new OA\Schema(type: 'string', maxLength: 100), example: 'dessert')]
     #[OA\Response(
         response: 200,
         description: 'Recettes des autres',
         content: new OA\JsonContent(ref: new Model(type: OtherPeopleRecipesDTO::class)),
     )]
-    #[OA\Response(response: 422, description: 'Paramètre `limit`, `offset` ou `q` hors de ses bornes')]
+    #[OA\Response(response: 422, description: 'Paramètre `limit`, `offset`, `q` ou `typeSlug` hors de ses bornes')]
     public function __invoke(#[CurrentUser] AuthenticatedUser $user, #[MapQueryString(validationFailedStatusCode: 422)] ListOtherPeopleRecipesRequestQuery $page = new ListOtherPeopleRecipesRequestQuery()): JsonResponse
     {
         /** @var OtherPeopleRecipesDTO $recipes */
-        $recipes = $this->queryBus->ask(new ListOtherPeopleRecipesQuery($user->getId(), $page->limit, $page->offset, $page->q, $this->isGranted('ROLE_ADMIN')));
+        $recipes = $this->queryBus->ask(new ListOtherPeopleRecipesQuery($user->getId(), $page->limit, $page->offset, $page->q, $this->isGranted('ROLE_ADMIN'), $page->typeSlug));
 
         return new JsonResponse($recipes);
     }
