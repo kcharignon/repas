@@ -20,6 +20,7 @@ use Repas\Repas\Infrastructure\Entity\ShoppingListIngredient;
 use Repas\Repas\Infrastructure\Entity\ShoppingListRow;
 use Repas\Repas\Infrastructure\Merge\PartRegistrySql;
 use Repas\Shared\Domain\Tool\Tab;
+use Doctrine\ORM\Query\ResultSetMapping;
 
 readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository implements ShoppingListRepository
 {
@@ -159,6 +160,33 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
     public function findOneActiveWithRow(string $ownerId, string $ingredientSlug): ?ShoppingList
     {
         return $this->findOneActiveWhere($ownerId, 'sl.id IN (SELECT r.shoppingListId FROM ' . ShoppingListRow::class . ' r WHERE r.ingredientSlug = :value)', $ingredientSlug);
+    }
+
+    public function findOneActiveHolding(string $ownerId, string $ingredientSlug): ?ShoppingList
+    {
+        // Une ligne de cet ingrédient, OU une entrée de son registre des parties (JSONB : une requête native qui rend l'entité, la formule du registre est
+        // celle de `PartRegistrySql`). Une seule requête, la liste principale d'abord puis la plus ancienne
+        $mapping = new ResultSetMapping();
+        $mapping->addEntityResult(ShoppingListEntity::class, 'sl');
+        $columns = [];
+        foreach ($this->entityManager->getClassMetadata(ShoppingListEntity::class)->fieldMappings as $field => $fieldMapping) {
+            $mapping->addFieldResult('sl', $fieldMapping->columnName, $field);
+            $columns[] = 'sl.' . $fieldMapping->columnName;
+        }
+        $entity = $this->entityManager->createNativeQuery(
+            'SELECT ' . implode(', ', $columns) . ' FROM shopping_list sl'
+            . ' WHERE sl.owner = :owner AND sl.status = :status AND ('
+            . 'EXISTS (SELECT 1 FROM shopping_list_row r WHERE r.shopping_list = sl.id AND r.ingredient = :slug)'
+            . ' OR (sl.part_shares IS NOT NULL AND jsonb_typeof(sl.part_shares) = \'object\' AND jsonb_exists(sl.part_shares, :slug)))'
+            . ' ORDER BY CASE WHEN sl.list_type_id IS NULL THEN 0 ELSE 1 END, sl.created_at, sl.id LIMIT 1',
+            $mapping,
+        )
+            ->setParameter('owner', $ownerId)
+            ->setParameter('status', ShoppingListStatus::ACTIVE->value)
+            ->setParameter('slug', $ingredientSlug)
+            ->getResult()[0] ?? null;
+
+        return $entity === null ? null : $this->convertEntityToModel($entity);
     }
 
     /**

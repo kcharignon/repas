@@ -755,6 +755,23 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertEquals(new AddSpokenItemResult("C'est retiré, il t'en reste 2 dans ta liste.", keepSessionOpen: false, added: false), $result);
     }
 
+    public function testTellingApartTwoLinesWhereTheChosenOneIsAPartSaysWhatIsLeftOfItsParent(): void
+    {
+        // Given : un « jaune d'œuf » dans deux rayons ; celui du rayon divers est une partie d'« Œuf » (ADR 0038 décision 33, SUB-005)
+        $state = SpokenDialogueState::chooseToRemove("des jaunes d'œuf", [
+            new DialogueOption('jaune-d-oeuf', "Jaune d'œuf", 'divers', 'Divers'),
+            new DialogueOption('jaune-surgele', "Jaune d'œuf", 'surgele', 'Surgelé'),
+        ], "jaune d'œuf", 1, null);
+        $this->repas->willRemove(new RemovedItem(found: true, remaining: 4.0, removed: 1.0, foldedInto: 'Œuf'));
+
+        // When : « en divers »
+        $result = $this->answer(AlexaTestRequest::answerDepartment('divers', 'divers'), $state);
+
+        // Then : la partie est retirée par son slug, et Alexa dit ce qui reste de la ligne du parent
+        $this->assertSame([[self::USER, 'jaune-d-oeuf']], $this->repas->removed());
+        $this->assertSame("C'est retiré. Il te reste 4 œufs.", $result->speech);
+    }
+
     public function testTheSaidQuantityAndUnitOfTheRemovalTravelWithTheState(): void
     {
         // Given

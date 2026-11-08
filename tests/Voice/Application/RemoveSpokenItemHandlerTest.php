@@ -11,6 +11,7 @@ use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemHandler;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\DialogueStep;
 use Repas\Voice\Domain\Model\ListedLine;
+use Repas\Voice\Domain\Model\ParentLine;
 use Repas\Voice\Domain\Model\RemovedItem;
 use Repas\Voice\Domain\Model\SpokenDialogueState;
 use Repas\Voice\Domain\Service\SpokenIngredientNamer;
@@ -50,6 +51,48 @@ class RemoveSpokenItemHandlerTest extends TestCase
         $this->assertSame([['user-1', 'croquette']], $this->repas->removed());
         $this->assertSame([[1, null]], $this->repas->removedWith());
         $this->assertEquals(new AddSpokenItemResult("C'est retiré, il t'en reste 2 paquets dans ta liste.", keepSessionOpen: false, added: false), $result);
+    }
+
+    public function testRemovingAPartOfAnIngredientRemovesItBySlugAndSaysWhatIsLeftOfTheParent(): void
+    {
+        // Given : 2 jaunes d'œuf comptent dans les 5 œufs de la liste (ADR 0038 décision 33, SUB-005) ; la partie n'est pas une ligne mais le registre de la liste la dit
+        $this->repas->listHas(new ListedLine('jaune-d-oeuf', "jaune d'œuf", 'divers', 'divers', 2.0, 'unite', 'unité', foldedInto: new ParentLine('Œuf', 5.0, 'unite', 'unité')));
+        $this->repas->willRemove(new RemovedItem(found: true, remaining: 4.0, removed: 1.0, unitSlug: 'unite', unitName: 'unité', foldedInto: 'Œuf'));
+
+        // When : « enlève un jaune d'œuf »
+        $result = ($this->handler)(new RemoveSpokenItemCommand('user-1', "un jaune d'œuf", sessionIsOpen: false));
+
+        // Then : la partie est retirée par son slug, Alexa dit ce qui reste de la ligne du parent
+        $this->assertSame([['user-1', 'jaune-d-oeuf']], $this->repas->removed());
+        $this->assertEquals(new AddSpokenItemResult("C'est retiré. Il te reste 4 œufs.", keepSessionOpen: false, added: false), $result);
+    }
+
+    public function testRemovingTheLastYolkSaysTheParentLineIsGone(): void
+    {
+        // Given
+        $this->repas->listHas(new ListedLine('jaune-d-oeuf', "jaune d'œuf", 'divers', 'divers', 1.0, 'unite', 'unité', foldedInto: new ParentLine('Œuf', 1.0, 'unite', 'unité')));
+        $this->repas->willRemove(new RemovedItem(found: true, remaining: 0.0, removed: 1.0, unitSlug: 'unite', unitName: 'unité', foldedInto: 'Œuf'));
+
+        // When
+        $result = ($this->handler)(new RemoveSpokenItemCommand('user-1', "un jaune d'œuf", sessionIsOpen: true));
+
+        // Then : séance ouverte, une affirmation seule
+        $this->assertSame("C'est retiré. Il n'y a plus d'œuf dans ta liste.", $result->speech);
+        $this->assertTrue($result->keepSessionOpen);
+    }
+
+    public function testAYolkThatIsNotInTheListIsSaidAbsent(): void
+    {
+        // Given : la liste a des œufs mais aucun jaune (le registre est vide), et le jaune est un ingrédient de l'utilisateur
+        $this->repas->listHas(self::line('oeuf', 'œuf', 'divers', 'divers', 3.0, 'unite', 'unité'));
+        $this->repas->owns('jaune-d-oeuf', "jaune d'œuf", 'divers');
+
+        // When
+        $result = ($this->handler)(new RemoveSpokenItemCommand('user-1', "un jaune d'œuf", sessionIsOpen: false));
+
+        // Then : « Il n'y a pas de jaune d'œuf dans ta liste. », rien n'est retiré
+        $this->assertSame("Il n'y a pas de jaune d'œuf dans ta liste.", $result->speech);
+        $this->assertSame([], $this->repas->removed());
     }
 
     public function testRemovingFromTheListOfATypeSaysWhichList(): void

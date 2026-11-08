@@ -41,10 +41,28 @@ final readonly class ActiveListLineLookupQueryOHS
 
         return new ActiveListLineMatchDTO(
             $match->hasList,
-            array_map(static fn($line): ActiveListLineDTO => new ActiveListLineDTO($line->slug, $line->name, $line->departmentSlug, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName, $line->listName), $match->lines),
+            array_map(self::dto(...), $match->lines),
             $match->absentName,
             $match->listSent,
-            array_map(static fn($line): ActiveListLineDTO => new ActiveListLineDTO($line->slug, $line->name, $line->departmentSlug, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName, $line->listName), $match->suggestions),
+            array_map(self::dto(...), $match->suggestions),
+        );
+    }
+
+    /** Une ligne de `ActiveListLookup` (un modèle de `Repas`, que ce service de lecture publie sans l'importer) devient son DTO. */
+    private static function dto($line): ActiveListLineDTO
+    {
+        $parent = $line->foldedInto;
+
+        return new ActiveListLineDTO(
+            $line->slug,
+            $line->name,
+            $line->departmentSlug,
+            $line->departmentName,
+            $line->quantity,
+            $line->unitSlug,
+            $line->unitName,
+            $line->listName,
+            $parent === null ? null : new ActiveListParentDTO($parent->name, $parent->quantity, $parent->unitSlug, $parent->unitName),
         );
     }
 }

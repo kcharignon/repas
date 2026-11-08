@@ -4,14 +4,19 @@ namespace Repas\Tests\Repas\WriteBudget;
 
 
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
+use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientCommand;
 use Repas\Repas\Application\Command\PlannedMeal\PlannedMealCommand;
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand;
+use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredientCommand;
 use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealCommand;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Domain\Tool\UuidGenerator;
+use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
+use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemCommand;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\RecipeRowBuilder;
@@ -85,6 +90,22 @@ class PartsReadsAreConstantTest extends WriteBudgetTestCase
         $this->assertSame($one, $this->selects(fn() => $this->arrangedHandRemoval(4, 2)));
     }
 
+    public function testSayingAPartReadsTheSameWhateverTheNumberOfParts(): void
+    {
+        // La voix (ADR 0038 décision 33, SUB-005) : l'ajout et le retrait d'une partie, puis la même chose dite à Alexa (le classeur lit la liste, les parties
+        // du registre en une requête de plus), ne lisent pas plus quand la liste a plus de parties ni de parents
+        foreach ([
+            'arrangedSpokenAdding' => 'ajouter',
+            'arrangedSpokenRemoval' => 'retirer',
+            'arrangedSaidAdding' => 'ajouter dit à Alexa',
+            'arrangedSaidRemoval' => 'retirer dit à Alexa',
+        ] as $arranger => $label) {
+            $one = $this->selects(fn() => $this->$arranger(1, 1));
+            $this->assertSame($one, $this->selects(fn() => $this->$arranger(1, 6)), $label . ' : un parent, six parties');
+            $this->assertSame($one, $this->selects(fn() => $this->$arranger(4, 2)), $label . ' : quatre parents, deux parties');
+        }
+    }
+
     /**
      * @param callable(): object $arrange
      */
@@ -131,6 +152,38 @@ class PartsReadsAreConstantTest extends WriteBudgetTestCase
         $this->planned($owner, $recipe);
 
         return new RemoveIngredientToShoppingListCommand($owner->getId(), $part->getSlug());
+    }
+
+    private function arrangedSpokenAdding(int $parents, int $partsPerParent): AddSpokenIngredientCommand
+    {
+        [$owner, $recipe, $part] = $this->arrange($parents, $partsPerParent);
+        $this->planned($owner, $recipe);
+
+        return new AddSpokenIngredientCommand($owner->getId(), $part->getSlug(), UuidGenerator::new());
+    }
+
+    private function arrangedSpokenRemoval(int $parents, int $partsPerParent): RemoveSpokenIngredientCommand
+    {
+        [$owner, $recipe, $part] = $this->arrange($parents, $partsPerParent);
+        $this->planned($owner, $recipe);
+
+        return new RemoveSpokenIngredientCommand($owner->getId(), $part->getSlug());
+    }
+
+    private function arrangedSaidAdding(int $parents, int $partsPerParent): AddSpokenItemCommand
+    {
+        [$owner, $recipe, $part] = $this->arrange($parents, $partsPerParent);
+        $this->planned($owner, $recipe);
+
+        return new AddSpokenItemCommand($owner->getId(), $part->getName(), true);
+    }
+
+    private function arrangedSaidRemoval(int $parents, int $partsPerParent): RemoveSpokenItemCommand
+    {
+        [$owner, $recipe, $part] = $this->arrange($parents, $partsPerParent);
+        $this->planned($owner, $recipe);
+
+        return new RemoveSpokenItemCommand($owner->getId(), $part->getName(), true);
     }
 
     /**

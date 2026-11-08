@@ -49,6 +49,33 @@ class AddSpokenItemHandlerTest extends TestCase
         $this->assertEquals(new AddSpokenItemResult("C'est noté : pain.", keepSessionOpen: false, added: true), $result);
     }
 
+    public function testAPartOfAnIngredientIsAddedBySlugAndSaysTheTotalOfTheParentLine(): void
+    {
+        // Given : « jaune d'œuf » est une partie d'« Œuf » ; la liste a maintenant 3 œufs (ADR 0038 décision 33, SUB-005)
+        $this->repas->willResolve(new ResolvedIngredient('jaune-d-oeuf', "Jaune d'œuf", 'Divers', ResolvedIngredient::SURE));
+        $this->repas->willAdd(new AddedItem(false, false, quantity: 3.0, lineExisted: true, addedQuantity: 1.0, foldedInto: 'Œuf'));
+
+        // When : « ajoute un jaune d'œuf »
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', "un jaune d'œuf", sessionIsOpen: false));
+
+        // Then : la partie est ajoutée par son slug, Alexa dit le total de la ligne du parent
+        $this->assertSame([['user-1', 'jaune-d-oeuf']], $this->repas->added());
+        $this->assertEquals(new AddSpokenItemResult("C'est ajouté. Ça fait 3 œufs dans ta liste.", keepSessionOpen: false, added: true), $result);
+    }
+
+    public function testAPartOfAnIngredientInAListOfATypeNamesTheList(): void
+    {
+        // Given
+        $this->repas->willResolve(new ResolvedIngredient('jaune-d-oeuf', "Jaune d'œuf", 'Divers', ResolvedIngredient::SURE));
+        $this->repas->willAdd(new AddedItem(false, false, quantity: 1.0, listName: 'Marché', foldedInto: 'Œuf'));
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', "un jaune d'œuf", sessionIsOpen: false));
+
+        // Then
+        $this->assertSame("C'est ajouté à marché. Ça fait 1 œuf.", $result->speech);
+    }
+
     public function testAProductAddedToTheListOfATypeSaysWhichList(): void
     {
         // Given : le produit va dans la liste Boucherie (ADR 0036, LST-008)

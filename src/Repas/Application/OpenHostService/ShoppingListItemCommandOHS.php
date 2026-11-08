@@ -20,6 +20,9 @@ use Repas\Shared\Domain\Tool\UuidGenerator;
  *
  * Depuis les types de liste (ADR 0036, LST-008), l'article va dans la liste de la destination du produit (une liste de type est ouverte à la demande et
  * nommée par `AddedItem::$listName`) et un retrait prend la ligne dans la liste principale d'abord, sinon dans la liste d'un type qui la porte.
+ *
+ * Une PARTIE d'ingrédient (« Jaune d'œuf », ADR 0038 décisions 11 et 33) n'est jamais une ligne : l'ajout va à la partie, dans la liste de son parent, et le
+ * retrait diminue l'entrée du registre de la liste ; dans les deux cas le résultat décrit la ligne du PARENT (`foldedInto` : son nom).
  */
 final readonly class ShoppingListItemCommandOHS
 {

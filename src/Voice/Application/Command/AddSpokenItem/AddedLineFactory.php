@@ -24,6 +24,7 @@ final readonly class AddedLineFactory
             unitCited: $unitCited,
             unitSubstituted: $added->unitSubstituted,
             listName: $added->listName,
+            foldedInto: $added->foldedInto,
         );
     }
 }

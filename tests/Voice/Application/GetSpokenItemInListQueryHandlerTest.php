@@ -9,6 +9,7 @@ use Repas\Voice\Application\Query\GetSpokenItemInList\GetSpokenItemInListQuery;
 use Repas\Voice\Application\Query\GetSpokenItemInList\GetSpokenItemInListQueryHandler;
 use Repas\Voice\Application\Query\GetSpokenItemInList\SpokenItemInListDTO;
 use Repas\Voice\Domain\Model\ListedLine;
+use Repas\Voice\Domain\Model\ParentLine;
 use Repas\Voice\Domain\Service\SpokenIngredientNamer;
 use Repas\Voice\Domain\Service\SpokenListAnswerer;
 
@@ -48,6 +49,31 @@ class GetSpokenItemInListQueryHandlerTest extends TestCase
         // Then : appelé avec l'utilisateur du jeton et la phrase
         $this->assertSame([['user-1', 'des croquettes']], $this->repas->lookedUp);
         $this->assertEquals(new SpokenItemInListDTO('Oui, tu en as 2 paquets.', keepSessionOpen: false), $dto);
+    }
+
+    public function testAPartOfAnIngredientSaysWhereItCounts(): void
+    {
+        // Given : 2 jaunes d'œuf comptent dans les 5 œufs de la liste (ADR 0038 décision 33, SUB-005)
+        $this->repas->listHas(new ListedLine('jaune-d-oeuf', "jaune d'œuf", 'divers', 'divers', 2.0, 'unite', 'unité', foldedInto: new ParentLine('Œuf', 5.0, 'unite', 'unité')));
+
+        // When : « est-ce qu'il y a des jaunes d'œuf ? »
+        $dto = ($this->handler())(new GetSpokenItemInListQuery('user-1', "des jaunes d'œuf", sessionIsOpen: false));
+
+        // Then
+        $this->assertSame("Oui : 2 jaunes d'œuf. Ça compte dans tes 5 œufs.", $dto->speech);
+    }
+
+    public function testAPartOfAnIngredientThatIsNotInTheListIsSaidAbsentEvenWhenTheParentIs(): void
+    {
+        // Given : 3 œufs, aucun jaune (le registre de la liste est vide) ; le jaune est un ingrédient de l'utilisateur
+        $this->repas->listHas(self::line('oeuf', 'œuf', 'divers', 3.0));
+        $this->repas->owns('jaune-d-oeuf', "jaune d'œuf", 'divers');
+
+        // When
+        $dto = ($this->handler())(new GetSpokenItemInListQuery('user-1', "un jaune d'œuf", sessionIsOpen: false));
+
+        // Then
+        $this->assertSame("Non, il n'y a pas de jaune d'œuf dans ta liste.", $dto->speech);
     }
 
     public function testAProductInTheListOfATypeNamesIt(): void

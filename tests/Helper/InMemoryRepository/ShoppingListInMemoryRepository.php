@@ -143,6 +143,11 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
         return $this->firstActive($ownerId, fn(ShoppingList $sl) => $sl->findRow($ingredientSlug) !== null);
     }
 
+    public function findOneActiveHolding(string $ownerId, string $ingredientSlug): ?ShoppingList
+    {
+        return $this->firstActive($ownerId, fn(ShoppingList $sl) => $sl->findRow($ingredientSlug) !== null || $sl->partShareOf($ingredientSlug) !== null);
+    }
+
     /**
      * La liste en cours du propriétaire qui vérifie la condition : la liste principale d'abord, puis la plus ancienne.
      */

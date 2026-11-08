@@ -21,6 +21,9 @@ final readonly class AddedItem
      * @param float   $addedQuantity     la quantité ajoutée à la ligne, dans l'unité de la ligne (convertie, le cas échéant)
      * @param ?string $listName          le nom de la liste d'un TYPE qui a reçu l'article (ADR 0036 décision 3 : la destination du produit, LST-008) ;
      *                                   `null` : la liste principale, comme pour tout compte sans type
+     * @param ?string $foldedInto        le nom du PARENT quand l'article dit est une partie d'ingrédient (« Jaune d'œuf », ADR 0038 décision 33) : la partie n'est jamais
+     *                                   une ligne, elle s'est pliée dans la ligne du parent, et `$quantity`, `$unitSlug` et `$unitName` décrivent alors CETTE ligne
+     *                                   (« 3 œufs »), `$addedQuantity` ce qui a été ajouté à la partie ; `null` : un article ordinaire
      */
     public function __construct(
         public bool $listCreated,
@@ -32,6 +35,7 @@ final readonly class AddedItem
         public bool $unitSubstituted = false,
         public float $addedQuantity = 1.0,
         public ?string $listName = null,
+        public ?string $foldedInto = null,
     ) {
     }
 }

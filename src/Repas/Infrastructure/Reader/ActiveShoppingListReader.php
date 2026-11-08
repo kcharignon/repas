@@ -6,6 +6,8 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr\Join;
 use Repas\Repas\Domain\Model\ActiveListLine;
 use Repas\Repas\Domain\Model\ActiveListMeal;
+use Repas\Repas\Domain\Model\ActiveListParent;
+use Repas\Repas\Domain\Model\PartShare;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Infrastructure\Entity\Department;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
@@ -36,14 +38,19 @@ final readonly class ActiveShoppingListReader
      * son ingrédient, son rayon, le nom de son unité et la liste qui la porte. Les lignes d'une liste sont celles de l'utilisateur : aucun contrôle de
      * visibilité des ingrédients à refaire. Un même ingrédient a une ligne par liste qui le porte, la liste principale d'abord.
      *
+     * Une PARTIE d'ingrédient (« Jaune d'œuf », ADR 0038 décision 33) n'est jamais une ligne de liste : le registre de chaque liste (lu avec la liste, sans
+     * requête de plus) la rend comme une ligne de la partie, avec la ligne du parent où elle compte (`ActiveListLine::$foldedInto`). Une requête de plus,
+     * seulement quand un registre n'est pas vide, pour le nom, le rayon et l'unité des parties : un compte sans partie lit exactement ce qu'il lisait.
+     *
      * @return ?list<ActiveListLine> `null` : l'utilisateur n'a pas de liste en cours ; une liste en cours vide donne une liste vide
      */
     public function lines(string $userId): ?array
     {
-        $lists = $this->activeLists($userId);
-        if ($lists === null) {
+        $active = $this->activeLists($userId);
+        if ($active === null) {
             return null;
         }
+        $lists = array_map(static fn(array $list): ?string => $list['name'], $active);
 
         /** @var list<array{listId: string, slug: string, name: string, departmentSlug: string, departmentName: string, quantity: float|int|string, unitSlug: string, unitName: string}> $rows */
         $rows = $this->entityManager->createQueryBuilder()
@@ -58,14 +65,90 @@ final readonly class ActiveShoppingListReader
             ->getQuery()
             ->getArrayResult();
 
-        // Par ingrédient, la liste principale d'abord (l'ordre des listes est celui de `activeLists`)
-        $rank = array_flip(array_keys($lists));
-        usort($rows, static fn(array $a, array $b): int => [$a['slug'], $rank[$a['listId']]] <=> [$b['slug'], $rank[$b['listId']]]);
-
-        return array_map(
-            static fn(array $row): ActiveListLine => new ActiveListLine($row['slug'], $row['name'], $row['departmentSlug'], $row['departmentName'], (float) $row['quantity'], $row['unitSlug'], $row['unitName'], $lists[$row['listId']]),
+        $found = array_map(
+            static fn(array $row): array => [$row['slug'], $row['listId'], new ActiveListLine($row['slug'], $row['name'], $row['departmentSlug'], $row['departmentName'], (float) $row['quantity'], $row['unitSlug'], $row['unitName'], $lists[$row['listId']])],
             $rows,
         );
+        foreach ($this->partLines($active, $rows) as $part) {
+            $found[] = $part;
+        }
+
+        // Par ingrédient, la liste principale d'abord (l'ordre des listes est celui de `activeLists`)
+        $rank = array_flip(array_keys($lists));
+        usort($found, static fn(array $a, array $b): int => [$a[0], $rank[$a[1]]] <=> [$b[0], $rank[$b[1]]]);
+
+        return array_map(static fn(array $entry): ActiveListLine => $entry[2], $found);
+    }
+
+    /**
+     * Les parties d'ingrédient que le registre de chaque liste a gardées (ADR 0038 décisions 6 et 33), chacune comme une ligne qui dit le parent où elle
+     * compte. Aucune requête quand aucun registre n'a d'entrée. Une partie dont l'ingrédient n'existe plus, ou dont le parent n'a plus de ligne dans la
+     * même liste (un registre abîmé, jamais par l'API), n'est pas rendue : le registre est une entrée non fiable.
+     *
+     * @param array<string, array{name: ?string, shares: array<string, PartShare>}> $active
+     * @param list<array{listId: string, slug: string, name: string, departmentSlug: string, departmentName: string, quantity: float|int|string, unitSlug: string, unitName: string}> $rows
+     *
+     * @return list<array{string, string, ActiveListLine}> [slug de la partie, identifiant de la liste, la ligne]
+     */
+    private function partLines(array $active, array $rows): array
+    {
+        $partSlugs = [];
+        foreach ($active as $list) {
+            foreach (array_keys($list['shares']) as $partSlug) {
+                $partSlugs[$partSlug] = true;
+            }
+        }
+        if ($partSlugs === []) {
+            return [];
+        }
+
+        /** @var list<array{slug: string, name: string, departmentSlug: string, departmentName: string, unitSlug: string, unitName: string}> $parts */
+        $parts = $this->entityManager->createQueryBuilder()
+            ->select('i.slug AS slug', 'i.name AS name', 'd.slug AS departmentSlug', 'd.name AS departmentName', 'u.slug AS unitSlug', 'u.name AS unitName')
+            ->from(Ingredient::class, 'i')
+            ->innerJoin(Department::class, 'd', Join::WITH, 'd.slug = i.departmentSlug')
+            ->innerJoin(Unit::class, 'u', Join::WITH, 'u.slug = i.defaultPurchaseUnitSlug')
+            ->where('i.slug IN (:slugs)')
+            ->setParameter('slugs', array_keys($partSlugs))
+            ->getQuery()
+            ->getArrayResult();
+        $partsBySlug = [];
+        foreach ($parts as $part) {
+            $partsBySlug[$part['slug']] = $part;
+        }
+
+        $rowsByListAndSlug = [];
+        foreach ($rows as $row) {
+            $rowsByListAndSlug[$row['listId']][$row['slug']] = $row;
+        }
+
+        $lines = [];
+        foreach ($active as $listId => $list) {
+            foreach ($list['shares'] as $partSlug => $share) {
+                $part = $partsBySlug[$partSlug] ?? null;
+                $parent = $rowsByListAndSlug[$listId][$share->parentSlug] ?? null;
+                if ($part === null || $parent === null) {
+                    continue;
+                }
+                $lines[] = [
+                    $partSlug,
+                    $listId,
+                    new ActiveListLine(
+                        $partSlug,
+                        $part['name'],
+                        $part['departmentSlug'],
+                        $part['departmentName'],
+                        $share->quantity,
+                        $part['unitSlug'],
+                        $part['unitName'],
+                        $list['name'],
+                        new ActiveListParent($parent['name'], (float) $parent['quantity'], $parent['unitSlug'], $parent['unitName']),
+                    ),
+                ];
+            }
+        }
+
+        return $lines;
     }
 
     /**
@@ -82,6 +165,7 @@ final readonly class ActiveShoppingListReader
         if ($lists === null) {
             return null;
         }
+        $lists = array_map(static fn(array $list): ?string => $list['name'], $lists);
 
         /** @var list<array{listId: string, recipeId: string, name: string, servings: int}> $rows */
         $rows = $this->entityManager->createQueryBuilder()
@@ -128,13 +212,14 @@ final readonly class ActiveShoppingListReader
      * Les listes en cours de l'utilisateur, la principale d'abord puis les types par date de création (comme `GET /shopping-lists/open`) : leur
      * identifiant, et le nom qu'on leur donne à voix haute (`null` pour la liste principale, sinon le nom de la liste, à défaut celui de son type).
      *
-     * @return ?array<string, ?string> `null` : aucune liste en cours
+     * @return ?array<string, array{name: ?string, shares: array<string, PartShare>}> `null` : aucune liste en cours ; `shares` : le registre des parties de la
+     *                                                                                  liste (ADR 0038), lu avec elle, vide pour tout compte sans partie
      */
     private function activeLists(string $userId): ?array
     {
-        /** @var list<array{id: string, listTypeId: string|null, name: string|null, typeName: string|null}> $lists */
+        /** @var list<array{id: string, listTypeId: string|null, name: string|null, typeName: string|null, partShares: mixed}> $lists */
         $lists = $this->entityManager->createQueryBuilder()
-            ->select('l.id AS id', 'l.listTypeId AS listTypeId', 'l.name AS name', 't.name AS typeName')
+            ->select('l.id AS id', 'l.listTypeId AS listTypeId', 'l.name AS name', 't.name AS typeName', 'l.partShares AS partShares')
             ->addSelect('CASE WHEN l.listTypeId IS NULL THEN 0 ELSE 1 END AS HIDDEN typed')
             ->from(ShoppingList::class, 'l')
             ->leftJoin(ShoppingListType::class, 't', Join::WITH, 't.id = l.listTypeId')
@@ -154,7 +239,10 @@ final readonly class ActiveShoppingListReader
 
         $named = [];
         foreach ($lists as $list) {
-            $named[$list['id']] = $list['listTypeId'] === null ? null : ($list['name'] ?? $list['typeName'] ?? 'une autre liste');
+            $named[$list['id']] = [
+                'name' => $list['listTypeId'] === null ? null : ($list['name'] ?? $list['typeName'] ?? 'une autre liste'),
+                'shares' => PartShare::registryFrom($list['partShares']),
+            ];
         }
 
         return $named;

@@ -10,6 +10,7 @@ use Repas\Repas\Domain\Service\SpokenIngredientRanker;
 use Repas\Tests\Helper\RepasForVoice;
 use Repas\Voice\Domain\Model\AddedItem;
 use Repas\Voice\Domain\Model\ListedLine;
+use Repas\Voice\Domain\Model\ParentLine;
 use Repas\Voice\Domain\Model\ListedMeal;
 use Repas\Voice\Domain\Model\RemovedItem;
 use Repas\Voice\Domain\Model\SpokenListLookupResult;
@@ -63,6 +64,34 @@ class RepasListAdaptersTest extends TestCase
         // And : la liste principale n'a pas de nom
         $this->repas->willAdd(new AddedItem(false, false));
         $this->assertNull($this->repas->itemsPort()->addItem('user-1', 'pain')->listName);
+    }
+
+    public function testAPartOfAnIngredientIsGivenWithTheParentLineItCountsInOnBothSides(): void
+    {
+        // Given : un jaune d'œuf qui compte dans les 5 œufs de la liste (ADR 0038 décision 33)
+        $yolk = new ListedLine('jaune-d-oeuf', "Jaune d'œuf", 'divers', 'Divers', 2.0, 'unite', 'unité', foldedInto: new ParentLine('Œuf', 5.0, 'unite', 'unité'));
+        $this->repas->listHas($yolk);
+
+        // When
+        $written = $this->repas->lineLookupPort()->find('user-1', "un jaune d'œuf");
+        $read = $this->repas->lineLookupQueryPort()->find('user-1', "un jaune d'œuf");
+
+        // Then : la ligne de la partie et la ligne du parent, des deux côtés
+        $this->assertEquals([$yolk], $written->lines);
+        $this->assertEquals($written, $read);
+    }
+
+    public function testAnAddedOrRemovedPartIsGivenWithTheNameOfItsParent(): void
+    {
+        // Given
+        $this->repas->willAdd(new AddedItem(false, false, 3.0, foldedInto: 'Œuf'));
+        $this->repas->willRemove(new RemovedItem(true, 4.0, 1.0, foldedInto: 'Œuf'));
+
+        // Then
+        $this->assertSame('Œuf', $this->repas->itemsPort()->addItem('user-1', 'jaune-d-oeuf')->foldedInto);
+        $this->assertSame('Œuf', $this->repas->itemsPort()->removeItem('user-1', 'jaune-d-oeuf')->foldedInto);
+        $this->repas->willAdd(new AddedItem(false, false));
+        $this->assertNull($this->repas->itemsPort()->addItem('user-1', 'pain')->foldedInto);
     }
 
     public function testAProductInTwoListsIsOneFoundProductWithALinePerListOnBothSides(): void
