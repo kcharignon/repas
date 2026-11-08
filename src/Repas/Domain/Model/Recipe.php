@@ -23,6 +23,9 @@ final class Recipe implements ModelInterface
     /** Lignes d'une recette : une recette en a une dizaine, jamais cent. */
     public const int MAX_ROWS = 100;
 
+    /** Recettes qu'une recette utilise (ses composants, ADR 0040 décision 6) : une tarte en utilise une ou deux, jamais dix. */
+    public const int MAX_COMPONENTS = 10;
+
     /**
      * Nombre de recettes à partir duquel un auteur n'en écrit plus lui-même : toutes les siennes comptent (copies comprises), mais seule
      * l'écriture d'une recette est refusée ; la copie de celle d'un autre reste permise jusqu'à `MAX_PER_AUTHOR_WITH_COPIES`.
@@ -43,7 +46,27 @@ final class Recipe implements ModelInterface
     public const string MARMITON_OWNER_ID = '00000000-0000-4000-8000-4d41524d4954';
 
     /**
+     * Les composants de la recette (ADR 0040) : les arêtes lues ou posées, dans l'ordre de leur position. Vide pour une recette qui n'en a pas ET
+     * pour un modèle chargé SANS les lire (`RecipeRepository::findByIds` : seul `$componentCount` dit alors qu'il y en a).
+     *
+     * @var Tab<RecipeComponent>
+     */
+    private Tab $components;
+
+    /**
+     * Les composants ont été posés par `setComponents` depuis le chargement : c'est le SEUL cas où le dépôt les écrit (et efface les absents). Un
+     * modèle chargé puis enregistré sans y toucher (favori, secret, type, nom, `PUT` d'un ancien client) ne les efface donc jamais (ADR 0040
+     * décision 25).
+     */
+    private bool $componentsChanged = false;
+
+    /** Le nombre de composants de la recette : il dit « elle en a » même quand les arêtes ne sont pas lues. */
+    private int $componentCount;
+
+    /**
      * @param Tab<RecipeRow> $rows
+     * @param Tab<RecipeComponent>|null $components
+     * @param int|null $componentCount le nombre de composants (`recipe.component_count`), connu même quand les arêtes ne sont pas lues
      */
     private function __construct(
         private string  $id,
@@ -60,7 +83,11 @@ final class Recipe implements ModelInterface
         private ?string $sourceUrl = null,
         /** Une recette sans propriétaire n'est modifiée ou supprimée que par un administrateur : le cas d'usage qui le sait lève la garde, pour CETTE instance seulement. */
         private bool    $administratorMayEdit = false,
+        ?Tab            $components = null,
+        ?int            $componentCount = null,
     ) {
+        $this->components = $components ?? Tab::newEmptyTyped(RecipeComponent::class);
+        $this->componentCount = $componentCount ?? $this->components->count();
     }
 
     public function getId(): string
@@ -217,6 +244,114 @@ final class Recipe implements ModelInterface
         return $this;
     }
 
+    /**
+     * Les recettes que cette recette utilise (ADR 0040), dans l'ordre de leur position. Vide aussi pour un modèle chargé sans les lire
+     * (`RecipeRepository::findByIds`) : pour savoir si la recette en a, `hasComponents()`.
+     *
+     * @return Tab<RecipeComponent>
+     */
+    public function getComponents(): Tab
+    {
+        return $this->components;
+    }
+
+    /**
+     * La recette utilise-t-elle d'autres recettes ? Vrai même quand les arêtes ne sont pas lues : une recette qui en a ne peut pas être utilisée
+     * à son tour (profondeur 1, ADR 0040 décision 6).
+     */
+    public function hasComponents(): bool
+    {
+        return $this->componentCount > 0;
+    }
+
+    /**
+     * Combien de recettes cette recette utilise (`recipe.component_count`), même quand les arêtes ne sont pas lues.
+     */
+    public function getComponentCount(): int
+    {
+        return $this->componentCount;
+    }
+
+    /**
+     * Les identifiants des recettes utilisées, dans l'ordre de leurs positions.
+     *
+     * @return list<string>
+     */
+    public function componentIds(): array
+    {
+        return array_values($this->components->map(static fn(RecipeComponent $component): string => $component->getComponentId())->toArray());
+    }
+
+    /**
+     * Remplace tous les composants de la recette : l'ordre reçu est la position (de 0). Pose le drapeau « composants modifiés », le seul cas où le
+     * dépôt les écrit (ADR 0040 décision 25). Sans composant avant ni après, rien n'est posé : zéro composant, rien ne change.
+     *
+     * Jugé ici, dans cet ordre (celui de la décision 26) : le nombre, les doublons, les multiplicateurs, la recette elle-même, la recette sans
+     * propriétaire. Ce qui regarde les AUTRES recettes (même auteur, profondeur 1, secrète et ordinaire) est jugé par `RecipeComponentRules`, qui
+     * les a chargées.
+     *
+     * @param Tab<RecipeComponent> $components
+     * @throws RecipeException plus de `MAX_COMPONENTS`, une recette deux fois, un multiplicateur hors bornes, la recette elle-même, ou des composants
+     *                         pour une recette sans propriétaire
+     * @throws \LogicException un composant n'est pas celui de cette recette
+     */
+    public function setComponents(Tab $components): Recipe
+    {
+        $this->assertNotFrozen();
+        if ($components->empty() && !$this->hasComponents()) {
+            return $this;
+        }
+
+        $used = [];
+        foreach ($components as $component) {
+            if (!$component instanceof RecipeComponent || $component->getRecipeId() !== $this->id) {
+                throw new \LogicException(sprintf("Un composant ne peut être posé que sur sa propre recette ('%s').", $this->id));
+            }
+        }
+        if ($components->count() > self::MAX_COMPONENTS) {
+            throw RecipeException::componentLimitReached();
+        }
+        foreach ($components as $component) {
+            if (isset($used[$component->getComponentId()])) {
+                throw RecipeException::componentDuplicate();
+            }
+            $used[$component->getComponentId()] = true;
+        }
+        foreach ($components as $component) {
+            if (!RecipeComponent::isMultiplier($component->getMultiplier())) {
+                throw RecipeException::componentMultiplierInvalid();
+            }
+        }
+        if (isset($used[$this->id])) {
+            throw RecipeException::componentSelf();
+        }
+        if ($this->isMarmitonNeutral() && !$components->empty()) {
+            throw RecipeException::componentOwnerless();
+        }
+
+        // L'ordre reçu est la position : de 0, sans trou
+        $ordered = Tab::newEmptyTyped(RecipeComponent::class);
+        $position = 0;
+        foreach ($components as $component) {
+            $ordered[] = $component->getPosition() === $position ? $component : $component->withPosition($position);
+            ++$position;
+        }
+        $this->components = $ordered;
+        $this->componentCount = $ordered->count();
+        $this->componentsChanged = true;
+
+        return $this;
+    }
+
+    /**
+     * Les composants ont été posés par `setComponents` depuis le chargement de cette instance : le dépôt les écrit (et efface les absents) si et
+     * seulement si c'est vrai.
+     */
+    public function areComponentsChanged(): bool
+    {
+        return $this->componentsChanged;
+    }
+
     public function getOriginalId(): ?string
     {
         return $this->originalId;
@@ -243,6 +378,9 @@ final class Recipe implements ModelInterface
             favorite: $datas['favorite'] ?? false,
             marmitonId: $datas['marmiton_id'] ?? null,
             sourceUrl: $datas['source_url'] ?? null,
+            // Absents : une recette sans composant. `component_count` seul : un modèle chargé SANS ses arêtes (`findByIds`), qui sait qu'il en a
+            components: $datas['components'] ?? null,
+            componentCount: $datas['component_count'] ?? null,
         );
     }
 
@@ -340,7 +478,9 @@ final class Recipe implements ModelInterface
 
     /**
      * @param Tab<RecipeRow> $rows
-     * @throws RecipeException le nombre de personnes est hors de 1 à 100, ou il y a plus de lignes que `MAX_ROWS`
+     * @param Tab<RecipeComponent>|null $components les recettes utilisées (ADR 0040) ; absent ou vide : aucune
+     * @throws RecipeException le nombre de personnes est hors de 1 à 100, il y a plus de lignes que `MAX_ROWS`, ou les composants sont refusés
+     *                         (voir `setComponents`)
      * @throws IngredientException un ingrédient n'est pas à l'auteur
      */
     public static function create(
@@ -352,6 +492,7 @@ final class Recipe implements ModelInterface
         Tab     $rows,
         ?string $originalId,
         bool    $secret = false,
+        ?Tab    $components = null,
     ): self {
         self::assertServing($servings);
         self::assertRowCount($rows->count());
@@ -359,6 +500,9 @@ final class Recipe implements ModelInterface
         $recipe = new self($id, $name, $servings, $authorId, $recipeType, $rows, $originalId, secret: $secret);
         foreach ($rows as $row) {
             $recipe->assertIngredientIsAvailable($row->getIngredient());
+        }
+        if ($components !== null) {
+            $recipe->setComponents($components);
         }
 
         return $recipe;

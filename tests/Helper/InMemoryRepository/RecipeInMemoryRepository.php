@@ -31,6 +31,74 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
         return $this->models[$id] ?? throw RecipeException::notFound($id);
     }
 
+    /**
+     * Comme le vrai dépôt : un modèle SANS ses composants (les arêtes ne sont pas lues, `hasComponents()` dit pourtant s'il en a), dans l'ordre
+     * demandé, un identifiant inconnu absent.
+     */
+    public function findByIds(array $ids): array
+    {
+        $recipes = [];
+        foreach (array_values(array_unique($ids)) as $id) {
+            $recipe = $this->models[$id] ?? null;
+            if ($recipe instanceof Recipe) {
+                $recipes[$id] = Recipe::load([
+                    'id' => $recipe->getId(),
+                    'name' => $recipe->getName(),
+                    'serving' => $recipe->getServing(),
+                    'author_id' => $recipe->getAuthorId(),
+                    'type' => $recipe->getType(),
+                    'rows' => $recipe->getRows(),
+                    'original_id' => $recipe->getOriginalId(),
+                    'version' => $recipe->getVersion(),
+                    'secret' => $recipe->isSecret(),
+                    'favorite' => $recipe->isFavorite(),
+                    'marmiton_id' => $recipe->getMarmitonId(),
+                    'source_url' => $recipe->getSourceUrl(),
+                    'components' => null,
+                    'component_count' => $recipe->getComponentCount(),
+                ]);
+            }
+        }
+
+        return $recipes;
+    }
+
+    public function isUsedAsComponent(string $recipeId): bool
+    {
+        /** @var Recipe $recipe */
+        foreach ($this->models as $recipe) {
+            if (in_array($recipeId, $recipe->componentIds(), true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function isUsedByOrdinaryRecipe(string $recipeId): bool
+    {
+        /** @var Recipe $recipe */
+        foreach ($this->models as $recipe) {
+            if (!$recipe->isSecret() && in_array($recipeId, $recipe->componentIds(), true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function hasSecretComponent(string $recipeId): bool
+    {
+        $recipe = $this->models[$recipeId] ?? null;
+        foreach ($recipe?->componentIds() ?? [] as $componentId) {
+            if (($this->models[$componentId] ?? null)?->isSecret() === true) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function findByAuthor(string $authorId): Tab
     {
         return $this->models->filter(fn(Recipe $recipe) => $recipe->getAuthorId() === $authorId);

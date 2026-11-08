@@ -55,6 +55,12 @@ class Recipe
     #[ORM\Column(name: 'source_url', type: 'string', length: 255, nullable: true)]
     private ?string $sourceUrl = null;
 
+    // Nombre de recettes que la recette utilise (ADR 0040 décision 4), lu avec la recette : les arêtes (`recipe_component`) ne sont lues que s'il est
+    // supérieur à zéro. Écrit par le seul dépôt, quand les composants du modèle ont été posés (`updateFromModel` n'y touche jamais) ; 0 pour toute ligne
+    // écrite par le code précédent
+    #[ORM\Column(name: 'component_count', type: 'integer', options: ['default' => 0])]
+    private int $componentCount = 0;
+
     public function __construct(
         ?string $id,
         ?string $name,
@@ -66,6 +72,7 @@ class Recipe
         bool    $favorite = false,
         ?string $marmitonId = null,
         ?string $sourceUrl = null,
+        int     $componentCount = 0,
     ) {
         $this->id = $id;
         $this->name = $name;
@@ -78,6 +85,7 @@ class Recipe
         $this->favorite = $favorite;
         $this->marmitonId = $marmitonId;
         $this->sourceUrl = $sourceUrl;
+        $this->componentCount = $componentCount;
     }
 
     public function getId(): ?string
@@ -190,6 +198,18 @@ class Recipe
         return $this->sourceUrl;
     }
 
+    public function getComponentCount(): int
+    {
+        return $this->componentCount;
+    }
+
+    public function setComponentCount(int $componentCount): static
+    {
+        $this->componentCount = $componentCount;
+
+        return $this;
+    }
+
     public function getOriginalId(): ?string
     {
         return $this->originalId;
@@ -214,6 +234,8 @@ class Recipe
             favorite: $recipe->isFavorite(),
             marmitonId: $recipe->getMarmitonId(),
             sourceUrl: $recipe->getSourceUrl(),
+            // Une recette neuve écrit les composants qu'elle porte (aucune arête n'existe encore) : le dépôt les écrit avec elle
+            componentCount: $recipe->getComponents()->count(),
         );
     }
 

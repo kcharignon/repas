@@ -3,6 +3,7 @@
 namespace Repas\Tests\Helper\Builder\DTO;
 
 
+use Repas\Repas\Application\Query\GetRecipe\RecipeComponentDTO;
 use Repas\Repas\Application\Query\GetRecipe\RecipeDTO;
 use Repas\Repas\Application\Query\GetRecipe\RecipeRowDTO;
 use Repas\Tests\Helper\Builder\Builder;
@@ -16,6 +17,8 @@ class RecipeDTOBuilder implements Builder
     private string $typeName = 'plat';
     /** @var list<RecipeRowDTO> */
     private array $rows = [];
+    /** @var list<RecipeComponentDTO> */
+    private array $components = [];
     private int $version = 1;
     private bool $secret = false;
     private bool $favorite = false;
@@ -99,8 +102,14 @@ class RecipeDTOBuilder implements Builder
         return $this;
     }
 
+    public function withComponent(RecipeComponentDTO $component): self
+    {
+        $this->components[] = $component;
+        return $this;
+    }
+
     public function build(): RecipeDTO
     {
-        return new RecipeDTO($this->id, $this->name, $this->serving, $this->typeSlug, $this->typeName, $this->secret, $this->favorite, $this->rows, $this->version, $this->sourceUrl, $this->originalId, $this->canEdit, $this->ownerless, $this->copyId);
+        return new RecipeDTO($this->id, $this->name, $this->serving, $this->typeSlug, $this->typeName, $this->secret, $this->favorite, $this->rows, $this->components, $this->version, $this->sourceUrl, $this->originalId, $this->canEdit, $this->ownerless, $this->copyId);
     }
 }

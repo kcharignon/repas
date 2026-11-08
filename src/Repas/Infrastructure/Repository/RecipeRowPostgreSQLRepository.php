@@ -43,6 +43,32 @@ readonly class RecipeRowPostgreSQLRepository extends PostgreSQLRepository
     }
 
     /**
+     * Les lignes de plusieurs recettes EN LOT : une requête pour les lignes et une pour leurs unités, quel que soit le nombre de recettes (les
+     * ingrédients sont ceux que l'appelant a préchargés). Chaque recette a son rang de lignes, dans l'ordre de sa saisie ; une recette sans ligne
+     * a une collection vide.
+     *
+     * @param list<string> $recipeIds
+     * @return array<string, Tab<RecipeRowModel>>
+     */
+    public function findByRecipeIds(array $recipeIds): array
+    {
+        $recipeRows = $recipeIds === [] ? [] : $this->entityRepository->findBy(['recipeId' => $recipeIds], ['position' => 'ASC']);
+
+        $unitSlugs = Tab::newEmptyTyped('string');
+        foreach ($recipeRows as $recipeRow) {
+            $unitSlugs[] = $recipeRow->getUnitSlug();
+        }
+        $this->unitRepository->findBySlugs($unitSlugs);
+
+        $byRecipe = array_fill_keys($recipeIds, []);
+        foreach ($recipeRows as $recipeRow) {
+            $byRecipe[$recipeRow->getRecipeId()][] = $this->convertEntityToModel($recipeRow);
+        }
+
+        return array_map(static fn(array $models): Tab => new Tab($models, RecipeRowModel::class), $byRecipe);
+    }
+
+    /**
      * Enregistre les lignes d'une recette dans l'ordre reçu (le rang est la position). Les lignes déjà connues sont
      * lues en une requête (au lieu d'une par ligne), toutes sont écrites par un seul `flush`.
      *

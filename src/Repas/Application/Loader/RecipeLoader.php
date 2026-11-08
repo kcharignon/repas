@@ -15,6 +15,9 @@ interface RecipeLoader
      * Recette avec ses ingrédients, dans l'ordre de la recette (colonne `position`), telle que cet utilisateur la lit. Une recette secrète
      * n'est lue que par son auteur (ADR 0033) : pour tout autre, administrateur compris, elle est introuvable, comme une recette inconnue.
      *
+     * Les recettes qu'elle UTILISE (ADR 0040) sont dans `components`, clé toujours écrite (`[]` sans composant) : dans l'ordre de leur position, chacune
+     * avec ses lignes TELLES QU'ELLES SONT ÉCRITES ; `rows` reste les seules lignes propres. Une recette utilisée supprimée, ou secrète d'un autre, est omise.
+     *
      * `canEdit` : l'utilisateur modifie cette recette (la sienne ; toute recette lisible pour un administrateur, y compris une recette SANS
      * PROPRIÉTAIRE, la neutre d'une recette Marmiton, qu'un administrateur seul modifie), calculé sans requête de plus. `originalId` : la
      * recette dont celle-ci est la copie, si elle existe encore et que l'utilisateur la voit (`null` sinon).

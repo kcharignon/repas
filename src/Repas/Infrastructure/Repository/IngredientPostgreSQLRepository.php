@@ -265,6 +265,35 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
     }
 
     /**
+     * `preloadByRecipe` pour plusieurs recettes EN LOT (`RecipeRepository::findByIds`, ADR 0040) : les ingrédients de toutes leurs lignes, avec
+     * leurs rayons et leurs unités, sont lus en une requête chacun, quel que soit le nombre de recettes.
+     *
+     * @param list<string> $recipeIds
+     */
+    public function preloadByRecipes(array $recipeIds): void
+    {
+        if ($recipeIds === []) {
+            return;
+        }
+
+        /** @var Tab<IngredientEntity> $ingredientEntities */
+        $ingredientEntities = new Tab(
+            // Une sous-requête NON corrélée plutôt qu'une jointure : un ingrédient utilisé par plusieurs lignes n'est lu qu'une fois (et `DISTINCT`
+            // ne s'applique pas à la colonne JSON des unités compatibles)
+            $this->entityManager->createQueryBuilder()
+                ->select('i')
+                ->from(IngredientEntity::class, 'i')
+                ->where('i.slug IN (SELECT rr.ingredientSlug FROM ' . RecipeRow::class . ' rr WHERE rr.recipeId IN (:recipeIds))')
+                ->setParameter('recipeIds', array_values($recipeIds))
+                ->getQuery()
+                ->getResult(),
+            type: IngredientEntity::class
+        );
+
+        $this->preloadReferences($ingredientEntities);
+    }
+
+    /**
      * Charge les rayons et les unités (d'achat, de cuisson, compatibles) des ingrédients en une requête chacun.
      *
      * @param Tab<IngredientEntity> $ingredientEntities

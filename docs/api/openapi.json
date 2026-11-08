@@ -7024,6 +7024,58 @@
                 },
                 "type": "object"
             },
+            "RecipeComponentDTO": {
+                "required": [
+                    "recipeId",
+                    "name",
+                    "serving",
+                    "multiplier",
+                    "secret",
+                    "convertible",
+                    "rows"
+                ],
+                "properties": {
+                    "recipeId": {
+                        "description": "Identifiant de la recette utilis\u00e9e",
+                        "type": "string",
+                        "example": "3f1c2a7e-8d41-4c62-9b0a-5e7d2f6a1b34"
+                    },
+                    "name": {
+                        "description": "Nom de la recette utilis\u00e9e",
+                        "type": "string",
+                        "example": "P\u00e2te sabl\u00e9e"
+                    },
+                    "serving": {
+                        "description": "Nombre de personnes de la recette utilis\u00e9e, pour lequel ses lignes sont \u00e9crites. Ne sert qu'\u00e0 l'affichage : le multiplicateur ne d\u00e9pend pas de lui",
+                        "type": "integer",
+                        "example": 6
+                    },
+                    "multiplier": {
+                        "description": "Combien de fois la recette utilis\u00e9e, TELLE QU'ELLE EST \u00c9CRITE (de 0,01 \u00e0 100). Une p\u00e2te \u00e9crite pour 6 avec 250 g de farine, utilis\u00e9e 2 fois, apporte 500 g de farine \u00e0 la recette lue pour son nombre de personnes ; le nombre de personnes de la recette lue met le tout \u00e0 l'\u00e9chelle",
+                        "type": "number",
+                        "format": "float",
+                        "example": 2
+                    },
+                    "secret": {
+                        "description": "La recette utilis\u00e9e est secr\u00e8te. Toujours \u00e9crit ; une recette ordinaire n'utilise que des recettes ordinaires, donc faux pour la recette d'un autre",
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "convertible": {
+                        "description": "Toutes les lignes de la recette utilis\u00e9e se convertissent en l'unit\u00e9 d'achat de leur ingr\u00e9dient (comme `convertible` d'une ligne) ; faux : la recette lue ne peut pas \u00eatre planifi\u00e9e tant qu'une conversion manque",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "rows": {
+                        "description": "Les lignes de la recette utilis\u00e9e, dans l'ordre de cette recette, TELLES QU'ELLES SONT \u00c9CRITES (pour son nombre de personnes, jamais multipli\u00e9es par le multiplicateur)",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RecipeRowDTO"
+                        }
+                    }
+                },
+                "type": "object"
+            },
             "RecipeDTO": {
                 "required": [
                     "id",
@@ -7034,6 +7086,7 @@
                     "secret",
                     "favorite",
                     "rows",
+                    "components",
                     "version",
                     "canEdit",
                     "ownerless"
@@ -7077,6 +7130,13 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/RecipeRowDTO"
+                        }
+                    },
+                    "components": {
+                        "description": "Les recettes que cette recette UTILISE (ADR 0040 : \u00ab P\u00e2te sabl\u00e9e, 2 fois \u00bb), dans l'ordre de leur position, chacune avec ses lignes telles qu'elles sont \u00e9crites. `[]` pour une recette sans composant. Toujours \u00e9crit, y compris pour la recette d'un autre (son d\u00e9tail avant de la copier). `rows` reste les seules lignes PROPRES de la recette : jamais aplaties, car un client qui les renvoie au `PUT` les dupliquerait. Une recette utilis\u00e9e supprim\u00e9e ou illisible pour le lecteur est absente de la liste",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RecipeComponentDTO"
                         }
                     },
                     "version": {

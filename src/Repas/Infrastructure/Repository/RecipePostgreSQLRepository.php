@@ -9,10 +9,13 @@ use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Model\Recipe;
+use Repas\Repas\Domain\Model\RecipeComponent;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\RecipeType;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
+use Repas\Repas\Infrastructure\Entity\RecipeComponent as RecipeComponentEntity;
 use Repas\Repas\Infrastructure\Entity\RecipeRow as RecipeRowEntity;
+use Repas\Repas\Infrastructure\Entity\RecipeType as RecipeTypeEntity;
 use Repas\Shared\Domain\Tool\Tab;
 
 readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implements RecipeRepository
@@ -22,6 +25,7 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
         private RecipeTypeRepository $recipeTypeRepository,
         private RecipeRowPostgreSQLRepository $recipeRowRepository,
         private IngredientPostgreSQLRepository $ingredientRepository,
+        private RecipeComponentPostgreSQLRepository $recipeComponentRepository,
     ) {
         parent::__construct($managerRegistry, RecipeEntity::class);
     }
@@ -36,6 +40,42 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
         }
 
         throw RecipeException::notFound($id);
+    }
+
+    public function findByIds(array $ids): array
+    {
+        $ids = array_values(array_unique($ids));
+        if ($ids === []) {
+            return [];
+        }
+
+        // Les recettes en une requête ; un identifiant inconnu n'y est pas et n'est pas dans le résultat
+        $entities = $this->entityRepository->findBy(['id' => $ids]);
+        if ($entities === []) {
+            return [];
+        }
+
+        // Les ingrédients (avec rayons et unités), les types et les lignes (avec leurs unités) de TOUTES les recettes : une lecture chacun, puis
+        // les lectures unitaires qui suivent viennent de l'identity map
+        $foundIds = array_map(static fn(RecipeEntity $entity): string => $entity->getId(), $entities);
+        $this->ingredientRepository->preloadByRecipes($foundIds);
+        $this->entityManager->getRepository(RecipeTypeEntity::class)->findBy(['slug' => array_values(array_unique(array_map(static fn(RecipeEntity $entity): string => $entity->getTypeSlug(), $entities)))]);
+        $rows = $this->recipeRowRepository->findByRecipeIds($foundIds);
+
+        $byId = [];
+        foreach ($entities as $entity) {
+            $byId[$entity->getId()] = $entity;
+        }
+
+        // Dans l'ordre demandé ; sans leurs arêtes (la profondeur est 1), mais `component_count` dit que la recette en a
+        $recipes = [];
+        foreach ($ids as $id) {
+            if (isset($byId[$id])) {
+                $recipes[$id] = $this->toModel($byId[$id], $rows[$id], components: null);
+            }
+        }
+
+        return $recipes;
     }
 
     public function findByAuthor(string $authorId): Tab
@@ -59,6 +99,8 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
         if ($recipeEntity === null) {
             $recipeEntity = RecipeEntity::fromModel($recipe);
             $this->entityManager->persist($recipeEntity);
+            // Une recette neuve n'a encore aucune arête : elle écrit celles qu'elle porte
+            $writeComponents = !$recipe->getComponents()->empty();
         } else {
             // Avant toute écriture : si la recette a changé depuis sa lecture, rien n'est enregistré
             if (!$this->bumpVersion($recipeEntity->getId(), $recipeEntity->getVersion())) {
@@ -71,9 +113,18 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
                 $recipeEntity->getId(),
                 $recipe->getRows()->map(fn(RecipeRow $item) => $item->getId())
             );
+            // Les composants (ADR 0040 décision 25) : écrits SEULEMENT si le modèle les a posés. Un modèle chargé puis enregistré sans y toucher ne
+            // les lit ni ne les efface, et `component_count` n'est pas réécrit
+            $writeComponents = $recipe->areComponentsChanged();
+            if ($writeComponents) {
+                $recipeEntity->setComponentCount($recipe->getComponents()->count());
+            }
         }
         // Ajoute les nouvelles lignes ou modifie les lignes existantes
         $this->recipeRowRepository->saveAll($recipe->getRows());
+        if ($writeComponents) {
+            $this->recipeComponentRepository->replace($recipe->getId(), $recipe->getComponents());
+        }
 
         $this->entityManager->flush();
     }
@@ -117,19 +168,36 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
     {
         $this->ingredientRepository->preloadByRecipe($entity->getId());
 
+        // Les arêtes ne sont lues que si la recette en a (`component_count`, lu avec la recette) : zéro composant, aucune requête de plus
+        return $this->toModel(
+            $entity,
+            $this->recipeRowRepository->findByRecipeId($entity->getId()),
+            $entity->getComponentCount() > 0 ? $this->recipeComponentRepository->findByRecipeId($entity->getId()) : null,
+        );
+    }
+
+    /**
+     * @param Tab<RecipeRow> $rows
+     * @param Tab<RecipeComponent>|null $components `null` : les arêtes ne sont pas lues, la recette sait pourtant combien elle en a
+     */
+    private function toModel(RecipeEntity $entity, Tab $rows, ?Tab $components): Recipe
+    {
         return Recipe::load([
             'id' => $entity->getId(),
             'name' => $entity->getName(),
             'serving' => $entity->getServing(),
             'author_id' => $entity->getAuthorId(),
             'type' => $this->recipeTypeRepository->findOneBySlug($entity->getTypeSlug()),
-            'rows' => $this->recipeRowRepository->findByRecipeId($entity->getId()),
+            'rows' => $rows,
             'original_id' => $entity->getOriginalId(),
             'version' => $entity->getVersion(),
             'secret' => $entity->isSecret(),
             'favorite' => $entity->isFavorite(),
             'marmiton_id' => $entity->getMarmitonId(),
             'source_url' => $entity->getSourceUrl(),
+            'components' => $components,
+            // Les arêtes lues font foi ; sinon le compte de la ligne de la recette
+            'component_count' => $components?->count() ?? $entity->getComponentCount(),
         ]);
     }
 
@@ -140,6 +208,49 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
             ->from(RecipeRowEntity::class, 'rr')
             ->where('rr.ingredientSlug = :ingredient')
             ->setParameter('ingredient', $ingredientSlug)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult() !== null;
+    }
+
+    public function isUsedAsComponent(string $recipeId): bool
+    {
+        // Sur l'index des recettes utilisées : une ligne lue au plus
+        return $this->entityManager->createQueryBuilder()
+            ->select('rc.id')
+            ->from(RecipeComponentEntity::class, 'rc')
+            ->where('rc.componentId = :recipe')
+            ->setParameter('recipe', $recipeId)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult() !== null;
+    }
+
+    public function isUsedByOrdinaryRecipe(string $recipeId): bool
+    {
+        // L'arête jointe à la recette composée, ordinaire : une ligne lue au plus. Une arête dont la recette composée n'existe plus ne compte pas
+        return $this->entityManager->createQueryBuilder()
+            ->select('rc.id')
+            ->from(RecipeComponentEntity::class, 'rc')
+            ->innerJoin(RecipeEntity::class, 'parent', 'WITH', 'parent.id = rc.recipeId')
+            ->where('rc.componentId = :recipe')
+            ->andWhere('parent.secret = false')
+            ->setParameter('recipe', $recipeId)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult() !== null;
+    }
+
+    public function hasSecretComponent(string $recipeId): bool
+    {
+        // L'arête jointe à la recette utilisée, secrète : une ligne lue au plus, sur l'index unique `(recipe, component)`
+        return $this->entityManager->createQueryBuilder()
+            ->select('rc.id')
+            ->from(RecipeComponentEntity::class, 'rc')
+            ->innerJoin(RecipeEntity::class, 'used', 'WITH', 'used.id = rc.componentId')
+            ->where('rc.recipeId = :recipe')
+            ->andWhere('used.secret = true')
+            ->setParameter('recipe', $recipeId)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult() !== null;
@@ -173,6 +284,10 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
         }
 
         $this->recipeRowRepository->deleteByRecipeId($recipe->getId());
+        // Ses arêtes (la recette composée) partent avec elle, jamais les recettes qu'elle utilisait ; une instruction, seulement si elle en a
+        if ($recipe->hasComponents()) {
+            $this->recipeComponentRepository->deleteByRecipeId($recipe->getId());
+        }
     }
 
     public function authorHasAtLeast(string $authorId, int $count): bool
@@ -221,12 +336,16 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
 
     public function deleteByAuthor(string $authorId): void
     {
-        $this->entityManager->createQueryBuilder()
-            ->delete(RecipeRowEntity::class, 'rw')
-            ->where('rw.recipeId IN (SELECT r.id FROM ' . RecipeEntity::class . ' r WHERE r.authorId = :author)')
-            ->setParameter('author', $authorId)
-            ->getQuery()
-            ->execute();
+        // Les lignes ET les arêtes de composants de ses recettes (ADR 0040 décision 37), AVANT les recettes, en UNE instruction : un `WITH` qui
+        // efface les arêtes sans que la requête principale les lise (PostgreSQL l'exécute toujours, jusqu'au bout). Un seul aller-retour, comme
+        // avant la table des composants : la suppression d'un compte ne coûte pas une requête de plus. Les arêtes n'ont aucune colonne
+        // `owner|author|creator|user` (`UserOwnedDataCoverageTest` ne les voit pas) : cette instruction est leur purge
+        $this->entityManager->getConnection()->executeStatement(
+            'WITH mine AS (SELECT id FROM recipe WHERE author = :author), '
+            . 'edges AS (DELETE FROM recipe_component WHERE recipe IN (SELECT id FROM mine)) '
+            . 'DELETE FROM recipe_row WHERE recipe IN (SELECT id FROM mine)',
+            ['author' => $authorId],
+        );
 
         $this->entityManager->createQueryBuilder()
             ->delete(RecipeEntity::class, 'r')

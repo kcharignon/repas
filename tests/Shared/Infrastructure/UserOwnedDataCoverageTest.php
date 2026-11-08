@@ -12,6 +12,7 @@ use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\IngredientAlias;
 use Repas\Repas\Infrastructure\Entity\IngredientDistinct;
 use Repas\Repas\Infrastructure\Entity\Recipe;
+use Repas\Repas\Infrastructure\Entity\RecipeComponent;
 use Repas\Repas\Infrastructure\Entity\ShoppingList;
 use Repas\Repas\Infrastructure\Entity\ShoppingListType;
 use Repas\Repas\Infrastructure\Entity\SpokenPhraseChoice;
@@ -79,6 +80,20 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
         $this->assertSame(['parentRatio' => [Ingredient::class], 'parentSlug' => [Ingredient::class], 'partShares' => [ShoppingList::class]], $holders);
         $this->assertArrayHasKey(Ingredient::class, self::ERASED_WITH_THE_USER);
         $this->assertArrayHasKey(ShoppingList::class, self::ERASED_WITH_THE_USER);
+    }
+
+    public function testTheComponentsOfARecipeAreATableWithoutAUserColumnErasedWithTheRecipesOfTheirAuthor(): void
+    {
+        // Given : les arêtes « cette recette en utilise une autre » (ADR 0040 décision 37) désignent deux RECETTES, jamais un utilisateur
+        $metadata = $this->entityManager->getClassMetadata(RecipeComponent::class);
+
+        // Then : aucune colonne `owner|author|creator|user`, donc rien à ajouter à la liste ci-dessus ; leur purge est celle des recettes de l'auteur
+        // (`RecipePostgreSQLRepository::deleteByAuthor`, prouvée dans `RecipeRepositoryTest` et `UserDataPurgeRepositoryTest`), qui efface la
+        // table AVANT les recettes
+        $this->assertSame(['id', 'recipeId', 'componentId', 'multiplier', 'position'], $metadata->getFieldNames());
+        $this->assertSame([], array_filter($metadata->getFieldNames(), static fn(string $field): bool => preg_match('/^(owner|author|creator|user)(Id)?$/i', $field) === 1));
+        $this->assertArrayNotHasKey(RecipeComponent::class, self::ERASED_WITH_THE_USER);
+        $this->assertArrayHasKey(Recipe::class, self::ERASED_WITH_THE_USER);
     }
 
     public function testEveryColumnThatPointsToAUserIsErasedWithHim(): void

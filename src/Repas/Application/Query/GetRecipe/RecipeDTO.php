@@ -9,6 +9,7 @@ final readonly class RecipeDTO
 {
     /**
      * @param list<RecipeRowDTO> $rows
+     * @param list<RecipeComponentDTO> $components
      */
     public function __construct(
         #[OA\Property(description: 'Identifiant de la recette', example: '3f1c2a7e-8d41-4c62-9b0a-5e7d2f6a1b34')]
@@ -27,6 +28,8 @@ final readonly class RecipeDTO
         public bool $favorite,
         #[OA\Property(description: 'Ingrédients de la recette, dans l\'ordre de la recette (celui de la saisie)', type: 'array', items: new OA\Items(ref: new Model(type: RecipeRowDTO::class)))]
         public array $rows,
+        #[OA\Property(description: "Les recettes que cette recette UTILISE (ADR 0040 : « Pâte sablée, 2 fois »), dans l'ordre de leur position, chacune avec ses lignes telles qu'elles sont écrites. `[]` pour une recette sans composant. Toujours écrit, y compris pour la recette d'un autre (son détail avant de la copier). `rows` reste les seules lignes PROPRES de la recette : jamais aplaties, car un client qui les renvoie au `PUT` les dupliquerait. Une recette utilisée supprimée ou illisible pour le lecteur est absente de la liste", type: 'array', items: new OA\Items(ref: new Model(type: RecipeComponentDTO::class)))]
+        public array $components,
         #[OA\Property(description: 'Version de la recette, aussi renvoyée dans l\'en-tête `ETag` : à renvoyer dans `If-Match` pour modifier ou supprimer sans écraser le travail d\'un autre', example: 3)]
         public int $version,
         #[OA\Property(description: "L'adresse de la page Marmiton dont la recette vient (ADR 0037 décision 10), reprise par chacune de ses copies, copies de copies comprises ; `null` pour toute autre recette. Toujours écrit. Le front en fait un bouton « Voir sur Marmiton » (texte et icône de lien externe, ouvert dans un nouvel onglet avec `rel=\"noopener noreferrer\"`) seulement pour une adresse de la forme `https://www.marmiton.org/recettes/recette_{nom}_{id}.aspx`. Jamais écrite par un corps de requête", nullable: true, example: 'https://www.marmiton.org/recettes/recette_tarte-au-citron-meringuee_22082.aspx')]

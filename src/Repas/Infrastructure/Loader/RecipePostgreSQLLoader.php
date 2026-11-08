@@ -6,6 +6,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
 use Repas\Repas\Application\Loader\RecipeLoader;
+use Repas\Repas\Application\Query\GetRecipe\RecipeComponentDTO;
 use Repas\Repas\Application\Query\GetRecipe\RecipeDTO;
 use Repas\Repas\Application\Query\GetRecipe\RecipeRowDTO;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipeDTO;
@@ -21,6 +22,7 @@ use Repas\Repas\Infrastructure\Conversion\IngredientConversionGraphs;
 use Repas\Repas\Infrastructure\Entity\Department;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Recipe;
+use Repas\Repas\Infrastructure\Entity\RecipeComponent;
 use Repas\Repas\Infrastructure\Entity\RecipeRow;
 use Repas\Repas\Infrastructure\Entity\RecipeType;
 use Repas\Repas\Infrastructure\Entity\Unit;
@@ -42,6 +44,10 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
      * au graphe pur de `ConversionService`, qui donne la même réponse que la planification. La recette d'un autre utilisateur se lit de la même
      * façon, sur les ingrédients de son auteur : on n'en apprend rien de plus que ce booléen et l'unité d'achat, une donnée publique.
      *
+     * Les composants (ADR 0040 décision 20) : sans composant, ces trois requêtes et rien de plus ; avec, UNE de plus (les arêtes jointes à la recette
+     * utilisée), les lignes de toutes les recettes dans l'instruction qui lit déjà les lignes et le graphe de tous les ingrédients dans la même lecture.
+     * `convertible` d'un composant : toutes les lignes de la recette utilisée se convertissent.
+     *
      * Une recette secrète n'est lue que par son auteur (ADR 0033) : la condition est dans la requête même, avant toute lecture des lignes. Pour
      * tout autre, administrateur compris, la requête ne rend rien et la réponse est celle d'une recette inconnue (`404`, jamais `403` : on ne
      * révèle pas qu'elle existe).
@@ -49,7 +55,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
     public function get(string $id, string $userId, bool $isAdministrator = false): RecipeDTO
     {
         $recipe = $this->entityManager->createQueryBuilder()
-            ->select('r.id AS id', 'r.name AS name', 'r.serving AS serving', 't.slug AS typeSlug', 't.name AS typeName', 'r.version AS version', 'r.secret AS secret', 'r.favorite AS favorite', 'r.authorId AS authorId', 'r.sourceUrl AS sourceUrl', 'o.id AS originalId', 'k.id AS copyId')
+            ->select('r.id AS id', 'r.name AS name', 'r.serving AS serving', 't.slug AS typeSlug', 't.name AS typeName', 'r.version AS version', 'r.secret AS secret', 'r.favorite AS favorite', 'r.authorId AS authorId', 'r.sourceUrl AS sourceUrl', 'r.componentCount AS componentCount', 'o.id AS originalId', 'k.id AS copyId')
             ->from(Recipe::class, 'r')
             ->innerJoin(RecipeType::class, 't', Join::WITH, 't.slug = r.typeSlug')
             // L'original, dans la même instruction : seulement s'il existe encore et que le lecteur le voit (jamais l'identifiant d'une recette supprimée ou secrète)
@@ -68,9 +74,96 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
             throw RecipeException::notFound($id);
         }
 
+        // Les composants (ADR 0040 décision 20) : sans composant (`component_count`, lu avec la recette), pas une requête de plus. Avec, UNE requête
+        // pour toutes les arêtes jointes à la recette utilisée, quel que soit leur nombre. Une recette utilisée supprimée (aucune clé étrangère) ou
+        // que le lecteur ne voit pas (secrète d'un autre) est ignorée, jamais une erreur (décision 21)
+        $components = (int) $recipe['componentCount'] > 0 ? $this->components($id, $userId) : [];
+
+        // Les lignes de la recette ET celles de ses recettes utilisées dans la même instruction (`IN`), rangées par recette ensuite ; le graphe des
+        // conversions se lit sur l'union des ingrédients, toujours en une lecture
+        $rowsByRecipe = $this->rowsOf([$id, ...array_column($components, 'recipeId')]);
+        $slugs = [];
+        foreach ($rowsByRecipe as $rows) {
+            array_push($slugs, ...array_column($rows, 'ingredientSlug'));
+        }
+
+        // Le même graphe que la planification et que le rapport de santé des conversions (`repas:conversions:check`)
+        $graphs = new IngredientConversionGraphs($this->entityManager->getConnection())->forIngredients(array_values(array_unique($slugs)));
+        $toRowDto = static fn(array $row): RecipeRowDTO => new RecipeRowDTO(
+            $row['ingredientSlug'], $row['ingredientName'], $row['ingredientImage'], (float) $row['quantity'], $row['unitSlug'], $row['unitSymbol'],
+            $row['unitName'], $row['purchaseUnitSlug'], $row['purchaseUnitName'],
+            $graphs[$row['ingredientSlug']]->connects($row['unitSlug'], $row['purchaseUnitSlug']),
+            $row['departmentSlug'], $row['departmentName'], $row['partOfName'],
+        );
+
+        return new RecipeDTO(
+            id: $recipe['id'],
+            name: $recipe['name'],
+            serving: (int) $recipe['serving'],
+            typeSlug: $recipe['typeSlug'],
+            typeName: $recipe['typeName'],
+            secret: (bool) $recipe['secret'],
+            // Le choix de l'auteur : la recette ordinaire d'un autre n'est jamais « favorite » pour qui la lit
+            favorite: (bool) $recipe['favorite'] && $recipe['authorId'] === $userId,
+            rows: array_map($toRowDto, $rowsByRecipe[$id] ?? []),
+            components: array_map(
+                static function (array $component) use ($rowsByRecipe, $toRowDto): RecipeComponentDTO {
+                    $rows = array_map($toRowDto, $rowsByRecipe[$component['recipeId']] ?? []);
+
+                    return new RecipeComponentDTO(
+                        $component['recipeId'], $component['name'], (int) $component['serving'], (float) $component['multiplier'], (bool) $component['secret'],
+                        // Toutes ses lignes : une seule qui ne se convertit pas empêche de planifier la recette qui l'utilise
+                        !in_array(false, array_map(static fn(RecipeRowDTO $row): bool => $row->convertible, $rows), true),
+                        $rows,
+                    );
+                },
+                $components,
+            ),
+            version: (int) $recipe['version'],
+            sourceUrl: $recipe['sourceUrl'],
+            originalId: $recipe['originalId'],
+            // La sienne ; pour un administrateur, toute recette qu'il lit (le droit `RECIPE_OWNER` : une recette sans propriétaire n'est modifiée que par lui)
+            canEdit: $isAdministrator || $recipe['authorId'] === $userId,
+            ownerless: $recipe['authorId'] === DomainRecipe::MARMITON_OWNER_ID,
+            // Pour une recette ordinaire la jointure ne trouve rien : toujours `null`
+            copyId: $recipe['copyId'],
+        );
+    }
+
+    /**
+     * Les recettes que la recette lue utilise, dans l'ordre de leurs positions : UNE requête (l'arête jointe à la recette utilisée), jamais une par
+     * composant. La jointure est interne : une arête dont la recette utilisée n'existe plus, ou que le lecteur ne voit pas (secrète d'un autre -
+     * une recette ordinaire n'en a pas, mais l'état d'une base ancienne ne doit jamais la montrer), n'est pas lue.
+     *
+     * @return list<array{recipeId: string, name: string, serving: int|string, multiplier: float|string, secret: bool}>
+     */
+    private function components(string $recipeId, string $userId): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('rc.componentId AS recipeId', 'c.name AS name', 'c.serving AS serving', 'rc.multiplier AS multiplier', 'c.secret AS secret')
+            ->from(RecipeComponent::class, 'rc')
+            ->innerJoin(Recipe::class, 'c', Join::WITH, 'c.id = rc.componentId AND (c.secret = false OR c.authorId = :userId)')
+            ->where('rc.recipeId = :id')
+            ->setParameter('id', $recipeId)
+            ->setParameter('userId', $userId)
+            ->orderBy('rc.position', 'ASC')
+            ->addOrderBy('rc.id', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+    }
+
+    /**
+     * Les lignes de ces recettes en UNE requête, rangées par recette et, pour chacune, dans l'ordre de la recette (colonne `position`, écrite
+     * dans l'ordre de la saisie à chaque enregistrement).
+     *
+     * @param list<string> $recipeIds
+     * @return array<string, list<array<string, mixed>>>
+     */
+    private function rowsOf(array $recipeIds): array
+    {
         $rows = $this->entityManager->createQueryBuilder()
             ->select(
-                'i.slug AS ingredientSlug', 'i.name AS ingredientName', 'i.image AS ingredientImage',
+                'rr.recipeId AS recipeId', 'i.slug AS ingredientSlug', 'i.name AS ingredientName', 'i.image AS ingredientImage',
                 'rr.quantity AS quantity', 'u.slug AS unitSlug', 'u.symbol AS unitSymbol', 'u.name AS unitName',
                 'pu.slug AS purchaseUnitSlug', 'pu.name AS purchaseUnitName',
                 'd.slug AS departmentSlug', 'd.name AS departmentName', 'p.name AS partOfName',
@@ -82,42 +175,18 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
             ->innerJoin(Department::class, 'd', Join::WITH, 'd.slug = i.departmentSlug')
             ->innerJoin(Unit::class, 'u', Join::WITH, 'u.slug = rr.unitSlug')
             ->innerJoin(Unit::class, 'pu', Join::WITH, 'pu.slug = i.defaultPurchaseUnitSlug')
-            ->where('rr.recipeId = :id')
-            ->setParameter('id', $id)
+            ->where('rr.recipeId IN (:ids)')
+            ->setParameter('ids', $recipeIds)
             ->orderBy('rr.position', 'ASC')
             ->getQuery()
             ->getArrayResult();
 
-        // Le même graphe que la planification et que le rapport de santé des conversions (`repas:conversions:check`)
-        $graphs = new IngredientConversionGraphs($this->entityManager->getConnection())->forIngredients(array_values(array_unique(array_column($rows, 'ingredientSlug'))));
+        $byRecipe = [];
+        foreach ($rows as $row) {
+            $byRecipe[$row['recipeId']][] = $row;
+        }
 
-        return new RecipeDTO(
-            id: $recipe['id'],
-            name: $recipe['name'],
-            serving: (int) $recipe['serving'],
-            typeSlug: $recipe['typeSlug'],
-            typeName: $recipe['typeName'],
-            secret: (bool) $recipe['secret'],
-            // Le choix de l'auteur : la recette ordinaire d'un autre n'est jamais « favorite » pour qui la lit
-            favorite: (bool) $recipe['favorite'] && $recipe['authorId'] === $userId,
-            rows: array_map(
-                static fn(array $row): RecipeRowDTO => new RecipeRowDTO(
-                    $row['ingredientSlug'], $row['ingredientName'], $row['ingredientImage'], (float) $row['quantity'], $row['unitSlug'], $row['unitSymbol'],
-                    $row['unitName'], $row['purchaseUnitSlug'], $row['purchaseUnitName'],
-                    $graphs[$row['ingredientSlug']]->connects($row['unitSlug'], $row['purchaseUnitSlug']),
-                    $row['departmentSlug'], $row['departmentName'], $row['partOfName'],
-                ),
-                $rows,
-            ),
-            version: (int) $recipe['version'],
-            sourceUrl: $recipe['sourceUrl'],
-            originalId: $recipe['originalId'],
-            // La sienne ; pour un administrateur, toute recette qu'il lit (le droit `RECIPE_OWNER` : une recette sans propriétaire n'est modifiée que par lui)
-            canEdit: $isAdministrator || $recipe['authorId'] === $userId,
-            ownerless: $recipe['authorId'] === DomainRecipe::MARMITON_OWNER_ID,
-            // Pour une recette ordinaire la jointure ne trouve rien : toujours `null`
-            copyId: $recipe['copyId'],
-        );
+        return $byRecipe;
     }
 
     public function listByAuthorAndType(string $authorId, string $typeSlug): RecipeTypeRecipesDTO
