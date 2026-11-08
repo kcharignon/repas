@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Effort recommandé pour l'agent** : **xhigh** (droits sans passe-droit, règle secrète/ordinaire, verrou, suppression de compte, contrat d'API)
 - **Dépend de** : COMP-001 ; **COMP-004 doit être livré AVANT, ou dans la même release que ce ticket** (règle d'ordre, ADR 0040 décision 32 : sinon l'éditeur crée des composants dont les ingrédients manqueraient dans la liste) ; **un agent à la fois**
-- **Statut** : fait (2026-11-08, PR à venir)
+- **Statut** : fait (2026-11-08, PR #463)
 - **Lire d'abord** : [ADR 0040](../../adr/0040-recettes-utilisees-dans-d-autres-recettes.md) décisions 5 à 10, 22 à 31, 37 ; [ADR 0033](../../adr/0033-recette-secrete.md) ; [ADR 0037](../../adr/0037-copier-une-recette-depuis-marmiton.md) (recette sans propriétaire) ; COMP-001 ; `MarmitonImportLock` et `MarmitonImportPostgreSQLLock` (le modèle du verrou) ; `CLAUDE.md` ; skill `repas-dev` § 3.2 et § 3.3.
 
 ## But
