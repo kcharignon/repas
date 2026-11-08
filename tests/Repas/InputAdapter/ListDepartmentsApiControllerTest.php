@@ -13,7 +13,7 @@ class ListDepartmentsApiControllerTest extends QueryBusWebTestCase
     {
         // Given
         $this->queryBus->willReturn(ListDepartmentsQuery::class, [
-            new DepartmentDTOBuilder()->withSlug('boulangerie')->withName('Boulangerie')->withImage('images/boulangerie.png')->withIcon('snowflake')->withListTypeId('type-1')->buildListItem(),
+            new DepartmentDTOBuilder()->withSlug('boulangerie')->withName('Boulangerie')->withImage('images/boulangerie.png')->withIcon('snowflake')->withListTypeId('type-1')->withIngredientCount(12)->buildListItem(),
             new DepartmentDTOBuilder()->withSlug('fromage')->withName('Fromage')->withImage('images/fromage.png')->buildListItem(),
         ]);
 
@@ -28,8 +28,8 @@ class ListDepartmentsApiControllerTest extends QueryBusWebTestCase
         $this->assertSame($user->getId(), $query->userId);
         $this->assertSame([
             'member' => [
-                ['slug' => 'boulangerie', 'name' => 'Boulangerie', 'image' => 'images/boulangerie.png', 'icon' => 'snowflake', 'listTypeId' => 'type-1'],
-                ['slug' => 'fromage', 'name' => 'Fromage', 'image' => 'images/fromage.png', 'icon' => null, 'listTypeId' => null],
+                ['slug' => 'boulangerie', 'name' => 'Boulangerie', 'image' => 'images/boulangerie.png', 'icon' => 'snowflake', 'listTypeId' => 'type-1', 'ingredientCount' => 12],
+                ['slug' => 'fromage', 'name' => 'Fromage', 'image' => 'images/fromage.png', 'icon' => null, 'listTypeId' => null, 'ingredientCount' => 0],
             ],
             'totalItems' => 2,
         ], $this->jsonBody());

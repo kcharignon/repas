@@ -26,7 +26,7 @@ final class ListDepartmentsApiController extends AbstractController
     #[IsGranted('ROLE_USER')]
     #[OA\Get(
         summary: 'Liste des rayons, triés par slug',
-        description: "Les rayons sont des données globales ; seul `listTypeId` est propre à l'utilisateur connecté : le type de liste de courses auquel il a rattaché le rayon (ADR 0036), `null` pour un rayon sans type.",
+        description: "Les rayons sont des données globales ; seuls `listTypeId` et `ingredientCount` sont propres à l'utilisateur connecté : le type de liste de courses auquel il a rattaché le rayon (ADR 0036), `null` pour un rayon sans type, et le nombre d'ingrédients qu'il a dans le rayon (0 si aucun ; la liste rend toujours tous les rayons).",
     )]
     #[OA\Tag(name: 'Departments')]
     #[OA\Response(
