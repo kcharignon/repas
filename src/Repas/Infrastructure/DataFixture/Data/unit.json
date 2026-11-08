@@ -180,5 +180,12 @@
     "symbol": "botte",
     "dimension": null,
     "baseFactor": null
+  },
+  {
+    "slug": "pincee",
+    "name": "pincée",
+    "symbol": "pincée",
+    "dimension": null,
+    "baseFactor": null
   }
 ]

@@ -4,7 +4,7 @@
 - **Taille** : M
 - **Effort recommandé pour l'agent** : **high**
 - **Dépend de** : — (en parallèle de MAR-001 et MAR-004 : aucun fichier en commun)
-- **Statut** : à faire
+- **Statut** : fait (2026-11-08)
 - **Lire d'abord** : [ADR 0037](../../adr/0037-copier-une-recette-depuis-marmiton.md) décisions 1, 2, 7 ; `src/Repas/Domain/Service/IngredientNameMatcher.php` ; `StringTool` ; `docs/ingredients/rapprochement.md` ; skill `repas-dev`.
 
 ## But
@@ -39,3 +39,9 @@ Transformer les textes de Marmiton en valeurs que Repas comprend, par des **fonc
 - [ ] Aucune expression régulière sujette au retour sur trace catastrophique (test de lignes pathologiques de 10 000 caractères borné en temps).
 - [ ] `make test` et `make quality` verts.
 - [ ] PR vers `main`, description au gabarit, CI verte.
+
+## Réalisation (2026-11-08)
+
+- **Cinq fonctions pures statiques** sous `src/Repas/Domain/Service/Marmiton/` (`final readonly`, constructeur privé) : `MarmitonIngredientLineParser::parse`, `MarmitonRecipeTitle::clean`, `MarmitonServings::from`, `MarmitonRecipeCategory::typeSlug`, et le tableau `MarmitonUnitWords` (un seul endroit) ; `ParsedIngredientLine` en est le résultat. Plus de 250 cas de test, dont 146 lignes d'ingrédients et 22 lignes pathologiques de 10 000 caractères (moins de 50 ms chacune ; l'entrée est bornée à 1 000 caractères avant toute expression régulière, aucune n'est imbriquée).
+- **Choix pour les cas ambigus** : « tasse » seule est une tasse à café et « cuillère » seule une cuillère à soupe (les deux seules de Repas) ; « dl » n'est pas une unité de Repas (il reste dans le nom, en `unite`) ; « 2 x 200 g de crème » vaut 2 `unite` et le nom « 200 g de crème » (le « x » est retiré) ; le nom est coupé à la première virgule ou au premier point-virgule (indications de préparation) et à « pour » ; « gros », « petit(e)s », « moyen(ne)s » ne sont retirés qu'en FIN de nom (« gros sel » et « petits pois » restent) ; une ligne sans quantité qui commence par une unité (« pincée de sel ») vaut 1 de cette unité ; une quantité sans produit (« 250 g », « 1/2 ») est ignorée (`null`) ; une fourchette « 2 à 3 », « 2 ou 3 », « 2-3 » prend la plus petite ; « un peu de » et « quelques » valent 1 `unite` ; un nom sans lettre ni chiffre est ignoré.
+- **`pincee`** : ajoutée à `unit.json`. Comme le modèle du skill Alexa est généré depuis ce fichier (et que `DocsVoiceSkillTest` impose qu'il couvre toutes les unités), `SpokenUnits::FORMS` et `UNIT_SYNONYMS` de `generate-model.mjs` la disent aussi et `make voice-model` a régénéré le modèle ; **le modèle n'est pas envoyé à Amazon** (`make voice-model-push` reste à faire par le propriétaire quand il le voudra). La migration de l'unité reste en MAR-003.
