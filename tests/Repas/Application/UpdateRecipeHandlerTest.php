@@ -443,6 +443,86 @@ class UpdateRecipeHandlerTest extends TestCase
         ($this->handler)($command);
     }
 
+    public function testKeepsARowThatCannotBeConvertedWhenTheRecipeAlreadyHasIt(): void
+    {
+        // Arrange : une recette copiée de Marmiton a une ligne « à régler » (les pâtes en unités, mais elles s'achètent au gramme)
+        $recipe = new RecipeBuilder()
+            ->isPastaCarbonara()
+            ->withAuthorId(self::AUTHOR)
+            ->addRow(new RecipeRowBuilder()->withIngredient(new IngredientBuilder()->isPasta())->withUnit(new UnitBuilder()->isUnite())->withQuantity(2))
+            ->build();
+        $this->recipeRepository->save($recipe);
+        // Act : on change une autre ligne, on garde la ligne à régler, on en retire d'autres
+        ($this->handler)(new UpdateRecipeCommand(
+            $recipe->getId(),
+            'Pâtes au parmesan',
+            4,
+            Tab::fromArray(
+                new UpdateRecipeRowSubCommand('pate', 'unite', 3),
+                new UpdateRecipeRowSubCommand('parmesan', 'gramme', 150),
+            ),
+            'plat'
+        ));
+
+        // Assert : tout est enregistré, la ligne à régler est restée telle quelle
+        $saved = $this->recipeRepository->findOneById($recipe->getId());
+        $this->assertSame('Pâtes au parmesan', $saved->getName());
+        $this->assertSame(
+            [['pate', 'unite', 3.0], ['parmesan', 'gramme', 150.0]],
+            $saved->getRows()->map(fn($row) => [$row->getIngredient()->getSlug(), $row->getUnit()->getSlug(), $row->getQuantity()])->values(),
+        );
+    }
+
+    public function testTheRowThatCannotBeConvertedCanBeRemovedToo(): void
+    {
+        // Arrange
+        $recipe = new RecipeBuilder()
+            ->isPastaCarbonara()
+            ->withAuthorId(self::AUTHOR)
+            ->addRow(new RecipeRowBuilder()->withIngredient(new IngredientBuilder()->isPasta())->withUnit(new UnitBuilder()->isUnite())->withQuantity(2))
+            ->build();
+        $this->recipeRepository->save($recipe);
+
+        // Act : on retire la ligne à régler
+        ($this->handler)(new UpdateRecipeCommand(
+            $recipe->getId(),
+            'Pâtes',
+            4,
+            Tab::fromArray(new UpdateRecipeRowSubCommand('pate', 'gramme', 500)),
+            'plat'
+        ));
+
+        // Assert
+        $this->assertCount(1, $this->recipeRepository->findOneById($recipe->getId())->getRows());
+    }
+
+    public function testAPairTheRecipeDoesNotHaveIsStillCheckedEvenWhenAnotherRowCannotBeConverted(): void
+    {
+        // Arrange : la recette a (pâtes, unité) à régler et (parmesan, gramme) ; (parmesan, unité) est un couple NOUVEAU sans conversion
+        $recipe = new RecipeBuilder()
+            ->isPastaCarbonara()
+            ->withAuthorId(self::AUTHOR)
+            ->addRow(new RecipeRowBuilder()->withIngredient(new IngredientBuilder()->isPasta())->withUnit(new UnitBuilder()->isUnite())->withQuantity(2))
+            ->build();
+        $this->recipeRepository->save($recipe);
+        $parmesan = $this->ingredientRepository->findOneBySlug('parmesan');
+
+        // Assert
+        $this->expectExceptionObject(IngredientException::cannotConvertToUnit($parmesan, new UnitBuilder()->isUnite()->build(), $parmesan->getDefaultPurchaseUnit()));
+
+        // Act : rien n'est écrit en base (le bus des commandes est transactionnel)
+        ($this->handler)(new UpdateRecipeCommand(
+            $recipe->getId(),
+            'Pâtes',
+            4,
+            Tab::fromArray(
+                new UpdateRecipeRowSubCommand('pate', 'unite', 2),
+                new UpdateRecipeRowSubCommand('parmesan', 'unite', 1),
+            ),
+            'plat'
+        ));
+    }
+
     public function testRefusesAnOutdatedVersionAndChangesNothing(): void
     {
         // Arrange : la recette est à la version 4, le client a lu la 3

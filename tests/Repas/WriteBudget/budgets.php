@@ -83,7 +83,7 @@ return [
     'modifier-portions-repas-eclate' => 37,
     'modifier-portions-repas-par-la-voix' => 26,
     'modifier-rayon' => 2,
-    'modifier-recette' => 17,
+    'modifier-recette' => 16,
     'modifier-type-de-liste' => 7,
     'modifier-type-recette' => 2,
     'modifier-unite' => 2,
