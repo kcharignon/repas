@@ -430,6 +430,54 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame($pasta->getDepartment()->getImage(), $result->departments[1]->image);
     }
 
+    public function testGetRoundsTheQuantityToBuyUpToTheWholeUnitAndKeepsTheExactOneInTheBase(): void
+    {
+        // Given : l'unité d'achat ne se coupe pas (une plaquette de beurre) ; 0,4 se lit « 1 », 1,4 se lit « 2 », 3 reste « 3 »
+        $owner = $this->savedUser();
+        $butter = new IngredientBuilder()->isButter()->build();
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $pasta = new IngredientBuilder()->isPasta()->build();
+        foreach ([$butter, $egg, $pasta] as $ingredient) {
+            $this->persister->saveIngredient($ingredient);
+        }
+        $shoppingList = new ShoppingListBuilder()->withId('list-rounded')->withOwner($owner)
+            ->addIngredient($butter)->addIngredient($egg)->addIngredient($pasta)->build();
+        $shoppingList->subtractRow($butter->getSlug(), 0.6);
+        $shoppingList->addRow($egg->getSlug(), $egg->getDefaultPurchaseUnit()->getSlug(), 0.4);
+        $shoppingList->addRow($pasta->getSlug(), $pasta->getDefaultPurchaseUnit()->getSlug(), 2);
+        $this->shoppingListRepository->save($shoppingList);
+
+        // When
+        $result = $this->shoppingListLoader->get('list-rounded');
+
+        // Then
+        $quantities = [];
+        foreach ($result->departments as $department) {
+            foreach ($department->rows as $row) {
+                $quantities[$row->ingredientSlug] = $row->quantity;
+            }
+        }
+        $this->assertEquals([$butter->getSlug() => 1.0, $egg->getSlug() => 2.0, $pasta->getSlug() => 3.0], $quantities);
+        $this->assertEqualsWithDelta(0.4, $this->shoppingListRepository->findOneById('list-rounded')->findRow($butter->getSlug())?->getQuantity(), 1e-9);
+    }
+
+    public function testTheActiveSummaryRoundsTheQuantitiesUpLikeTheRows(): void
+    {
+        // Given : 0,4 plaquette de beurre
+        $owner = $this->savedUser();
+        $butter = new IngredientBuilder()->isButter()->build();
+        $this->persister->saveIngredient($butter);
+        $shoppingList = new ShoppingListBuilder()->withId('list-summary')->withOwner($owner)->addIngredient($butter)->build();
+        $shoppingList->subtractRow($butter->getSlug(), 0.6);
+        $this->shoppingListRepository->save($shoppingList);
+
+        // When
+        $result = $this->shoppingListLoader->getActiveSummary($owner->getId());
+
+        // Then
+        $this->assertSame([$butter->getSlug() => 1.0], $result->quantityByIngredientSlug);
+    }
+
     public function testGetReadsTheRowsWithTheirSlugsWithoutAnyExtraQuery(): void
     {
         // Given : quatre lignes, trois rayons ; les identifiants d'ingrédient et d'unité viennent de la requête des lignes (jointures déjà présentes)

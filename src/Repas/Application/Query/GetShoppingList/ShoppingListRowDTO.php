@@ -15,7 +15,7 @@ final readonly class ShoppingListRowDTO
         public string $id,
         #[OA\Property(example: 'œuf')]
         public string $ingredientName,
-        #[OA\Property(description: 'Quantité à acheter, dans l\'unité d\'achat de l\'ingrédient', example: 6)]
+        #[OA\Property(description: 'Quantité à acheter, dans l\'unité d\'achat de l\'ingrédient, toujours arrondie à l\'entier supérieur (une unité d\'achat ne se coupe pas : 0,4 plaquette se lit 1). La ligne garde sa quantité exacte en base', example: 6)]
         public float $quantity,
         #[OA\Property(description: 'Symbole de l\'unité (peut être vide)', example: 'g')]
         public string $unitSymbol,

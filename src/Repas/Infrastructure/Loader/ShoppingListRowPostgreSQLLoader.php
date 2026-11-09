@@ -7,6 +7,7 @@ use Doctrine\ORM\Query\Expr\Join;
 use Repas\Repas\Application\Loader\ShoppingListRowLoader;
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListRowDTO;
 use Repas\Repas\Domain\Exception\ShoppingListRowException;
+use Repas\Repas\Domain\Service\PurchaseQuantity;
 use Repas\Repas\Infrastructure\Entity\Department;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\ShoppingList;
@@ -43,7 +44,7 @@ final readonly class ShoppingListRowPostgreSQLLoader implements ShoppingListRowL
         return new ShoppingListRowDTO(
             id: $row['id'],
             ingredientName: $row['ingredientName'],
-            quantity: (float) $row['quantity'],
+            quantity: PurchaseQuantity::roundedUp((float) $row['quantity']),
             unitSymbol: $row['unitSymbol'],
             checked: (bool) $row['checked'],
             ingredientSlug: $row['ingredientSlug'],

@@ -67,6 +67,8 @@ use Repas\Repas\Application\Command\SetIngredientParent\SetIngredientParentComma
 use Repas\Repas\Application\Command\StoppedShoppingList\StoppedShoppingListCommand;
 use Repas\Repas\Application\Command\StoreImageFromUrl\StoreImageFromUrlCommand;
 use Repas\Repas\Application\Command\StoreUploadedImage\StoreUploadedImageCommand;
+use Repas\Repas\Application\Command\DecreaseShoppingListRowQuantity\DecreaseShoppingListRowQuantityCommand;
+use Repas\Repas\Application\Command\IncreaseShoppingListRowQuantity\IncreaseShoppingListRowQuantityCommand;
 use Repas\Repas\Application\Command\TickLineOnShoppingList\TickLineOnShoppingListCommand;
 use Repas\Repas\Application\Command\UncheckLineOnShoppingList\UncheckLineOnShoppingListCommand;
 use Repas\Repas\Application\Command\UpdateConversion\UpdateConversionCommand;
@@ -555,6 +557,23 @@ return [
         $t->savedShoppingList($owner, $t->typicalRecipes($owner), static fn(ShoppingListBuilder $b) => $b->addIngredient($milk));
 
         return new RemoveIngredientToShoppingListCommand($owner->getId(), $milk->getSlug());
+    },
+    // Écran d'une liste : « + » et « − » sur une ligne précise (le même geste que l'ajout et le retrait à la main d'un produit, désigné par la ligne)
+    'augmenter-ligne-liste' => static function (WriteBudgetTestCase $t) use ($row): object {
+        $owner = $t->savedUser();
+        $milk = new IngredientBuilder()->isMilk()->withCreator($owner)->build();
+        $t->persister->saveIngredient($milk);
+        $list = $t->savedShoppingList($owner, $t->typicalRecipes($owner), static fn(ShoppingListBuilder $b) => $b->addIngredient($milk));
+
+        return new IncreaseShoppingListRowQuantityCommand($list->findRow($milk->getSlug())?->getId() ?? $row($list)->getId());
+    },
+    'diminuer-ligne-liste' => static function (WriteBudgetTestCase $t) use ($row): object {
+        $owner = $t->savedUser();
+        $milk = new IngredientBuilder()->isMilk()->withCreator($owner)->build();
+        $t->persister->saveIngredient($milk);
+        $list = $t->savedShoppingList($owner, $t->typicalRecipes($owner), static fn(ShoppingListBuilder $b) => $b->addIngredient($milk));
+
+        return new DecreaseShoppingListRowQuantityCommand($list->findRow($milk->getSlug())?->getId() ?? $row($list)->getId());
     },
     'terminer-liste' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();

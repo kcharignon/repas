@@ -18,6 +18,7 @@ use Repas\Repas\Application\Query\ListShoppingLists\ShoppingListDTO;
 use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Repas\Domain\Service\PurchaseQuantity;
 use Repas\Repas\Infrastructure\Entity\Department;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Meal;
@@ -162,7 +163,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
         $quantities = [];
         foreach ($rows as $row) {
             // Une seule ligne par ingrédient dans une liste : la première l'emporte, comme l'ancien `getIngredientQuantity()`
-            $quantities[$row['ingredientSlug']] ??= (float) $row['quantity'];
+            $quantities[$row['ingredientSlug']] ??= PurchaseQuantity::roundedUp((float) $row['quantity']);
         }
 
         return new ActiveShoppingListSummaryDTO($active['id'], $quantities, array_values($recipeIds));
@@ -289,7 +290,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
             $groups[$row['departmentSlug']]['rows'][] = new ShoppingListRowDTO(
                 id: $row['id'],
                 ingredientName: $row['ingredientName'],
-                quantity: (float) $row['quantity'],
+                quantity: PurchaseQuantity::roundedUp((float) $row['quantity']),
                 unitSymbol: $row['unitSymbol'],
                 checked: (bool) $row['checked'],
                 ingredientSlug: $row['ingredientSlug'],
