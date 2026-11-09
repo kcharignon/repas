@@ -170,6 +170,125 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
         $this->assertFalse(static::getContainer()->get(ShoppingListRowRepository::class)->findOneById($rowId)->isChecked());
     }
 
+    public function testIncreasesThenDecreasesALineByItsIdentifier(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $butter = new IngredientBuilder()->isButter()->withCreator($owner)->build();
+        $this->persister->saveIngredient($butter);
+        $shoppingList = new ShoppingListBuilder()->withOwner($owner)->addIngredient($butter)->build();
+        $this->shoppingLists()->save($shoppingList);
+        $rowId = $shoppingList->getRows()->reset()->getId();
+        $quantity = fn(): ?float => $this->shoppingLists()->findOneById($shoppingList->getId())->findRow($butter->getSlug())?->getQuantity();
+
+        // When & Then
+        $this->request('POST', "/api/v1/shopping-list-rows/$rowId/increase", $owner);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('POST', "/api/v1/shopping-list-rows/$rowId/increase", $owner);
+        $this->assertSame(3.0, $quantity());
+
+        $this->request('POST', "/api/v1/shopping-list-rows/$rowId/decrease", $owner);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(2.0, $quantity());
+
+        // Le dernier retrait supprime la ligne et ce que la liste retenait de l'ajout à la main
+        $this->request('POST', "/api/v1/shopping-list-rows/$rowId/decrease", $owner);
+        $this->request('POST', "/api/v1/shopping-list-rows/$rowId/decrease", $owner);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertNull($quantity());
+        $this->assertCount(0, $this->shoppingLists()->findOneById($shoppingList->getId())->getIngredients());
+    }
+
+    public function testAFractionOfAWholeUnitIsReadAsOneAndDisappearsWithOneDecrease(): void
+    {
+        // Given : 0,4 plaquette de beurre, que la liste montre « 1 »
+        $owner = $this->savedUser();
+        $butter = new IngredientBuilder()->isButter()->withCreator($owner)->build();
+        $this->persister->saveIngredient($butter);
+        $shoppingList = new ShoppingListBuilder()->withOwner($owner)->addIngredient($butter)->build();
+        $shoppingList->subtractRow($butter->getSlug(), 0.6);
+        $this->shoppingLists()->save($shoppingList);
+        $rowId = $shoppingList->getRows()->reset()->getId();
+        $this->request('GET', '/api/v1/shopping-lists/' . $shoppingList->getId(), $owner);
+        $this->assertEquals(1, $this->jsonBody()['departments'][0]['rows'][0]['quantity']);
+
+        // When : « + » donne 1,4 que la liste montre « 2 », « − » revient à 0,4 montré « 1 »
+        $this->request('POST', "/api/v1/shopping-list-rows/$rowId/increase", $owner);
+        $this->request('GET', '/api/v1/shopping-lists/' . $shoppingList->getId(), $owner);
+        $this->assertEquals(2, $this->jsonBody()['departments'][0]['rows'][0]['quantity']);
+        $this->request('POST', "/api/v1/shopping-list-rows/$rowId/decrease", $owner);
+        $this->request('GET', '/api/v1/shopping-lists/' . $shoppingList->getId(), $owner);
+        $this->assertEquals(1, $this->jsonBody()['departments'][0]['rows'][0]['quantity']);
+
+        // When : un dernier « − »
+        $this->request('POST', "/api/v1/shopping-list-rows/$rowId/decrease", $owner);
+
+        // Then : la ligne n'est plus dans la liste
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertNull($this->shoppingLists()->findOneById($shoppingList->getId())->findRow($butter->getSlug()));
+    }
+
+    public function testALineChangesInTheListThatCarriesItAndInNoOther(): void
+    {
+        // Given : le même produit dans la liste principale et dans une liste d'un type
+        $owner = $this->savedUser();
+        $butter = new IngredientBuilder()->isButter()->withCreator($owner)->build();
+        $this->persister->saveIngredient($butter);
+        $main = new ShoppingListBuilder()->withOwner($owner)->addIngredient($butter)->build();
+        $typed = new ShoppingListBuilder()->withOwner($owner)->withListTypeId('type-boucherie')->addIngredient($butter)->build();
+        $this->shoppingLists()->save($main);
+        $this->shoppingLists()->save($typed);
+        $typedRowId = $typed->getRows()->reset()->getId();
+
+        // When
+        $this->request('POST', "/api/v1/shopping-list-rows/$typedRowId/increase", $owner);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(2.0, $this->shoppingLists()->findOneById($typed->getId())->findRow($butter->getSlug())?->getQuantity());
+        $this->assertSame(1.0, $this->shoppingLists()->findOneById($main->getId())->findRow($butter->getSlug())?->getQuantity());
+    }
+
+    public function testAnotherUserCannotChangeTheQuantityOfALine(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $butter = new IngredientBuilder()->isButter()->withCreator($owner)->build();
+        $this->persister->saveIngredient($butter);
+        $shoppingList = new ShoppingListBuilder()->withOwner($owner)->addIngredient($butter)->build();
+        $this->shoppingLists()->save($shoppingList);
+        $rowId = $shoppingList->getRows()->reset()->getId();
+
+        // When & Then : un autre utilisateur n'a aucune main sur la ligne
+        foreach (['increase', 'decrease'] as $action) {
+            $this->request('POST', "/api/v1/shopping-list-rows/$rowId/$action", $this->savedUser());
+            $this->assertSame(403, $this->client->getResponse()->getStatusCode(), $action);
+        }
+        $this->assertSame(1.0, $this->shoppingLists()->findOneById($shoppingList->getId())->findRow($butter->getSlug())?->getQuantity());
+    }
+
+    public function testIfMatchProtectsALineFromAStaleChange(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $butter = new IngredientBuilder()->isButter()->withCreator($owner)->build();
+        $this->persister->saveIngredient($butter);
+        $shoppingList = new ShoppingListBuilder()->withOwner($owner)->addIngredient($butter)->build();
+        $this->shoppingLists()->save($shoppingList);
+        $rowId = $shoppingList->getRows()->reset()->getId();
+        $this->request('GET', '/api/v1/shopping-lists/' . $shoppingList->getId(), $owner);
+        $etag = $this->client->getResponse()->headers->get('ETag');
+
+        // When : la version lue passe, puis la même, devenue périmée, est refusée
+        $this->request('POST', "/api/v1/shopping-list-rows/$rowId/increase", $owner, headers: ['HTTP_IF_MATCH' => $etag]);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('POST', "/api/v1/shopping-list-rows/$rowId/increase", $owner, headers: ['HTTP_IF_MATCH' => $etag]);
+
+        // Then
+        $this->assertSame(412, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(2.0, $this->shoppingLists()->findOneById($shoppingList->getId())->findRow($butter->getSlug())?->getQuantity());
+    }
+
     public function testRenamesThenPausesThenDeletesAList(): void
     {
         // Given
@@ -497,6 +616,8 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
             ['PUT', "/api/v1/meals/$mealId/serving", ['serving' => 9]],
             ['POST', "/api/v1/shopping-list-rows/$rowId/tick", null],
             ['POST', "/api/v1/shopping-list-rows/$rowId/uncheck", null],
+            ['POST', "/api/v1/shopping-list-rows/$rowId/increase", null],
+            ['POST', "/api/v1/shopping-list-rows/$rowId/decrease", null],
             ['POST', "/api/v1/shopping-lists/$id/pause", null],
             ['POST', "/api/v1/shopping-lists/$id/activate", null],
         ] as [$method, $uri, $body]) {

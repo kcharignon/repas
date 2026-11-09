@@ -44,6 +44,19 @@ class ShoppingListRowPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertEquals(new ShoppingListRowDTO($rowId, 'Pate', 500.0, 'g', false, 'pate', 'gramme', 'cereale', 'céréale', []), $result);
     }
 
+    public function testGetRoundsTheQuantityToBuyUpToTheWholeUnit(): void
+    {
+        // Given : la ligne vaut 1 − 0,6 = 0,4 pâte (unité d'achat qui ne se coupe pas) : elle se lit « 1 », la base garde 0,4
+        $rowId = $this->savedRowOfPasta(quantity: -0.6);
+
+        // When
+        $result = $this->rowLoader->get($rowId);
+
+        // Then
+        $this->assertSame(1.0, $result->quantity);
+        $this->assertEqualsWithDelta(0.4, $this->rowRepository->findOneById($rowId)->getQuantity(), 1e-9);
+    }
+
     public function testGetReflectsATickedRow(): void
     {
         // Given

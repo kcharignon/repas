@@ -14,10 +14,10 @@ final readonly class ActiveShoppingListSummaryDTO
         #[OA\Property(description: 'Identifiant de la liste active, null si l\'utilisateur n\'en a pas', example: '0b0a8c4e-6b0e-4e0a-9d52-2c3f7a1d9e10', nullable: true)]
         public ?string $shoppingListId,
         #[OA\Property(
-            description: 'Quantité de chaque ingrédient de la liste, dans son unité d\'achat, indexée par slug d\'ingrédient',
+            description: 'Quantité de chaque ingrédient de la liste, dans son unité d\'achat et arrondie à l\'entier supérieur comme la ligne de la liste, indexée par slug d\'ingrédient',
             type: 'object',
             additionalProperties: new OA\AdditionalProperties(type: 'number'),
-            example: ['oeuf' => 6, 'farine' => 0.5],
+            example: ['oeuf' => 6, 'farine' => 1],
         )]
         public array $quantityByIngredientSlug,
         #[OA\Property(
