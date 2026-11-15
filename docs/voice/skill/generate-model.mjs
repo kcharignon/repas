@@ -77,7 +77,8 @@ const DEPARTMENT_SYNONYMS = {
   boulangerie: ['pain', 'viennoiserie'],
   sauce: ['sauces', 'condiments'],
   animal: ['animaux', 'animalerie', 'produits pour animaux'],
-  divers: ['autre', 'autres', 'tout le reste'],
+  // « d'hiver » : ce que la reconnaissance vocale d'Amazon a écrit pour « divers » (trace du 2026-11-15, créneau sans résolution)
+  divers: ['autre', 'autres', 'tout le reste', "d'hiver"],
   'cuisine-du-monde': ['cuisines du monde', 'produits du monde', 'épicerie du monde'],
   hygiene: ['produits hygiène', 'salle de bain', 'beauté'],
 };

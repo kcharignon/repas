@@ -113,6 +113,8 @@
     {"id":"dept-en-surgele","utterance":"en surgelé","intent":"AnswerDepartmentIntent","alsoIntents":["AnswerUnitIntent"],"slots":{"department":{"id":"surgele"}},"note":"départage « fruit et légume ou surgelé ? » : « en surgelé »"},
     {"id":"dept-le-rayon-boucherie","utterance":"le rayon boucherie","intent":"AnswerDepartmentIntent","slots":{"department":{"id":"boucherie"}},"note":"avec « le rayon »"},
     {"id":"dept-produit-menager","utterance":"produit ménager","intent":"AnswerDepartmentIntent","slots":{"department":{"id":"produit-menager"}},"note":"rayon de deux mots"},
+    {"id":"dept-divers","utterance":"divers","intent":"AnswerDepartmentIntent","slots":{"department":{"id":"divers"}},"note":"réponse « divers » à « Dans quel rayon ? » (essai réel du 2026-11-15)"},
+    {"id":"dept-d-hiver","utterance":"d'hiver","intent":"AnswerDepartmentIntent","slots":{"department":{"id":"divers"}},"note":"ce que la reconnaissance vocale a écrit pour « divers » (2026-11-15) : le synonyme du rayon doit le résoudre"},
     {"id":"unit-des-pieces","utterance":"des pièces","intent":"AnswerUnitIntent","slots":{"unit":{"id":"unite"}},"note":"réponse à « Quelle unité ? » (scénario 7) : « pièce » est un synonyme d'unité"},
     {"id":"unit-en-kilos","utterance":"en kilos","intent":"AnswerUnitIntent","slots":{"unit":{"id":"kilo"}},"note":"avec « en »"},
     {"id":"unit-des-paquets","utterance":"des paquets","intent":"AnswerUnitIntent","slots":{"unit":{"id":"paquet"}},"note":"paquet"},

@@ -307,6 +307,21 @@ class SpokenAnswerInterpreterTest extends TestCase
         $this->assertSame([$kind, $optionName, null], $this->interpret($request, self::department(), self::departments()));
     }
 
+    public function testADepartmentHeardAsAnExpressionWithAnArticleIsStillRecognized(): void
+    {
+        // Given : Amazon a écrit « d'hiver » pour « divers » (essai réel du 2026-11-15), sans résolution d'entité ; retirer l'article ne laisserait que « hiver »
+        $catalogue = [...self::departments(), new DialogueOption('divers', 'divers')];
+
+        // Then
+        $this->assertSame([SpokenAnswerKind::PICK_DEPARTMENT, 'divers', null], $this->interpret(AlexaTestRequest::answerDepartment("d'hiver", null), self::department(), $catalogue));
+    }
+
+    public function testTheSameExpressionIsUnclearWhenNoDepartmentResemblesIt(): void
+    {
+        // Then : sans rayon « divers » dans le catalogue, « d'hiver » ne désigne rien
+        $this->assertSame([SpokenAnswerKind::UNCLEAR, null, null], $this->interpret(AlexaTestRequest::answerDepartment("d'hiver", null), self::department(), self::departments()));
+    }
+
     // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
     // Étape « unit »
     // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————

@@ -589,25 +589,34 @@ final readonly class SpokenAnswerInterpreter
         return $this->bestMatch($texts, array_map(
             fn(DialogueOption $choice): array => [$choice, [$choice->slug, $this->normalize($choice->name)]],
             $catalogue,
-        ), self::CATALOGUE_THRESHOLD);
+        ), self::CATALOGUE_THRESHOLD, alsoWithoutStopWordsRemoved: true);
     }
 
     /**
      * @param list<string> $texts
      * @param list<array{DialogueOption, list<string>}> $candidates chaque choix avec les formes normalisées sous lesquelles on peut le nommer
+     * @param bool $alsoWithoutStopWordsRemoved garde aussi le texte entendu TEL QUEL (articles compris), le meilleur des deux comptant : Amazon transcrit parfois
+     *        un nom de rayon ou d'unité en une expression à article (« divers » entendu « d'hiver », essai réel du 2026-11-15), et retirer l'article
+     *        ne laisserait que « hiver »
      */
-    private function bestMatch(array $texts, array $candidates, float $threshold): ?DialogueOption
+    private function bestMatch(array $texts, array $candidates, float $threshold, bool $alsoWithoutStopWordsRemoved = false): ?DialogueOption
     {
         $best = null;
         foreach ($texts as $text) {
-            $heard = $this->normalize($text);
-            if ($heard === '') {
+            $heardForms = array_values(array_unique(array_filter(
+                [$this->normalize($text), $alsoWithoutStopWordsRemoved ? implode('-', $this->tokens($text)) : ''],
+                static fn(string $form): bool => $form !== '',
+            )));
+            if ($heardForms === []) {
                 continue;
             }
 
             $scored = [];
             foreach ($candidates as [$option, $forms]) {
-                $score = max(array_map(static fn(string $form): float => SearchRelevance::score($heard, $form), $forms));
+                $score = 0.0;
+                foreach ($heardForms as $heard) {
+                    $score = max($score, ...array_map(static fn(string $form): float => SearchRelevance::score($heard, $form), $forms));
+                }
                 if ($score >= $threshold) {
                     $scored[] = [$score, $option];
                 }
