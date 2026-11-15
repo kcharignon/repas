@@ -13,6 +13,7 @@ Décision : [ADR 0029](../../../../docs/adr/0029-commande-vocale-alexa.md). Anal
 | `ALEXA_REDIRECT_URIS` | les adresses de retour affichées par la console, séparées par des virgules, comparées exactement | `ecrire-alexa-env.sh` |
 | `ALEXA_OAUTH_CLIENT_ID` | `repas-alexa` (le même que dans la console) | `ecrire-alexa-env.sh` |
 | `ALEXA_OAUTH_CLIENT_SECRET_HASH` | SHA-256 hexadécimal du secret du client ; **le secret n'est écrit nulle part** | `ecrire-alexa-env.sh` |
+| `ALEXA_TRACE_ENABLED` | `true` / `false` (absente = `false`) : la trace des échanges avec Alexa, **phase de test** (section F) | `ecrire-alexa-trace.sh` |
 
 `deploy/compose.yaml` les liste avec leur défaut : sans cela, le `.env` embarqué dans l'image s'appliquerait en silence.
 
@@ -45,4 +46,15 @@ Coupé : le webhook, l'autorisation et l'échange des jetons répondent `404 VOI
 
 ## E. Ce que la fonction ne fait pas
 
-Aucune donnée vocale n'est conservée (ni audio, ni transcription complète) ; l'identifiant d'utilisateur d'Alexa reste dans `voice_link`. Les tables `voice_*` partent avec le compte (`PurgeUserVoiceData`).
+Aucune donnée vocale n'est conservée (ni audio, ni transcription complète) ; l'identifiant d'utilisateur d'Alexa reste dans `voice_link`. Les tables `voice_*` partent avec le compte (`PurgeUserVoiceData`). **Seule exception, le temps de la phase de test : la trace de la section F, coupée par défaut.** Le journal ne reçoit jamais le corps des requêtes.
+
+## F. La trace des échanges (phase de test, ADR 0029 décision 14)
+
+Pourquoi : Alexa comprend parfois mal une phrase (« divers » à la question du rayon) et le journal ne dit rien de ce qu'Amazon a envoyé. Avec la trace allumée, la base garde **les 1 000 derniers échanges** (requête assainie : jamais le jeton ni un identifiant d'Alexa ; réponse ; issue ; panne), que je lis pour retrouver l'échange exact. **À couper puis retirer à la fin de la phase de test.** Coupée par défaut ; **seul l'utilisateur l'allume**, le temps de la phase.
+
+- **Allumer** : `! ssh -i ~/.ssh/id_ed25519 root@64.227.124.100 'bash -s -- true' < .claude/skills/repas-ops/references/ecrire-alexa-trace.sh`. Attendu : `OK : ALEXA_TRACE_ENABLED=true, le conteneur php le voit et /api/v1/health répond.` Le site coupe quelques secondes. Indépendant de `ALEXA_ENABLED` (la commande vocale doit déjà être allumée pour qu'il y ait des échanges).
+- **Couper** : le même avec `false`. Plus rien n'est écrit, aucune requête de plus ; la table et son contenu restent, et la lecture marche toujours.
+- **Lire** (lecture seule, **à lancer par l'utilisateur avec `!`** : la lecture montre ce qu'il a dit) : `! ssh -i ~/.ssh/id_ed25519 root@64.227.124.100 'cd /opt/repas && docker compose exec -T php php bin/console repas:voice:traces --last=10'`. Options : `--last=N` (20 par défaut, 200 au plus), `--id=N` (un échange en entier, JSON de la requête et de la réponse), `--intent=AddItemIntent`, `--failed` (pannes seulement), `--since=2h` (`30m`, `2h`, `1d`) ou `--since=2026-11-15` (heure de Paris).
+- **Lire une ligne** : `[répondu]` / `[PANNE]` / `[compte non lié]`… est l'issue ; `entendu : department="divers" (non reconnu)` dit qu'Amazon n'a rapproché « divers » d'aucune valeur du modèle, `=> fruit-et-legume` qu'il l'a rapproché de celle-ci ; `(question en cours : department)` est l'étape du dialogue que la séance portait ; entre parenthèses à la fin, la décision prise et la durée.
+- **Ce qui n'y est jamais** : le jeton d'accès, l'identifiant d'utilisateur Alexa ou d'appareil, les en-têtes de signature, l'identifiant du skill. Le compte y est une référence courte (SHA-256), pas un identifiant. Aucun secret ne sort de la commande.
+- **Si l'écriture de la trace échoue** : la réponse d'Alexa ne change pas ; le journal écrit « Trace de l'échange avec Alexa impossible. » avec la classe de l'exception (`docker compose logs php | grep "Trace de l"`).

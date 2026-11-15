@@ -18,6 +18,7 @@ Suivi vivant du chantier « Alexa, demande à *Jarvis* d'ajouter du pain ». Cad
 - Le contexte `Voice` ne dépend que de `Shared` (Deptrac, aucune baseline) ; ce qui doit circuler vers `Repas` passe par un port de `Shared`.
 - Un agent ne déploie pas, ne crée aucune étiquette, ne touche ni aux secrets GitHub ni au serveur.
 - Les réponses d'Alexa suivent `repas-po` : tutoiement, une à deux phrases, aucun avertissement. Seule exception : la question « de quoi tu parles ? » d'un produit inconnu, trois phrases (ADR 0029 décision 11).
+- **Trace des échanges avec Alexa, le temps de la phase de test** (2026-11-15, ADR 0029 décision 14, demande du propriétaire) : la table `voice_trace` garde les 1 000 derniers échanges (requête assainie par liste blanche, réponse, issue, panne), sous l'interrupteur `ALEXA_TRACE_ENABLED` coupé par défaut ; elle se lit par `php bin/console repas:voice:traces` (`alexa.md` § 7). **À couper puis à retirer à la fin de la phase de test.**
 - Changer une convention = mettre à jour l'ADR 0029, `CLAUDE.md`, le skill concerné et cette roadmap dans le même commit.
 
 ## M0 — Décisions et compte Amazon
