@@ -22,6 +22,8 @@
         <server name="DRIVE_RETAILERS" value="leclerc" force="true" />
         <!-- Commande vocale Alexa allumée en test (ADR 0029), plus forte que la valeur coupée que compose injecte depuis .env : voir .env.test -->
         <server name="ALEXA_ENABLED" value="true" force="true" />
+        <!-- Trace des échanges avec Alexa (ADR 0029 décision 14) coupée en test, plus forte que la valeur que compose injecte depuis .env : voir .env.test -->
+        <server name="ALEXA_TRACE_ENABLED" value="false" force="true" />
         <!-- Client OAuth d'Alexa FACTICE (VOX-202) : l'empreinte du secret de tests/Helper/Alexa/AlexaTestClient.php et deux adresses de retour
              factices, plus fortes que les valeurs vides que compose injecte depuis .env : voir .env.test -->
         <server name="ALEXA_OAUTH_CLIENT_ID" value="repas-alexa" force="true" />

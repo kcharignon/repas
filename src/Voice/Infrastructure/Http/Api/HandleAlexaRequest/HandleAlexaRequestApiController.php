@@ -26,6 +26,7 @@ use Repas\Voice\Domain\Interface\AlexaRequestVerifier;
 use Repas\Voice\Domain\Model\AlexaIntent;
 use Repas\Voice\Domain\Model\AlexaRequest;
 use Repas\Voice\Domain\Model\AlexaResponse;
+use Repas\Voice\Domain\Model\TraceOutcome;
 use Repas\Voice\Domain\Model\VoiceReplies;
 use Repas\Voice\Domain\Service\AlexaDialogue;
 use Repas\Voice\Domain\Service\SpokenMealPhrase;
@@ -59,6 +60,9 @@ use Throwable;
  * traduit le protocole : la conversation est dans `AlexaDialogue`, l'ajout dans `AddSpokenItem`, la réponse à une question d'un produit inconnu
  * dans `AnswerSpokenDialogue` (l'état du dialogue voyage dans `session.attributes` à l'aller et `sessionAttributes` au retour, ADR 0029
  * décision 11), la planification d'un repas dans `AddSpokenMeal` (décision 13), son retrait dans `RemoveSpokenMeal` (décision 12, VOX-306), le suivi de la liaison dans `RecordVoiceLinkUse`, que le webhook lance en dernier et dont un échec ne change pas la réponse.
+ *
+ * La trace des échanges (décision 14, phase de test, `ALEXA_TRACE_ENABLED` coupé par défaut) vient après le calcul de la réponse (`VoiceTraceRecorder`) et ne
+ * la change jamais ; une requête qui ne prouve pas venir d'Amazon (`400`) n'est jamais tracée. Le journal, lui, ne reçoit toujours jamais le corps.
  */
 #[RequiresVoice]
 #[VoiceRateLimited(VoiceRateLimit::WEBHOOK)]
@@ -74,6 +78,7 @@ final class HandleAlexaRequestApiController extends AbstractController
         private readonly CommandBusInterface $commandBus,
         private readonly VoiceLinkRateLimiter $linkRateLimiter,
         private readonly LoggerInterface $logger,
+        private readonly VoiceTraceRecorder $traceRecorder,
         private readonly SpokenMealPhrase $mealPhrase = new SpokenMealPhrase(),
     ) {
     }
@@ -127,22 +132,37 @@ final class HandleAlexaRequestApiController extends AbstractController
     #[OA\Response(response: 429, ref: '#/components/responses/VoiceWebhookRateLimited')]
     public function __invoke(Request $request): JsonResponse
     {
-        $alexa = AlexaRequest::fromDecoded($this->authenticDecodedBody($request));
+        $startedAt = hrtime(true);
+        $decoded = $this->authenticDecodedBody($request);
+        $alexa = AlexaRequest::fromDecoded($decoded);
+        $notes = new ExchangeNotes();
+        $failure = null;
 
         try {
-            $response = $this->dialogue->beforeAuthentication($alexa) ?? $this->answerLinkedUser($alexa);
+            $response = $this->dialogue->beforeAuthentication($alexa);
+            if ($response !== null) {
+                $notes->outcome = $alexa->type === AlexaRequest::SESSION_ENDED ? TraceOutcome::SESSION_ENDED : TraceOutcome::UNSUPPORTED_LANGUAGE;
+            } else {
+                $response = $this->answerLinkedUser($alexa, $notes);
+            }
         } catch (Throwable $exception) {
+            $failure = $exception;
             $context = $this->failureContext($exception);
             $known = $this->knownMealFailure($exception);
             if ($known !== null) {
                 // Un échec CONNU d'un repas : une phrase claire (rien n'est écrit, le bus a tout annulé) ; la raison suffit au journal, jamais le nom de la recette
                 $this->logger->warning(sprintf('Repas impossible : %s.', $known->reason), $context);
                 $response = AlexaResponse::say((string) VoiceReplies::mealFailure($known->reason, $known->recipeName, $known->ingredientName, $known->componentName));
+                $notes->outcome = TraceOutcome::KNOWN_FAILURE;
             } else {
                 $this->logger->error($this->failureMessage($context), $context);
                 $response = AlexaResponse::say(VoiceReplies::FAILURE);
+                $notes->outcome = TraceOutcome::FAILED;
             }
         }
+
+        // La trace (ADR 0029 décision 14) vient APRÈS le calcul de la réponse et ne la change jamais : interrupteur coupé, elle ne coûte rien
+        $this->traceRecorder->record($decoded, $response, $notes, (int) round((hrtime(true) - $startedAt) / 1_000_000), $failure);
 
         return new JsonResponse($response->toArray());
     }
@@ -240,18 +260,31 @@ final class HandleAlexaRequestApiController extends AbstractController
     /**
      * La réponse pour un utilisateur lié, ou l'invitation à lier son compte. Le suivi de la liaison passe en dernier.
      */
-    private function answerLinkedUser(AlexaRequest $alexa): AlexaResponse
+    private function answerLinkedUser(AlexaRequest $alexa, ExchangeNotes $notes): AlexaResponse
     {
         $grant = $alexa->accessToken === null ? null : $this->queryBus->ask(new ResolveAccessGrantQuery($alexa->accessToken));
         if (!$grant instanceof ResolvedAccessGrantDTO) {
+            $notes->outcome = TraceOutcome::ACCOUNT_NOT_LINKED;
+
             return AlexaResponse::linkAccount(VoiceReplies::LINK_ACCOUNT);
         }
 
+        // Le compte et la liaison, notés dès qu'ils sont connus : une panne plus loin les garde dans la trace
+        $notes->userId = $grant->userId;
+        $notes->linkId = $grant->linkId;
+
         if (!$this->linkRateLimiter->allows($grant->linkId)) {
+            $notes->outcome = TraceOutcome::LINK_RATE_LIMITED;
+
             return AlexaResponse::say(VoiceReplies::SLOW_DOWN);
         }
 
-        $response = $this->dialogue->answer($alexa) ?? $this->useCase($alexa, $grant);
+        $response = $this->dialogue->answer($alexa);
+        if ($response !== null) {
+            $notes->decision = 'AlexaDialogue';
+        } else {
+            $response = $this->useCase($alexa, $grant, $notes);
+        }
         $this->recordUse($alexa, $grant);
 
         return $response;
@@ -259,27 +292,40 @@ final class HandleAlexaRequestApiController extends AbstractController
 
     /**
      * Ce que le dialogue n'a pas pu répondre seul : la réponse à une question en cours si la séance porte un état, sinon la planification d'un repas,
-     * l'ajout d'un article, son retrait (écriture) ou la question « est-ce qu'il y en a dans la liste ? » (lecture).
+     * l'ajout d'un article, son retrait (écriture) ou la question « est-ce qu'il y en a dans la liste ? » (lecture). La décision prise est notée AVANT le
+     * cas d'usage : une panne la garde dans la trace.
      */
-    private function useCase(AlexaRequest $alexa, ResolvedAccessGrantDTO $grant): AlexaResponse
+    private function useCase(AlexaRequest $alexa, ResolvedAccessGrantDTO $grant, ExchangeNotes $notes): AlexaResponse
     {
         if ($alexa->dialogueState !== null) {
+            $notes->decision = 'AnswerSpokenDialogue:' . $alexa->dialogueState->step->value;
+
             return $this->spoken($this->commandBus->dispatch(new AnswerSpokenDialogueCommand($grant->userId, $alexa, $alexa->dialogueState)));
         }
 
         // Un repas à planifier : l'intention des repas, ou un « repas » / « recette » dit à l'intention des produits (décision 13)
         $meal = $this->mealPhrase->requestOf($alexa);
         if ($meal !== null) {
+            $notes->decision = 'AddSpokenMeal';
+
             return $this->spoken($this->commandBus->dispatch(new AddSpokenMealCommand($grant->userId, $meal->recipe, $alexa->isInOpenSession(), $meal->servings, originalPhrase: $meal->original)));
         }
 
         // Un repas à retirer : l'intention des repas, ou un « repas » / « recette » dit à l'intention des produits (décision 12, VOX-306)
         $removal = $this->mealPhrase->removalOf($alexa);
         if ($removal !== null) {
+            $notes->decision = 'RemoveSpokenMeal';
+
             return $this->spoken($this->commandBus->dispatch(new RemoveSpokenMealCommand($grant->userId, $removal->recipe, $alexa->isInOpenSession(), $removal->servings, originalPhrase: $removal->original)));
         }
 
         $phrase = $alexa->phrase ?? throw new LogicException("Une intention sur un article sans phrase doit être redemandée par le dialogue.");
+
+        $notes->decision = match ($alexa->intent()) {
+            AlexaIntent::REMOVE_ITEM => 'RemoveSpokenItem',
+            AlexaIntent::CHECK_ITEM => 'GetSpokenItemInList',
+            default => 'AddSpokenItem',
+        };
 
         return match ($alexa->intent()) {
             AlexaIntent::REMOVE_ITEM => $this->spoken($this->commandBus->dispatch(new RemoveSpokenItemCommand($grant->userId, $phrase, $alexa->isInOpenSession(), quantity: $alexa->quantity ?? 1, unitSlug: $alexa->unitSlug()))),

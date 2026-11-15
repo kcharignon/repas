@@ -105,6 +105,8 @@ check "la commande vocale Alexa est coupée par défaut (ALEXA_ENABLED=false)" t
 # Le shell du conteneur doit lire les variables : guillemets simples voulus.
 # shellcheck disable=SC2016
 check "aucune valeur propre au déploiement par défaut (ALEXA_SKILL_ID, ALEXA_OAUTH_CLIENT_SECRET_HASH et ALEXA_REDIRECT_URIS vides, client repas-alexa)" docker compose exec -T php sh -c 'test "${ALEXA_SKILL_ID-absente}" = "" && test "${ALEXA_OAUTH_CLIENT_SECRET_HASH-absente}" = "" && test "${ALEXA_REDIRECT_URIS-absente}" = "" && test "${ALEXA_OAUTH_CLIENT_ID-absente}" = "repas-alexa"'
+# La trace des échanges avec Alexa (ADR 0029 décision 14, phase de test) : coupée par défaut, la valeur de compose gagne sur celle du .env embarqué.
+check "la trace des échanges avec Alexa est coupée par défaut (ALEXA_TRACE_ENABLED=false)" test "$(docker compose exec -T php printenv ALEXA_TRACE_ENABLED < /dev/null)" = false
 
 echo "== Inscription et connexion (JWT, cookie du SPA)"
 email="smoke-$RANDOM@example.com"
