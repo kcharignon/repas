@@ -26,6 +26,7 @@ use Repas\User\Infrastructure\Entity\UserIdentity;
 use Repas\Voice\Infrastructure\Entity\AccessGrant;
 use Repas\Voice\Infrastructure\Entity\AuthorizationCode;
 use Repas\Voice\Infrastructure\Entity\VoiceLink;
+use Repas\Voice\Infrastructure\Entity\VoiceTrace;
 
 /**
  * Garde-fou de la suppression d'un compte (ADR 0021) : aucune clé étrangère ne lie les tables à `user`, donc supprimer un
@@ -60,6 +61,7 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
         VoiceLink::class => ['userId'],
         AuthorizationCode::class => ['userId'],
         AccessGrant::class => ['userId'],
+        VoiceTrace::class => ['userId'],
     ];
 
     public function testTheSplitIntoPartsAddsNoTableAndItsColumnsLiveOnRowsThatAreErasedWithTheUser(): void

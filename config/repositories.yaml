@@ -111,3 +111,7 @@ services:
     Repas\Voice\Domain\Interface\AccessGrantRepository:
         alias: 'Repas\Voice\Infrastructure\Repository\AccessGrantPostgreSQLRepository'
         public: true
+
+    Repas\Voice\Domain\Interface\VoiceTraceRepository:
+        alias: 'Repas\Voice\Infrastructure\Repository\VoiceTracePostgreSQLRepository'
+        public: true

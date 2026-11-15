@@ -9,7 +9,7 @@ use Repas\Voice\Domain\Interface\UserVoiceDataRepository;
 use Repas\Voice\Infrastructure\Entity\VoiceLink as VoiceLinkEntity;
 
 /**
- * Suppression en SQL direct, sans passer par l'ORM ni par son identity map : une seule requête efface les trois tables.
+ * Suppression en SQL direct, sans passer par l'ORM ni par son identity map : une seule requête efface les quatre tables.
  */
 readonly class UserVoiceDataPostgreSQLRepository extends PostgreSQLRepository implements UserVoiceDataRepository
 {
@@ -20,9 +20,9 @@ readonly class UserVoiceDataPostgreSQLRepository extends PostgreSQLRepository im
     }
 
     /**
-     * Une seule instruction pour les trois tables (budget SQL de `supprimer-compte`) : les liaisons du compte sont effacées et rendent
+     * Une seule instruction pour les quatre tables (budget SQL de `supprimer-compte`) : les liaisons du compte sont effacées et rendent
      * leurs identifiants ; les jetons du compte sont effacés par leur colonne `user_id` (VOX-202) ou, par précaution, par l'identifiant
-     * de l'une de ses liaisons ; puis les codes d'autorisation du compte. PostgreSQL exécute toujours jusqu'au bout une instruction qui modifie des données dans un `WITH`,
+     * de l'une de ses liaisons ; puis les traces des échanges du compte (`voice_trace`, ADR 0029 décision 14), puis les codes d'autorisation du compte. PostgreSQL exécute toujours jusqu'au bout une instruction qui modifie des données dans un `WITH`,
      * même si la requête principale ne lit pas son résultat.
      *
      * Ne pas lire une liaison, un code ou un jeton par l'ORM avant d'appeler cette méthode dans la même requête : l'entité resterait dans
@@ -32,7 +32,8 @@ readonly class UserVoiceDataPostgreSQLRepository extends PostgreSQLRepository im
     {
         $this->entityManager->getConnection()->executeStatement(
             'WITH erased_links AS (DELETE FROM voice_link WHERE user_id = :userId RETURNING id), '
-            . 'erased_grants AS (DELETE FROM voice_access_grant WHERE user_id = :userId OR link_id IN (SELECT id FROM erased_links)) '
+            . 'erased_grants AS (DELETE FROM voice_access_grant WHERE user_id = :userId OR link_id IN (SELECT id FROM erased_links)), '
+            . 'erased_traces AS (DELETE FROM voice_trace WHERE user_id = :userId) '
             . 'DELETE FROM voice_authorization_code WHERE user_id = :userId',
             ['userId' => $userId],
         );

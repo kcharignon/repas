@@ -90,6 +90,12 @@ services:
         alias: Repas\Voice\Infrastructure\Security\HttpCertificateChainFetcher
         public: true
 
+    # Interrupteur de la trace des échanges avec Alexa (ADR 0029 décision 14, `ALEXA_TRACE_ENABLED`, coupé par défaut) : public pour qu'un test de bout en
+    # bout l'allume sans toucher à l'environnement
+    Repas\Voice\Domain\Interface\VoiceTraceFeature:
+        alias: Repas\Voice\Infrastructure\Feature\EnvVoiceTraceFeature
+        public: true
+
     # Lecteur de page Marmiton (ADR 0037 décisions 12 et 13, MAR-001) : un GET vers www.marmiton.org, adresse reconstruite par MarmitonUrl,
     # résolue puis vérifiée publique avant la connexion (DnsHostAddressResolver). Public pour qu'un test de bout en bout le remplace par un
     # double : aucun test automatique n'appelle Marmiton.

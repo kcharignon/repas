@@ -11,6 +11,7 @@ use Repas\Shared\Application\Service\CommandBus;
 use Repas\Tests\Helper\Alexa\AlexaTestRequest;
 use Repas\Tests\Helper\AlexaRequestVerifierDouble;
 use Repas\Tests\Helper\ContextSpyLogger;
+use Repas\Tests\Helper\ControlledVoiceTraceFeature;
 use Repas\Tests\Helper\MockCommandBus;
 use Repas\Tests\Helper\MockQueryBus;
 use Repas\Voice\Domain\Exception\SpokenMealFailure;
@@ -25,6 +26,7 @@ use Repas\Voice\Application\Query\ResolveAccessGrant\ResolvedAccessGrantDTO;
 use Repas\Voice\Domain\Exception\VoiceException;
 use Repas\Voice\Domain\Service\AlexaDialogue;
 use Repas\Voice\Infrastructure\Http\Api\HandleAlexaRequest\HandleAlexaRequestApiController;
+use Repas\Voice\Infrastructure\Http\Api\HandleAlexaRequest\VoiceTraceRecorder;
 use Repas\Voice\Infrastructure\Http\VoiceLinkRateLimiter;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Messenger\Exception\HandlerFailedException;
@@ -292,6 +294,8 @@ class HandleAlexaRequestLoggingTest extends TestCase
             $commandBus ?? $this->commandBus,
             new VoiceLinkRateLimiter(new RateLimiterFactory(['id' => 'test', 'policy' => 'sliding_window', 'limit' => 60, 'interval' => '1 minute'], new InMemoryStorage())),
             $this->logger,
+            // La trace des échanges (décision 14) est coupée ici : son journal est prouvé dans `HandleAlexaRequestTraceTest`
+            new VoiceTraceRecorder(new ControlledVoiceTraceFeature(false), $commandBus ?? $this->commandBus, $this->logger),
         );
     }
 

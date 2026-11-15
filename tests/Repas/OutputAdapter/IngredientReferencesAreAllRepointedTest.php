@@ -66,6 +66,9 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
         'shopping_list.part_shares' => 'le registre CACHÉ des parties d\'une liste (ADR 0038, SUB-003, JSON) : ses clés (la partie) et ses `parent` sont des slugs d\'ingrédients du propriétaire de la liste. JAMAIS réécrit, ni par la fusion ni par la suppression (SUB-004) : elles REFUSENT d\'agir sur un ingrédient que le registre d\'une liste non terminée nomme (`MergeBlock::PART_IN_LIST`, `ShoppingListRepository::isIngredientUsed`, une seule formule : `PartRegistrySql`) ; une liste terminée garde son registre, inoffensif',
         'ingredient_distinct.first_slug' => '« Pas le même » (ING-006) : les slugs des ingrédients PERSONNELS de l\'utilisateur, jamais ceux d\'un commun, que la migration ne déplace pas ; la fusion et la suppression d\'un ingrédient effacent les paires qui le nomment (`IngredientDistinctRepository::deleteByIngredientSlug`)',
         'ingredient_distinct.second_slug' => 'idem (l\'autre côté de la paire)',
+        'voice_trace.request' => 'la TRACE des échanges avec Alexa (ADR 0029 décision 14, phase de test) : un journal borné aux 1 000 derniers échanges, jamais lu par une route ni repointé ; l\'état du dialogue de la séance qu\'elle copie peut nommer des slugs d\'ingrédients (les propositions), figés tels qu\'Alexa les a entendus ; il part avec le compte et avec la rotation',
+        'voice_trace.response' => 'idem (la réponse rendue, dont l\'état du dialogue de la séance)',
+        'voice_trace.failure' => 'idem (la classe, l\'endroit et le message d\'une panne, qui peut citer une phrase dite)',
     ];
 
     /**

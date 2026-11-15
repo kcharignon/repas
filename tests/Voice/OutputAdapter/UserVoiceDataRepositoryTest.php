@@ -41,6 +41,10 @@ class UserVoiceDataRepositoryTest extends DatabaseTestCase
         $this->saveCode('departing-code-2', 'departing', true);
         $this->saveCode('staying-code-1', 'staying', false);
         $this->saveCode('staying-code-2', 'staying', true);
+        $this->saveTrace('departing');
+        $this->saveTrace('departing');
+        $this->saveTrace('staying');
+        $this->saveTrace(null);
 
         // When
         $this->repository->deleteByUser('departing');
@@ -55,6 +59,10 @@ class UserVoiceDataRepositoryTest extends DatabaseTestCase
         $this->assertSame(2, $this->rows('voice_authorization_code', 'user_id', 'staying'));
         $this->assertSame(2, $this->scalar('SELECT COUNT(*) FROM voice_access_grant'));
         $this->assertSame(0, $this->scalar('SELECT COUNT(*) FROM voice_access_grant WHERE link_id NOT IN (SELECT id FROM voice_link)'));
+        // … les traces des échanges du compte aussi (ADR 0029 décision 14) ; celles d'un autre compte et celle sans compte restent
+        $this->assertSame(0, $this->rows('voice_trace', 'user_id', 'departing'));
+        $this->assertSame(1, $this->rows('voice_trace', 'user_id', 'staying'));
+        $this->assertSame(2, $this->scalar('SELECT COUNT(*) FROM voice_trace'));
     }
 
     public function testDeleteByUserErasesTheTokensOfARevokedLinkToo(): void
@@ -106,6 +114,7 @@ class UserVoiceDataRepositoryTest extends DatabaseTestCase
         $this->saveLink('link-departing', 'departing', null);
         $this->saveGrant('departing-access', 'link-departing', 'departing');
         $this->saveCode('departing-code', 'departing', false);
+        $this->saveTrace('departing');
         $counter = static::getContainer()->get(QueryCounter::class);
         $counter->reset();
 
@@ -153,6 +162,14 @@ class UserVoiceDataRepositoryTest extends DatabaseTestCase
         $code->usedAt = $used ? new DateTimeImmutable('2026-10-25 10:05:00') : null;
         $this->entityManager->persist($code);
         $this->entityManager->flush();
+    }
+
+    private function saveTrace(?string $userId): void
+    {
+        $this->entityManager->getConnection()->executeStatement(
+            "INSERT INTO voice_trace (created_at, user_id, request_type, outcome, duration_ms, request, response) VALUES (now(), :userId, 'LaunchRequest', 'ANSWERED', 1, '{}'::jsonb, '{}'::jsonb)",
+            ['userId' => $userId],
+        );
     }
 
     private function rows(string $table, string $column, string $value): int
