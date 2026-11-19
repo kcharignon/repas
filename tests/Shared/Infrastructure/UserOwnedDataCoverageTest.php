@@ -14,6 +14,7 @@ use Repas\Repas\Infrastructure\Entity\IngredientDistinct;
 use Repas\Repas\Infrastructure\Entity\Recipe;
 use Repas\Repas\Infrastructure\Entity\RecipeComponent;
 use Repas\Repas\Infrastructure\Entity\ShoppingList;
+use Repas\Repas\Infrastructure\Entity\ShoppingListArchive;
 use Repas\Repas\Infrastructure\Entity\ShoppingListType;
 use Repas\Repas\Infrastructure\Entity\SpokenPhraseChoice;
 use Repas\Repas\Infrastructure\Entity\SpokenRecipePhraseChoice;
@@ -45,6 +46,7 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
         IngredientAlias::class => ['userId'],
         IngredientDistinct::class => ['userId'],
         ShoppingList::class => ['ownerId'],
+        ShoppingListArchive::class => ['ownerId'],
         ShoppingListType::class => ['ownerId'],
         DepartmentListType::class => ['ownerId'],
         SpokenPhraseChoice::class => ['userId'],
@@ -79,7 +81,9 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
 
         // Then : aucune table à part, rien à ajouter à la purge d'un compte : le parent et le ratio sont sur la ligne de l'ingrédient, le registre sur la
         // ligne de la liste, deux entités que la suppression d'un compte efface déjà
-        $this->assertSame(['parentRatio' => [Ingredient::class], 'parentSlug' => [Ingredient::class], 'partShares' => [ShoppingList::class]], $holders);
+        // (la copie du registre dans l'archive d'une liste supprimée, ADR 0041, est effacée avec le compte elle aussi)
+        $this->assertSame(['parentRatio' => [Ingredient::class], 'parentSlug' => [Ingredient::class], 'partShares' => [ShoppingList::class, ShoppingListArchive::class]], $holders);
+        $this->assertArrayHasKey(ShoppingListArchive::class, self::ERASED_WITH_THE_USER);
         $this->assertArrayHasKey(Ingredient::class, self::ERASED_WITH_THE_USER);
         $this->assertArrayHasKey(ShoppingList::class, self::ERASED_WITH_THE_USER);
     }

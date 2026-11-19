@@ -4,7 +4,9 @@ namespace Repas\Tests\Drive\InputAdapter;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Drive\Application\Command\MarkLinesInBasket\MarkLinesInBasketCommand;
+use Repas\Drive\Application\Command\MarkLinesInBasket\NotAddedLine;
 use Repas\Drive\Domain\Interface\DriveFeature;
+use Repas\Drive\Domain\Model\NotAddedOutcome;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Tests\Helper\ControlledDriveFeature;
@@ -26,6 +28,51 @@ class MarkLinesInBasketApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
         $this->assertSame('', $this->client->getResponse()->getContent());
         $this->assertEquals([new MarkLinesInBasketCommand($user->getId(), $list->getId(), ['lait', 'oeuf'])], $commandBus->dispatched());
+    }
+
+    public function testTheLinesThatAreNotInTheBasketAreSentWithTheirOutcomeAndReason(): void
+    {
+        // Given (ADR 0041)
+        $user = $this->savedUser();
+        $list = $this->savedShoppingList($user, ShoppingListStatus::SENT);
+        $commandBus = $this->mockCommandBus();
+
+        // When : un article au panier, un refusé par le drive, un en erreur avec sa raison
+        $this->post($user, $list->getId(), [
+            'ingredientSlugs' => ['oeuf'],
+            'notAdded' => [
+                ['ingredientSlug' => 'lait', 'outcome' => 'NOT_IN_CART'],
+                ['ingredientSlug' => 'sel', 'outcome' => 'FAILED', 'reason' => 'BLOCKED'],
+            ],
+        ]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new MarkLinesInBasketCommand($user->getId(), $list->getId(), ['oeuf'], [
+            new NotAddedLine('lait', NotAddedOutcome::NOT_IN_CART),
+            new NotAddedLine('sel', NotAddedOutcome::FAILED, 'BLOCKED'),
+        ])], $commandBus->dispatched());
+    }
+
+    public function testAPassageWhereNothingWentInTheBasketIsAccepted(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $list = $this->savedShoppingList($user, ShoppingListStatus::SENT);
+        $commandBus = $this->mockCommandBus();
+
+        // When : aucun article au panier, seulement des issues
+        $this->post($user, $list->getId(), ['ingredientSlugs' => [], 'notAdded' => [['ingredientSlug' => 'lait', 'outcome' => 'UNAVAILABLE']]]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new MarkLinesInBasketCommand($user->getId(), $list->getId(), [], [new NotAddedLine('lait', NotAddedOutcome::UNAVAILABLE)])], $commandBus->dispatched());
+
+        // When : et la clé `ingredientSlugs` peut même manquer
+        $this->post($user, $list->getId(), ['notAdded' => [['ingredientSlug' => 'lait', 'outcome' => 'HAVE_AT_HOME']]]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
     }
 
     public function testTheUserOfTheBodyIsNeverTrusted(): void
@@ -76,6 +123,18 @@ class MarkLinesInBasketApiControllerTest extends QueryBusWebTestCase
         yield 'un slug trop long' => [['ingredientSlugs' => [str_repeat('a', 256)]]];
         yield 'un nombre' => [['ingredientSlugs' => [12]]];
         yield 'un objet' => [['ingredientSlugs' => [['lait']]]];
+        yield 'ni articles ni issues' => [['ingredientSlugs' => [], 'notAdded' => []]];
+        yield 'issues seules mais vides' => [['notAdded' => []]];
+        yield 'une issue inconnue' => [['ingredientSlugs' => ['lait'], 'notAdded' => [['ingredientSlug' => 'sel', 'outcome' => 'TOO_BAD']]]];
+        yield 'au panier n\'est pas une issue de refus' => [['ingredientSlugs' => ['lait'], 'notAdded' => [['ingredientSlug' => 'sel', 'outcome' => 'IN_CART']]]];
+        yield 'une issue sans ingrédient' => [['notAdded' => [['outcome' => 'FAILED']]]];
+        yield 'une issue sans issue' => [['notAdded' => [['ingredientSlug' => 'sel']]]];
+        yield 'une raison en minuscules' => [['notAdded' => [['ingredientSlug' => 'sel', 'outcome' => 'FAILED', 'reason' => 'blocked']]]];
+        yield 'une raison qui est une phrase' => [['notAdded' => [['ingredientSlug' => 'sel', 'outcome' => 'FAILED', 'reason' => 'Le site a refusé']]]];
+        yield 'une raison trop longue' => [['notAdded' => [['ingredientSlug' => 'sel', 'outcome' => 'FAILED', 'reason' => 'A' . str_repeat('B', 40)]]]];
+        yield 'un slug d\'issue en majuscules' => [['notAdded' => [['ingredientSlug' => 'Sel', 'outcome' => 'FAILED']]]];
+        yield 'issues qui ne sont pas une liste' => [['notAdded' => 'FAILED']];
+        yield 'plus de 1 000 issues' => [['notAdded' => array_map(static fn(int $n): array => ['ingredientSlug' => "ingredient-$n", 'outcome' => 'SKIPPED'], range(1, 1001))]];
         yield 'plus de 1 000 slugs' => [['ingredientSlugs' => array_map(static fn(int $n): string => "ingredient-$n", range(1, 1001))]];
     }
 

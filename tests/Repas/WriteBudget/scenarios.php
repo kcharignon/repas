@@ -2,6 +2,8 @@
 
 use Repas\Drive\Application\Command\ForgetChoice\ForgetChoiceCommand;
 use Repas\Drive\Application\Command\MarkLinesInBasket\MarkLinesInBasketCommand;
+use Repas\Drive\Application\Command\MarkLinesInBasket\NotAddedLine;
+use Repas\Drive\Domain\Model\NotAddedOutcome;
 use Repas\Drive\Application\Command\RememberLastRetailer\RememberLastRetailerCommand;
 use Repas\Drive\Application\Command\RemoveDriveSettings\RemoveDriveSettingsCommand;
 use Repas\Drive\Application\Command\ReplaceIngredientPreference\ReplaceIngredientPreferenceCommand;
@@ -285,7 +287,7 @@ return [
         $list = $t->savedShoppingList($owner, $t->typicalRecipes($owner), null, static function (ShoppingList $list): void {
             $rows = array_values($list->getRows()->toArray());
             foreach (array_slice($rows, 1) as $other) {
-                $other->tick();
+                $other->tick(new \DateTimeImmutable());
             }
         });
 
@@ -294,7 +296,7 @@ return [
     'decocher-ligne' => static function (WriteBudgetTestCase $t) use ($row): object {
         $owner = $t->savedUser();
         $list = $t->savedShoppingList($owner, $t->typicalRecipes($owner), null, static function (ShoppingList $list): void {
-            array_values($list->getRows()->toArray())[0]->tick();
+            array_values($list->getRows()->toArray())[0]->tick(new \DateTimeImmutable());
         });
 
         return new UncheckLineOnShoppingListCommand($row($list)->getId());
@@ -1362,6 +1364,24 @@ return [
         }
 
         return new MarkLinesInBasketCommand($owner->getId(), $list->getId(), $slugs);
+    },
+    // Le même passage quand le drive a refusé la moitié des articles (ADR 0041) : l'issue de chaque ligne est écrite dans la MÊME instruction, rien de plus
+    'cocher-lignes-du-panier-drive-avec-refus' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $list = $t->savedShoppingList($owner, $t->typicalRecipes($owner), null, static function (ShoppingList $list): void {
+            $list->send(new DateTimeImmutable());
+        });
+        $inCart = [];
+        $notAdded = [];
+        foreach (array_values($list->getRows()->toArray()) as $index => $row) {
+            if ($index % 2 === 0) {
+                $inCart[] = $row->getIngredientSlug();
+            } else {
+                $notAdded[] = new NotAddedLine($row->getIngredientSlug(), $index % 4 === 1 ? NotAddedOutcome::NOT_IN_CART : NotAddedOutcome::FAILED, $index % 4 === 1 ? null : 'BLOCKED');
+            }
+        }
+
+        return new MarkLinesInBasketCommand($owner->getId(), $list->getId(), $inCart, $notAdded);
     },
     'oublier-choix-drive' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();

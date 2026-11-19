@@ -17,7 +17,7 @@ use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToS
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListHandler;
 use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientCommand;
 use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientHandler;
-use Repas\Repas\Application\Command\CheckRowsAddedToDriveBasket\CheckRowsAddedToDriveBasketCommand;
+use Repas\Drive\Application\Command\MarkLinesInBasket\NotAddedLine;
 use Repas\Repas\Application\Command\ChooseIngredientList\ChooseIngredientListCommand;
 use Repas\Repas\Application\Command\ChooseIngredientList\ChooseIngredientListHandler;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
@@ -143,7 +143,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
     private const array EXEMPT = [
         CreateConversionCommand::class => "réservée aux administrateurs (#[IsGranted('ROLE_ADMIN')]) et à leurs PROPRES ingrédients (le handler refuse celui d'un autre, D4) : le slug est tel quel",
         UpdateConversionCommand::class => "réservée aux administrateurs (#[IsGranted('ROLE_ADMIN')]) et à leurs PROPRES ingrédients (le handler refuse celui d'un autre, D4) : le slug est tel quel",
-        CheckRowsAddedToDriveBasketCommand::class => "reçue de l'Open Host Service `BasketLineCheckCommandOHS`, dont l'appelant (`MarkLinesInBasketHandler`, déclaré ci-dessus) a DÉJÀ traduit les slugs par les alias ; elle ne pose rien sur un ingrédient, elle coche des lignes de la liste envoyée du propriétaire (un slug absent est ignoré)",
+        NotAddedLine::class => "porté par `MarkLinesInBasketCommand` (ADR 0041) : `MarkLinesInBasketHandler` traduit ses slugs par les alias de l'utilisateur AVANT de les donner à `Repas` ; il ne pose rien sur un ingrédient, il garde ce qui est arrivé à une ligne de la liste envoyée (un slug absent est ignoré)",
         PreparedLine::class => "construite par `PartAwareLines` depuis un ingrédient DÉJÀ chargé (celui d'une ligne de recette, ou le produit dont le placement vient d'être lu et jugé) : jamais un slug reçu d'un client, rien à traduire",
     ];
 

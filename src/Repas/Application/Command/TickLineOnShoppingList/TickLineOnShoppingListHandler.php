@@ -2,6 +2,7 @@
 
 namespace Repas\Repas\Application\Command\TickLineOnShoppingList;
 
+use Psr\Clock\ClockInterface;
 use Repas\Repas\Domain\Event\LineTickedEvent;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
@@ -16,6 +17,7 @@ readonly class TickLineOnShoppingListHandler
         private ShoppingListRowRepository $shoppingListRowRepository,
         private ShoppingListRepository $shoppingListRepository,
         private EventDispatcherInterface $eventDispatcher,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -28,7 +30,8 @@ readonly class TickLineOnShoppingListHandler
             throw ShoppingListException::sent($row->getShoppingListId());
         }
 
-        $row->tick();
+        // La ligne garde qu'elle a été cochée à la main, et quand (ADR 0041)
+        $row->tick($this->clock->now());
         $this->shoppingListRowRepository->save($row);
 
         $this->eventDispatcher->dispatch(new LineTickedEvent($row->getShoppingListId()));

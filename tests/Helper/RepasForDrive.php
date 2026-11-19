@@ -43,6 +43,9 @@ final class RepasForDrive
     /** Le bus par lequel l'Open Host Service d'écriture envoie ses commandes à leur vrai handler (`basketLinePort()`). */
     public readonly MockCommandBus $bus;
 
+    /** L'instant du passage au drive que l'horloge figée du handler `Repas` donne aux coches (ADR 0041). */
+    public DateTimeImmutable $passageAt;
+
     /**
      * @param array<string, string> $aliases le slug de l'ingrédient de l'utilisateur par slug d'alias (anciens slugs de l'utilisateur `$userId`)
      * @param list<string> $notOwned les slugs qui ne sont à personne de l'utilisateur (inconnus, ou à un autre compte) : `resolveOwned()` les omet
@@ -58,6 +61,7 @@ final class RepasForDrive
     ) {
         $this->bus = new MockCommandBus();
         $now = new DateTimeImmutable('2026-10-21 03:04:05');
+        $this->passageAt = new DateTimeImmutable('2026-11-19 10:00:00');
         $this->aliases = new IngredientAliasInMemoryRepository(
             array_map(
                 static fn(string $aliasSlug, string $slug): IngredientAlias => IngredientAlias::create($userId, $aliasSlug, $slug, AliasKind::ADOPTION, 'activation', $now),
@@ -98,7 +102,7 @@ final class RepasForDrive
      */
     public function basketLinePort(ShoppingListInMemoryRepository $shoppingLists, ShoppingListRowInMemoryRepository $shoppingListRows): BasketLineCommandPort
     {
-        $handler = new CheckRowsAddedToDriveBasketHandler($shoppingLists, $shoppingListRows);
+        $handler = new CheckRowsAddedToDriveBasketHandler($shoppingLists, $shoppingListRows, new FrozenClock($this->passageAt));
         $this->bus->willAnswer(CheckRowsAddedToDriveBasketCommand::class, static function (object $command) use ($handler): mixed {
             $handler($command);
 

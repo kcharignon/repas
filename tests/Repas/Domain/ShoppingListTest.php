@@ -87,7 +87,7 @@ class ShoppingListTest extends TestCase
         // Given : une liste dont toutes les lignes sont déjà cochées (DRV-745) : il n'y a plus rien à acheter
         $list = $this->activeList();
         foreach ($list->getRows() as $row) {
-            $row->tick();
+            $row->tick(new \DateTimeImmutable());
         }
 
         // Then
@@ -111,7 +111,7 @@ class ShoppingListTest extends TestCase
             ->addIngredient(new IngredientBuilder()->isMilk())
             ->build();
         foreach ($list->getRows() as $row) {
-            $row->tick();
+            $row->tick(new \DateTimeImmutable());
             break;
         }
 

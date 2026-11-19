@@ -265,7 +265,7 @@ class ShoppingListPartsTest extends TestCase
     {
         // Given : la ligne des œufs est cochée
         $list = $this->listWith(3);
-        $list->findRow(self::EGG)->tick();
+        $list->findRow(self::EGG)->tick(new \DateTimeImmutable());
 
         // When
         $list->addPart(self::YOLK, self::EGG, 'unite', 5, 5);

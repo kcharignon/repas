@@ -8,6 +8,7 @@ use Repas\Repas\Domain\Interface\IngredientAliasRepository;
 use Repas\Repas\Domain\Interface\IngredientDistinctRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
+use Repas\Repas\Domain\Interface\ShoppingListArchiveRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Interface\ShoppingListTypeRepository;
 use Repas\Repas\Domain\Interface\SpokenPhraseChoiceRepository;
@@ -15,7 +16,7 @@ use Repas\Repas\Domain\Interface\SpokenRecipePhraseChoiceRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * Supprime les listes de courses, les types de liste (et leurs rayons), les recettes, les ingrédients personnalisés (copies d'adoption comprises), les alias d'ingrédients, les « Pas le même » et la mémoire de phrase (produits et recettes) de la commande vocale d'un compte supprimé, comme s'il n'avait
+ * Supprime les listes de courses (et leurs archives, ADR 0041), les types de liste (et leurs rayons), les recettes, les ingrédients personnalisés (copies d'adoption comprises), les alias d'ingrédients, les « Pas le même » et la mémoire de phrase (produits et recettes) de la commande vocale d'un compte supprimé, comme s'il n'avait
  * jamais existé (ADR 0021). Les suppressions se font en masse, sans passer par `RemoveRecipe` ni `RemoveIngredient` : ces
  * cas d'usage refusent de supprimer ce qu'une liste utilise, et leurs événements mettraient à jour les statistiques d'un
  * compte qui n'existe plus.
@@ -33,6 +34,7 @@ readonly class PurgeUserDataHandler
         private SpokenPhraseChoiceRepository $spokenPhraseRepository,
         private SpokenRecipePhraseChoiceRepository $spokenRecipePhraseRepository,
         private ShoppingListTypeRepository $listTypeRepository,
+        private ShoppingListArchiveRepository $archiveRepository,
     ) {
     }
 
@@ -41,6 +43,8 @@ readonly class PurgeUserDataHandler
         $recipeIds = $this->recipeRepository->findIdsByAuthor($command->userId);
 
         $this->shoppingListRepository->deleteByOwner($command->userId);
+        // Les archives de ses listes supprimées (ADR 0041) partent avec lui : elles ne sont qu'une trace de ce qu'il a fait, pas une donnée à garder
+        $this->archiveRepository->deleteByOwner($command->userId);
         // Une liste d'un autre utilisateur qui planifierait une recette de ce compte (appel direct de l'API) perd ce repas
         $this->shoppingListRepository->removeMealsOfRecipes($recipeIds);
 

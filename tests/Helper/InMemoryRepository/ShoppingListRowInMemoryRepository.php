@@ -5,6 +5,10 @@ namespace Repas\Tests\Helper\InMemoryRepository;
 
 use Repas\Repas\Domain\Exception\ShoppingListRowException;
 use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
+use DateTimeImmutable;
+use Repas\Repas\Domain\Model\DriveLineAttempt;
+use Repas\Repas\Domain\Model\DriveLineOutcome;
+use Repas\Repas\Domain\Model\RowCheckSource;
 use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Shared\Domain\Tool\Tab;
 
@@ -40,12 +44,26 @@ class ShoppingListRowInMemoryRepository extends AbstractInMemoryRepository imple
         return true;
     }
 
-    public function checkByIngredientSlugs(string $shoppingListId, array $ingredientSlugs): void
+    /** @var array<string, DriveLineAttempt> la dernière issue du drive de chaque ligne, par « liste/ingrédient » */
+    public array $driveAttempts = [];
+
+    public function recordDrivePassage(string $shoppingListId, array $attempts, DateTimeImmutable $at): void
     {
-        /** @var ShoppingListRow $row */
-        foreach ($this->models as $row) {
-            if ($row->getShoppingListId() === $shoppingListId && in_array($row->getIngredientSlug(), $ingredientSlugs, true) && !$row->isChecked()) {
-                $row->tick();
+        foreach ($attempts as $attempt) {
+            /** @var ShoppingListRow $row */
+            foreach ($this->models->toArray() as $row) {
+                if ($row->getShoppingListId() !== $shoppingListId || $row->getIngredientSlug() !== $attempt->ingredientSlug) {
+                    continue;
+                }
+                $this->driveAttempts[$shoppingListId . '/' . $attempt->ingredientSlug] = $attempt;
+                // La ligne mise au panier est cochée par le drive ; une ligne déjà cochée garde son origine (comme l'instruction SQL)
+                if ($attempt->outcome === DriveLineOutcome::IN_CART && !$row->isChecked()) {
+                    $this->models[$row->getId()] = ShoppingListRow::load([
+                        'id' => $row->getId(), 'shopping_list_id' => $row->getShoppingListId(), 'ingredient_slug' => $row->getIngredientSlug(),
+                        'quantity' => $row->getQuantity(), 'unit_slug' => $row->getUnitSlug(), 'checked' => true,
+                        'checked_by' => RowCheckSource::DRIVE, 'checked_at' => $at,
+                    ]);
+                }
             }
         }
     }

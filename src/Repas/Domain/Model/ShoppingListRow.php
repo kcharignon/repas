@@ -3,6 +3,7 @@
 namespace Repas\Repas\Domain\Model;
 
 
+use DateTimeImmutable;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
@@ -19,6 +20,9 @@ final class ShoppingListRow implements ModelInterface
         private float      $quantity,
         private string     $unitSlug,
         private bool       $checked,
+        // Qui a coché la ligne et quand (ADR 0041) : posés avec la coche, effacés avec elle ; vides pour une ligne cochée avant l'ADR 0041
+        private ?RowCheckSource $checkedBy = null,
+        private ?DateTimeImmutable $checkedAt = null,
     ) {
     }
 
@@ -73,6 +77,16 @@ final class ShoppingListRow implements ModelInterface
         return $this->checked;
     }
 
+    public function getCheckedBy(): ?RowCheckSource
+    {
+        return $this->checkedBy;
+    }
+
+    public function getCheckedAt(): ?DateTimeImmutable
+    {
+        return $this->checkedAt;
+    }
+
     public static function load(array $datas): self
     {
         return new self(
@@ -82,6 +96,8 @@ final class ShoppingListRow implements ModelInterface
             quantity: $datas['quantity'],
             unitSlug: $datas['unit_slug'],
             checked: $datas['checked'],
+            checkedBy: $datas['checked_by'] ?? null,
+            checkedAt: $datas['checked_at'] ?? null,
         );
     }
 
@@ -110,13 +126,22 @@ final class ShoppingListRow implements ModelInterface
         }
     }
 
-    public function tick(): void
+    /**
+     * La personne coche la ligne à la main (ADR 0041) : l'origine et l'instant sont gardés. Une ligne déjà cochée par le drive garde son origine.
+     */
+    public function tick(DateTimeImmutable $at): void
     {
+        if (!$this->checked || $this->checkedBy === null) {
+            $this->checkedBy = RowCheckSource::MANUAL;
+            $this->checkedAt = $at;
+        }
         $this->checked = true;
     }
 
     public function uncheck(): void
     {
         $this->checked = false;
+        $this->checkedBy = null;
+        $this->checkedAt = null;
     }
 }

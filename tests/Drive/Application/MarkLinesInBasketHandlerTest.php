@@ -6,7 +6,12 @@ use PHPUnit\Framework\TestCase;
 use Repas\Drive\Application\Command\MarkLinesInBasket\MarkLinesInBasketCommand;
 use Repas\Drive\Application\Command\MarkLinesInBasket\MarkLinesInBasketHandler;
 use Repas\Repas\Application\Command\CheckRowsAddedToDriveBasket\CheckRowsAddedToDriveBasketCommand;
+use Repas\Drive\Application\Command\MarkLinesInBasket\NotAddedLine;
+use Repas\Drive\Domain\Model\NotAddedOutcome;
 use Repas\Repas\Domain\Exception\ShoppingListException;
+use Repas\Repas\Domain\Model\DriveLineAttempt;
+use Repas\Repas\Domain\Model\DriveLineOutcome;
+use Repas\Repas\Domain\Model\RowCheckSource;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
@@ -117,7 +122,7 @@ class MarkLinesInBasketHandlerTest extends TestCase
         // Then : la ligne du lait est cochée, une seule traduction demandée pour tout le lot
         $this->assertSame(['egg' => false, 'milk' => true, 'salt' => true, 'active-egg' => false, 'their-egg' => false], $this->checked());
         $this->assertSame([['user-1', ['ancien-lait']]], $this->repas->aliases->resolveCalls);
-        $this->assertEquals([new CheckRowsAddedToDriveBasketCommand('user-1', 'sent', ['lait'])], $this->repas->bus->dispatched());
+        $this->assertEquals([new CheckRowsAddedToDriveBasketCommand('user-1', 'sent', [new DriveLineAttempt('lait', DriveLineOutcome::IN_CART)])], $this->repas->bus->dispatched());
     }
 
     public function testTheOldSlugAndTheCurrentOneOfTheSameIngredientAreSentOnce(): void
@@ -126,7 +131,69 @@ class MarkLinesInBasketHandlerTest extends TestCase
         ($this->handler())(new MarkLinesInBasketCommand('user-1', 'sent', ['ancien-lait', 'lait']));
 
         // Then
-        $this->assertEquals([new CheckRowsAddedToDriveBasketCommand('user-1', 'sent', ['lait'])], $this->repas->bus->dispatched());
+        $this->assertEquals([new CheckRowsAddedToDriveBasketCommand('user-1', 'sent', [new DriveLineAttempt('lait', DriveLineOutcome::IN_CART)])], $this->repas->bus->dispatched());
+    }
+
+    public function testTheLinesPutInTheBasketAreCheckedByTheDriveAtThePassageTime(): void
+    {
+        // When (ADR 0041)
+        ($this->handler())(new MarkLinesInBasketCommand('user-1', 'sent', ['oeuf']));
+
+        // Then : la ligne de l'œuf dit qu'elle est cochée par le drive, à l'instant du passage ; le sel, déjà coché avant, garde son absence d'origine
+        $egg = $this->rows->findOneById('egg');
+        $this->assertSame([RowCheckSource::DRIVE, $this->repas->passageAt], [$egg->getCheckedBy(), $egg->getCheckedAt()]);
+        $this->assertNull($this->rows->findOneById('salt')->getCheckedBy());
+        $this->assertEquals(new DriveLineAttempt('oeuf', DriveLineOutcome::IN_CART), $this->rows->driveAttempts['sent/oeuf']);
+    }
+
+    public function testKeepsWhatHappenedToTheLinesThatAreNotInTheBasketAndDoesNotCheckThem(): void
+    {
+        // When : l'œuf est au panier, le lait a été refusé par le drive, la raison de l'échec du sel est connue
+        ($this->handler())(new MarkLinesInBasketCommand('user-1', 'sent', ['oeuf'], [
+            new NotAddedLine('lait', NotAddedOutcome::NOT_IN_CART),
+            new NotAddedLine('sel', NotAddedOutcome::FAILED, 'BLOCKED'),
+        ]));
+
+        // Then : l'issue de chaque ligne est gardée, seule la ligne au panier est cochée
+        $this->assertSame(['egg' => true, 'milk' => false, 'salt' => true, 'active-egg' => false, 'their-egg' => false], $this->checked());
+        $this->assertEquals(
+            [
+                'sent/oeuf' => new DriveLineAttempt('oeuf', DriveLineOutcome::IN_CART),
+                'sent/lait' => new DriveLineAttempt('lait', DriveLineOutcome::NOT_IN_CART),
+                'sent/sel' => new DriveLineAttempt('sel', DriveLineOutcome::FAILED, 'BLOCKED'),
+            ],
+            $this->rows->driveAttempts,
+        );
+    }
+
+    public function testAPassageWhereNothingWentInTheBasketStillKeepsItsOutcomes(): void
+    {
+        // When : rien n'est au panier
+        ($this->handler())(new MarkLinesInBasketCommand('user-1', 'sent', [], [new NotAddedLine('oeuf', NotAddedOutcome::UNAVAILABLE)]));
+
+        // Then
+        $this->assertSame(['egg' => false, 'milk' => false, 'salt' => true, 'active-egg' => false, 'their-egg' => false], $this->checked());
+        $this->assertEquals(['sent/oeuf' => new DriveLineAttempt('oeuf', DriveLineOutcome::UNAVAILABLE)], $this->rows->driveAttempts);
+    }
+
+    public function testAnOldSlugOfALineThatIsNotInTheBasketDesignatesTheCurrentIngredientAndOneTranslationIsAsked(): void
+    {
+        // When
+        ($this->handler())(new MarkLinesInBasketCommand('user-1', 'sent', ['oeuf'], [new NotAddedLine('ancien-lait', NotAddedOutcome::NOT_IN_CART)]));
+
+        // Then : une seule traduction pour les deux listes, la ligne du lait porte l'issue
+        $this->assertSame([['user-1', ['oeuf', 'ancien-lait']]], $this->repas->aliases->resolveCalls);
+        $this->assertEquals(new DriveLineAttempt('lait', DriveLineOutcome::NOT_IN_CART), $this->rows->driveAttempts['sent/lait']);
+    }
+
+    public function testALineThatIsBothInTheBasketAndNotAddedIsInTheBasket(): void
+    {
+        // When : un corps contradictoire ; ce que le panier a pris l'emporte
+        ($this->handler())(new MarkLinesInBasketCommand('user-1', 'sent', ['oeuf'], [new NotAddedLine('oeuf', NotAddedOutcome::NOT_IN_CART)]));
+
+        // Then
+        $this->assertEquals([new CheckRowsAddedToDriveBasketCommand('user-1', 'sent', [new DriveLineAttempt('oeuf', DriveLineOutcome::IN_CART)])], $this->repas->bus->dispatched());
+        $this->assertTrue($this->rows->findOneById('egg')->isChecked());
     }
 
     public function testRefusesAListOfAnotherUserAndWritesNothing(): void

@@ -62,7 +62,7 @@ class ShoppingListRowPostgreSQLLoaderTest extends DatabaseTestCase
         // Given
         $rowId = $this->savedRowOfPasta(quantity: 0);
         $row = $this->rowRepository->findOneById($rowId);
-        $row->tick();
+        $row->tick(new \DateTimeImmutable());
         $this->rowRepository->save($row);
 
         // When

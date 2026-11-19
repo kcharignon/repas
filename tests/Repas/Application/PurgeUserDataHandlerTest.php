@@ -24,6 +24,7 @@ use Repas\Tests\Helper\InMemoryRepository\SpokenRecipePhraseChoiceInMemoryReposi
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\ShoppingListArchiveInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListTypeInMemoryRepository;
 
 class PurgeUserDataHandlerTest extends TestCase
@@ -40,6 +41,7 @@ class PurgeUserDataHandlerTest extends TestCase
     private SpokenPhraseChoiceInMemoryRepository $spokenPhraseRepository;
     private SpokenRecipePhraseChoiceInMemoryRepository $spokenRecipePhraseRepository;
     private ShoppingListTypeInMemoryRepository $listTypeRepository;
+    private ShoppingListArchiveInMemoryRepository $archiveRepository;
     private PurgeUserDataHandler $handler;
 
     protected function setUp(): void
@@ -100,6 +102,8 @@ class PurgeUserDataHandlerTest extends TestCase
             ShoppingListType::load(['id' => 'other-type', 'owner_id' => self::OTHER, 'name' => 'Marché', 'slugged_name' => 'marche', 'created_at' => new \DateTimeImmutable(), 'department_slugs' => ['viandes']]),
         ]);
 
+        $this->archiveRepository = new ShoppingListArchiveInMemoryRepository();
+
         $this->handler = new PurgeUserDataHandler(
             $this->shoppingListRepository,
             $this->recipeRepository,
@@ -110,7 +114,17 @@ class PurgeUserDataHandlerTest extends TestCase
             $this->spokenPhraseRepository,
             $this->spokenRecipePhraseRepository,
             $this->listTypeRepository,
+            $this->archiveRepository,
         );
+    }
+
+    public function testTheArchivesOfTheDeletedListsOfTheUserAreErasedWithHim(): void
+    {
+        // When (ADR 0041)
+        ($this->handler)(new PurgeUserDataCommand(self::USER));
+
+        // Then : les archives de ce compte, et de lui seul
+        $this->assertSame([self::USER], $this->archiveRepository->ownersErased);
     }
 
     public function testTheShoppingListsOfTheUserAreDeletedAndTheOthersKept(): void

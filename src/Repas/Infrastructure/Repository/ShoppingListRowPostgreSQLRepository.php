@@ -3,10 +3,14 @@
 namespace Repas\Repas\Infrastructure\Repository;
 
 
+use DateTimeImmutable;
+use Doctrine\DBAL\Types\Types;
 use Repas\Shared\Infrastructure\Repository\PostgreSQLRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\ShoppingListRowException;
 use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
+use Repas\Repas\Domain\Model\DriveLineOutcome;
+use Repas\Repas\Domain\Model\RowCheckSource;
 use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Repas\Domain\Model\ShoppingListRow as ShoppingListRowModel;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
@@ -49,23 +53,37 @@ readonly class ShoppingListRowPostgreSQLRepository extends PostgreSQLRepository 
         return (int) $unchecked === 0;
     }
 
-    public function checkByIngredientSlugs(string $shoppingListId, array $ingredientSlugs): void
+    public function recordDrivePassage(string $shoppingListId, array $attempts, DateTimeImmutable $at): void
     {
-        if ($ingredientSlugs === []) {
+        if ($attempts === []) {
             return;
         }
 
-        // Une seule instruction, sans hydrater aucune ligne : UPDATE shopping_list_row SET checked = true WHERE shopping_list = … AND ingredient IN (…)
-        $this->entityManager->createQueryBuilder()
-            ->update(ShoppingListRowEntity::class, 'r')
-            ->set('r.checked', 'true')
-            ->where('r.shoppingListId = :shoppingListId')
-            ->andWhere('r.ingredientSlug IN (:slugs)')
-            ->andWhere('r.checked = false')
-            ->setParameter('shoppingListId', $shoppingListId)
-            ->setParameter('slugs', $ingredientSlugs)
-            ->getQuery()
-            ->execute();
+        // Une seule instruction, sans hydrater aucune ligne : l'issue de chaque ingrédient est jointe à ses lignes par une liste de valeurs, et la ligne
+        // dont l'article est au panier est cochée au passage (origine DRIVE) si elle ne l'était pas ; une ligne déjà cochée garde son origine
+        $table = $this->entityManager->getClassMetadata(ShoppingListRowEntity::class)->getTableName();
+        $values = [];
+        $params = ['list' => $shoppingListId, 'at1' => $at, 'at2' => $at];
+        $types = ['at1' => Types::DATETIME_IMMUTABLE, 'at2' => Types::DATETIME_IMMUTABLE];
+        foreach (array_values($attempts) as $index => $attempt) {
+            $values[] = sprintf('(CAST(:s%1$d AS VARCHAR), CAST(:o%1$d AS VARCHAR), CAST(:r%1$d AS VARCHAR))', $index);
+            $params['s' . $index] = $attempt->ingredientSlug;
+            $params['o' . $index] = $attempt->outcome->value;
+            $params['r' . $index] = $attempt->reason;
+        }
+        $inCart = "'" . DriveLineOutcome::IN_CART->value . "'";
+
+        $this->entityManager->getConnection()->executeStatement(
+            'UPDATE ' . $table . ' AS r SET'
+            . ' drive_outcome = v.outcome, drive_reason = v.reason, drive_attempted_at = :at1,'
+            . ' checked = r.checked OR v.outcome = ' . $inCart . ','
+            . ' checked_by = CASE WHEN NOT r.checked AND v.outcome = ' . $inCart . " THEN '" . RowCheckSource::DRIVE->value . "' ELSE r.checked_by END,"
+            . ' checked_at = CASE WHEN NOT r.checked AND v.outcome = ' . $inCart . ' THEN CAST(:at2 AS TIMESTAMP(0)) ELSE r.checked_at END'
+            . ' FROM (VALUES ' . implode(', ', $values) . ') AS v(slug, outcome, reason)'
+            . ' WHERE r.shopping_list = :list AND r.ingredient = v.slug',
+            $params,
+            $types,
+        );
     }
 
     /**
@@ -152,6 +170,8 @@ readonly class ShoppingListRowPostgreSQLRepository extends PostgreSQLRepository 
             'quantity' => $rowEntity->getQuantity(),
             'unit_slug' => $rowEntity->getUnitSlug(),
             'checked' => $rowEntity->isChecked(),
+            'checked_by' => $rowEntity->getCheckedBy(),
+            'checked_at' => $rowEntity->getCheckedAt(),
         ]);
     }
 }

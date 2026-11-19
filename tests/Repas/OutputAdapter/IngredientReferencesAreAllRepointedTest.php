@@ -68,6 +68,9 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
         'ingredient_distinct.second_slug' => 'idem (l\'autre côté de la paire)',
         'voice_trace.request' => 'la TRACE des échanges avec Alexa (ADR 0029 décision 14, phase de test) : un journal borné aux 1 000 derniers échanges, jamais lu par une route ni repointé ; l\'état du dialogue de la séance qu\'elle copie peut nommer des slugs d\'ingrédients (les propositions), figés tels qu\'Alexa les a entendus ; il part avec le compte et avec la rotation',
         'voice_trace.response' => 'idem (la réponse rendue, dont l\'état du dialogue de la séance)',
+        'shopping_list_archive.lines' => 'l\'ARCHIVE d\'une liste supprimée (ADR 0041, JSON) : une copie à plat, figée, jamais lue par une route ni repointée ; ses lignes portent le slug ET le nom de l\'ingrédient tels qu\'ils étaient à la suppression, et la fusion d\'ingrédients n\'y touche pas',
+        'shopping_list_archive.meals' => 'idem (les repas de la liste supprimée : l\'identifiant et le nom de la recette)',
+        'shopping_list_archive.part_shares' => 'idem (le registre caché des parties de la liste supprimée, copié tel quel)',
         'voice_trace.failure' => 'idem (la classe, l\'endroit et le message d\'une panne, qui peut citer une phrase dite)',
     ];
 
