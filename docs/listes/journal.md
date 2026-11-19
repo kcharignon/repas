@@ -21,6 +21,8 @@ Le site doit envoyer `notAdded` (le détail de ce que le drive n'a pas mis au pa
 
 Sur le serveur : `docker compose exec database psql -U app repas` (voir `docs/production.md`). Ne rien écrire.
 
+Pour un coup d'œil sans se connecter, l'accès en lecture seule de l'assistant a une demande `rapport journal` (`~/repas-outils/lecture.sh rapport journal`) : des **décomptes** seulement (lignes cochées par origine, issues du dernier passage au drive, refus encore à acheter, archives par cause), jamais un identifiant ni un nom. Pour le détail d'une liste, les requêtes ci-dessous restent à lancer à la main.
+
 ## Requêtes
 
 Une liste en cours (ou envoyée) : qui a coché chaque ligne, et ce que le drive en a fait.

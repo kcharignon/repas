@@ -91,6 +91,34 @@ class DocsListJournalQueriesTest extends DatabaseTestCase
         $this->assertSame([], $this->connection->fetchAllAssociative($find("NOT EXISTS (SELECT 1 FROM shopping_list_row r WHERE r.shopping_list = l.id AND r.checked_by = 'DRIVE')")));
     }
 
+    public function testTheServerReportRunsAndOnlyCounts(): void
+    {
+        // Given : la requête de la demande `rapport journal` du programme en lecture seule du serveur (`repas-ops`), lue dans le script qui l'installe
+        $script = file_get_contents(dirname(__DIR__, 3) . '/.claude/skills/repas-ops/references/installer-acces-lecture-seule.sh');
+        $this->assertNotFalse($script);
+        $this->assertSame(1, preg_match('/journal\) SQL="([^"]*)" ;;/', $script, $match));
+
+        // When
+        $rows = $this->connection->fetchAllAssociative($match[1]);
+
+        // Then : des rubriques et des décomptes, la liste et son archive comptées chacune
+        $report = array_column($rows, 'valeur', 'rubrique');
+        $this->assertSame(['rubrique', 'valeur'], array_keys($rows[0]));
+        $this->assertSame('2', $report['lignes de listes en cours ou envoyees']);
+        $this->assertSame('1', $report['lignes cochees, origine DRIVE']);
+        $this->assertSame('1', $report['issue du dernier passage au drive : IN_CART']);
+        $this->assertSame('1', $report['issue du dernier passage au drive : NOT_IN_CART']);
+        $this->assertSame('1', $report['refusees par le drive et encore a acheter (listes non terminees)']);
+        $this->assertSame('1', $report['archives, cause DELETED_BY_USER']);
+        $this->assertSame('2', $report['archives : lignes au total']);
+        $this->assertSame('1', $report['archives qui portent une ligne refusee par le drive']);
+
+        // Ni identifiant, ni nom, ni adresse : le rapport ne sort que ses propres libellés et des nombres ou des dates
+        $text = json_encode($rows, JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString($this->listId, $text);
+        $this->assertStringNotContainsString('@', $text);
+    }
+
     /**
      * @return list<string> les requêtes de la documentation, sans le point-virgule final
      */
