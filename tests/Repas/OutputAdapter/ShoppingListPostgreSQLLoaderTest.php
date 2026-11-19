@@ -192,7 +192,7 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
             $list->addIngredient($ingredient);
         }
         $main = $list->build();
-        $main->getRows()->find(fn($row) => $row->getIngredientSlug() === new IngredientBuilder()->isEgg()->build()->getSlug())->tick();
+        $main->getRows()->find(fn($row) => $row->getIngredientSlug() === new IngredientBuilder()->isEgg()->build()->getSlug())->tick(new \DateTimeImmutable());
         $this->shoppingListRepository->save($main);
         $this->persister->saveShoppingListType(ShoppingListType::create('butcher', $owner->getId(), 'Boucherie', new DateTimeImmutable('2026-10-01 10:00:00')));
         $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('butcher-list')->withOwner($owner)->withListTypeId('butcher')->withName('Boucherie')->withVersion(4)->build());
@@ -410,7 +410,7 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         $shoppingList = new ShoppingListBuilder()->withId('list-1')->withOwner($owner)
             ->addIngredient($egg)->addIngredient($milk)->addIngredient($pasta)->addIngredient($bread)->build();
         $shoppingList->addRow($pasta->getSlug(), $pasta->getDefaultPurchaseUnit()->getSlug(), 499);
-        $shoppingList->getRows()->find(fn($row) => $row->getIngredientSlug() === $egg->getSlug())->tick();
+        $shoppingList->getRows()->find(fn($row) => $row->getIngredientSlug() === $egg->getSlug())->tick(new \DateTimeImmutable());
         $this->shoppingListRepository->save($shoppingList);
 
         // When

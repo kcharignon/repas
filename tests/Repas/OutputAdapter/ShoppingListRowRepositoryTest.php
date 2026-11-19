@@ -3,6 +3,9 @@
 namespace Repas\Tests\Repas\OutputAdapter;
 
 use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
+use Repas\Repas\Domain\Model\DriveLineAttempt;
+use Repas\Repas\Domain\Model\DriveLineOutcome;
+use Repas\Repas\Domain\Model\RowCheckSource;
 use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
@@ -44,7 +47,7 @@ class ShoppingListRowRepositoryTest extends DatabaseTestCase
         $this->assertFalse($this->shoppingListRowRepository->allRowsChecked($shoppingListId));
 
         // Arrange
-        $remaining->tick();
+        $remaining->tick(new \DateTimeImmutable());
         $this->shoppingListRowRepository->save($remaining);
 
         // Act & Assert
@@ -60,51 +63,112 @@ class ShoppingListRowRepositoryTest extends DatabaseTestCase
         $this->assertTrue($this->shoppingListRowRepository->allRowsChecked('shopping-list-id'));
     }
 
-    public function testCheckByIngredientSlugsChecksOnlyTheMatchingRowsOfThatListInOneStatement(): void
+    /**
+     * @param list<array{0: string, 1: string, 2?: bool}> $rows liste, ingrédient, coché
+     */
+    private function saveRows(array $rows): void
     {
-        // Given (DRV-745) : deux listes ; la première a un œuf, un lait et une pâte (déjà cochée), la seconde un œuf
-        $row = static fn(string $list, string $slug, bool $checked = false): ShoppingListRow => ShoppingListRow::load([
-            'id' => "$list-$slug", 'shopping_list_id' => $list, 'ingredient_slug' => $slug, 'quantity' => 1.0, 'unit_slug' => 'unite', 'checked' => $checked,
-        ]);
-        foreach ([$row('list-a', 'oeuf'), $row('list-a', 'lait'), $row('list-a', 'pate', true), $row('list-b', 'oeuf')] as $model) {
-            $this->shoppingListRowRepository->save($model);
+        foreach ($rows as $row) {
+            $this->shoppingListRowRepository->save(ShoppingListRow::load([
+                'id' => "$row[0]-$row[1]", 'shopping_list_id' => $row[0], 'ingredient_slug' => $row[1], 'quantity' => 1.0, 'unit_slug' => 'unite', 'checked' => $row[2] ?? false,
+            ]));
         }
+        static::getContainer()->get('doctrine.orm.entity_manager')->clear();
+    }
+
+    /**
+     * @return array<string, array<string, mixed>> les colonnes du journal de chaque ligne, par identifiant, lues en SQL (jamais par le modèle)
+     */
+    private function journal(): array
+    {
+        $rows = static::getContainer()->get('doctrine.orm.entity_manager')->getConnection()->fetchAllAssociative(
+            'SELECT id, checked, checked_by, checked_at, drive_outcome, drive_reason, drive_attempted_at FROM shopping_list_row ORDER BY id',
+        );
+
+        return array_column($rows, null, 'id');
+    }
+
+    public function testRecordDrivePassageChecksTheLinesInTheCartAndKeepsTheOutcomeOfTheOthersInOneStatement(): void
+    {
+        // Given (DRV-745, ADR 0041) : deux listes ; la première a un œuf, un lait, un sel, une farine et une pâte (déjà cochée par la personne), la seconde un œuf
+        $this->saveRows([['list-a', 'oeuf'], ['list-a', 'lait'], ['list-a', 'sel'], ['list-a', 'farine'], ['list-a', 'pate', true], ['list-b', 'oeuf']]);
+        $this->shoppingListRowRepository->save(ShoppingListRow::load([
+            'id' => 'list-a-pate', 'shopping_list_id' => 'list-a', 'ingredient_slug' => 'pate', 'quantity' => 1.0, 'unit_slug' => 'unite', 'checked' => true,
+            'checked_by' => RowCheckSource::MANUAL, 'checked_at' => new \DateTimeImmutable('2026-11-18 08:00:00'),
+        ]));
         $entityManager = static::getContainer()->get('doctrine.orm.entity_manager');
         $entityManager->clear();
         $counter = static::getContainer()->get(QueryCounter::class);
         $counter->reset();
 
-        // When : l'œuf, un slug absent de la liste et la pâte déjà cochée
-        $this->shoppingListRowRepository->checkByIngredientSlugs('list-a', ['oeuf', 'farine', 'pate']);
+        // When : l'œuf et la pâte sont au panier, le lait est refusé, le sel en erreur, un ingrédient absent de la liste est ignoré
+        $this->shoppingListRowRepository->recordDrivePassage('list-a', [
+            new DriveLineAttempt('oeuf', DriveLineOutcome::IN_CART),
+            new DriveLineAttempt('pate', DriveLineOutcome::IN_CART),
+            new DriveLineAttempt('lait', DriveLineOutcome::NOT_IN_CART),
+            new DriveLineAttempt('sel', DriveLineOutcome::FAILED, 'BLOCKED'),
+            new DriveLineAttempt('cumin', DriveLineOutcome::SKIPPED),
+        ], new \DateTimeImmutable('2026-11-19 10:00:00'));
 
-        // Then : une seule instruction, et ni le lait ni l'œuf de l'autre liste n'ont bougé
+        // Then : une seule instruction
         $this->assertSame(['UPDATE shopping_list_row' => 1], $counter->byTable());
-        $entityManager->clear();
-        $this->assertSame(
-            ['list-a-oeuf' => true, 'list-a-lait' => false, 'list-a-pate' => true, 'list-b-oeuf' => false],
-            array_combine(
-                ['list-a-oeuf', 'list-a-lait', 'list-a-pate', 'list-b-oeuf'],
-                array_map(fn(string $id): bool => $this->shoppingListRowRepository->findOneById($id)->isChecked(), ['list-a-oeuf', 'list-a-lait', 'list-a-pate', 'list-b-oeuf']),
-            ),
-        );
+        $journal = $this->journal();
+        // l'œuf : au panier, coché par le drive à l'instant du passage
+        $this->assertSame([true, 'DRIVE', '2026-11-19 10:00:00', 'IN_CART', null, '2026-11-19 10:00:00'], [$journal['list-a-oeuf']['checked'], $journal['list-a-oeuf']['checked_by'], $journal['list-a-oeuf']['checked_at'], $journal['list-a-oeuf']['drive_outcome'], $journal['list-a-oeuf']['drive_reason'], $journal['list-a-oeuf']['drive_attempted_at']]);
+        // la pâte : déjà cochée à la main, elle garde son origine et son instant, mais garde aussi que le drive l'a vue
+        $this->assertSame([true, 'MANUAL', '2026-11-18 08:00:00', 'IN_CART'], [$journal['list-a-pate']['checked'], $journal['list-a-pate']['checked_by'], $journal['list-a-pate']['checked_at'], $journal['list-a-pate']['drive_outcome']]);
+        // le lait refusé et le sel en erreur : décochés, avec leur issue et leur raison
+        $this->assertSame([false, null, null, 'NOT_IN_CART', null, '2026-11-19 10:00:00'], [$journal['list-a-lait']['checked'], $journal['list-a-lait']['checked_by'], $journal['list-a-lait']['checked_at'], $journal['list-a-lait']['drive_outcome'], $journal['list-a-lait']['drive_reason'], $journal['list-a-lait']['drive_attempted_at']]);
+        $this->assertSame([false, 'FAILED', 'BLOCKED'], [$journal['list-a-sel']['checked'], $journal['list-a-sel']['drive_outcome'], $journal['list-a-sel']['drive_reason']]);
+        // la farine n'a pas été rapportée, l'œuf de l'autre liste non plus : rien n'a bougé
+        $this->assertSame([false, null, null, null, null], [$journal['list-a-farine']['checked'], $journal['list-a-farine']['checked_by'], $journal['list-a-farine']['drive_outcome'], $journal['list-a-farine']['drive_reason'], $journal['list-a-farine']['drive_attempted_at']]);
+        $this->assertSame([false, null, null], [$journal['list-b-oeuf']['checked'], $journal['list-b-oeuf']['checked_by'], $journal['list-b-oeuf']['drive_outcome']]);
     }
 
-    public function testCheckByIngredientSlugsNeverUnchecksAndSendsNothingForNoSlug(): void
+    public function testRecordDrivePassageNeverUnchecksAndSendsNothingForNoAttempt(): void
     {
-        // Given
-        $checked = new ShoppingListRowBuilder()->withShoppingListId('list-a')->checked()->build();
-        $this->shoppingListRowRepository->save($checked);
+        // Given : une ligne cochée par le drive à un premier passage
+        $this->saveRows([['list-a', 'oeuf']]);
+        $this->shoppingListRowRepository->recordDrivePassage('list-a', [new DriveLineAttempt('oeuf', DriveLineOutcome::IN_CART)], new \DateTimeImmutable('2026-11-19 10:00:00'));
         $counter = static::getContainer()->get(QueryCounter::class);
         $counter->reset();
 
-        // When
-        $this->shoppingListRowRepository->checkByIngredientSlugs('list-a', []);
-        $this->shoppingListRowRepository->checkByIngredientSlugs('list-a', ['farine']);
+        // When : aucun passage, puis un second où le même article n'est plus au panier
+        $this->shoppingListRowRepository->recordDrivePassage('list-a', [], new \DateTimeImmutable('2026-11-19 11:00:00'));
+        $this->shoppingListRowRepository->recordDrivePassage('list-a', [new DriveLineAttempt('oeuf', DriveLineOutcome::NOT_IN_CART)], new \DateTimeImmutable('2026-11-19 11:00:00'));
 
-        // Then : aucune instruction pour une liste vide de slugs, et la ligne cochée l'est toujours
+        // Then : une seule instruction pour deux appels ; la ligne reste cochée (jamais de décochage), le dernier passage a remplacé l'issue
         $this->assertSame(['UPDATE shopping_list_row' => 1], $counter->byTable());
+        $row = $this->journal()['list-a-oeuf'];
+        $this->assertSame([true, 'DRIVE', '2026-11-19 10:00:00', 'NOT_IN_CART', '2026-11-19 11:00:00'], [$row['checked'], $row['checked_by'], $row['checked_at'], $row['drive_outcome'], $row['drive_attempted_at']]);
+    }
+
+    public function testASavedListKeepsTheDriveOutcomeOfItsRows(): void
+    {
+        // Given : une ligne que le drive a refusée
+        $this->saveRows([['list-a', 'oeuf']]);
+        $this->shoppingListRowRepository->recordDrivePassage('list-a', [new DriveLineAttempt('oeuf', DriveLineOutcome::NOT_IN_CART)], new \DateTimeImmutable('2026-11-19 10:00:00'));
         static::getContainer()->get('doctrine.orm.entity_manager')->clear();
-        $this->assertTrue($this->shoppingListRowRepository->findOneById($checked->getId())->isChecked());
+
+        // When : la liste est rouverte, la personne coche la ligne à la main (le modèle est relu puis enregistré, comme tout enregistrement de liste)
+        $row = $this->shoppingListRowRepository->findOneById('list-a-oeuf');
+        $row->tick(new \DateTimeImmutable('2026-11-19 12:00:00'));
+        $this->shoppingListRowRepository->save($row);
+        static::getContainer()->get('doctrine.orm.entity_manager')->clear();
+
+        // Then : cochée à la main APRÈS le refus du drive, et le refus est toujours là : c'est ce qu'on veut voir
+        $journal = $this->journal()['list-a-oeuf'];
+        $this->assertSame([true, 'MANUAL', '2026-11-19 12:00:00', 'NOT_IN_CART', '2026-11-19 10:00:00'], [$journal['checked'], $journal['checked_by'], $journal['checked_at'], $journal['drive_outcome'], $journal['drive_attempted_at']]);
+
+        // When : puis décochée
+        $row = $this->shoppingListRowRepository->findOneById('list-a-oeuf');
+        $row->uncheck();
+        $this->shoppingListRowRepository->save($row);
+        static::getContainer()->get('doctrine.orm.entity_manager')->clear();
+
+        // Then : l'origine de la coche s'efface avec elle
+        $journal = $this->journal()['list-a-oeuf'];
+        $this->assertSame([false, null, null, 'NOT_IN_CART'], [$journal['checked'], $journal['checked_by'], $journal['checked_at'], $journal['drive_outcome']]);
     }
 
     public function testCRUD(): void

@@ -99,7 +99,7 @@ class ShoppingListContentPostgreSQLLoaderTest extends DatabaseTestCase
         $shoppingList = $builder->build();
         foreach ($shoppingList->getRows() as $row) {
             if ($row->getIngredientSlug() === 'oeuf') {
-                $row->tick();
+                $row->tick(new \DateTimeImmutable());
             }
         }
         $this->shoppingListRepository->save($shoppingList);
@@ -120,7 +120,7 @@ class ShoppingListContentPostgreSQLLoaderTest extends DatabaseTestCase
         $this->persister->saveIngredient($egg);
         $shoppingList = new ShoppingListBuilder()->withId('list-all-checked')->withOwner($owner)->addIngredient($egg)->build();
         foreach ($shoppingList->getRows() as $row) {
-            $row->tick();
+            $row->tick(new \DateTimeImmutable());
         }
         $this->shoppingListRepository->save($shoppingList);
 

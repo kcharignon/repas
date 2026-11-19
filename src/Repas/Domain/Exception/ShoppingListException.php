@@ -20,6 +20,16 @@ final class ShoppingListException extends DomainException
     public const string QUANTITY_INVALID = 'SHOPPING_LIST_QUANTITY_INVALID';
     public const string MEAL_LIMIT_REACHED = 'SHOPPING_LIST_MEAL_LIMIT_REACHED';
     public const string LIMIT_REACHED = 'SHOPPING_LIST_LIMIT_REACHED';
+    // La raison d'une issue du drive n'est pas un code (ADR 0041) : le corps est validé avant, c'est la garde finale du domaine
+    public const string DRIVE_REASON_INVALID = 'SHOPPING_LIST_DRIVE_REASON_INVALID';
+
+    /**
+     * La raison donnée à une issue du drive n'est pas un code fixe (ADR 0041). Règle métier, `422`.
+     */
+    public static function invalidDriveReason(): static
+    {
+        return new static(self::DRIVE_REASON_INVALID, 422);
+    }
 
     /**
      * La liste est envoyée au drive : elle n'est plus modifiable, il faut la rouvrir (ADR 0023).

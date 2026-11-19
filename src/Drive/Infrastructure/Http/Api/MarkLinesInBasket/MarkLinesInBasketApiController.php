@@ -5,6 +5,7 @@ namespace Repas\Drive\Infrastructure\Http\Api\MarkLinesInBasket;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Repas\Drive\Application\Command\MarkLinesInBasket\MarkLinesInBasketCommand;
+use Repas\Drive\Application\Command\MarkLinesInBasket\NotAddedLine;
 use Repas\Drive\Infrastructure\Http\DriveRateLimit;
 use Repas\Drive\Infrastructure\Http\RateLimitedPerUser;
 use Repas\Drive\Infrastructure\Http\RequiresDrive;
@@ -29,7 +30,7 @@ final class MarkLinesInBasketApiController extends AbstractController
     #[Route(path: '/api/v1/drive/plans/{shoppingListId}/basket-lines', name: 'api_mark_lines_in_basket', methods: ['POST'])]
     #[IsGranted('ROLE_USER')]
     #[IsGranted('SHOPPING_LIST_OWNER', 'shoppingListId')]
-    #[OA\Post(summary: "Coche, dans la liste envoyée au drive, les lignes dont l'agent a mis l'article au panier de l'enseigne (DRV-745). C'est la seule écriture qui coche une ligne d'une liste envoyée : réservée au propriétaire, jamais un décochage, idempotente (une ligne déjà cochée le reste, un slug absent de la liste est ignoré). La version de la liste ne change pas et la dernière ligne cochée ne termine pas la liste : « Terminer la liste » reste un geste explicite")]
+    #[OA\Post(summary: "Coche, dans la liste envoyée au drive, les lignes dont l'agent a mis l'article au panier de l'enseigne (DRV-745). C'est la seule écriture qui coche une ligne d'une liste envoyée : réservée au propriétaire, jamais un décochage, idempotente (une ligne déjà cochée le reste, un slug absent de la liste est ignoré). La version de la liste ne change pas et la dernière ligne cochée ne termine pas la liste : « Terminer la liste » reste un geste explicite. Le corps peut aussi dire, dans `notAdded`, ce qui est arrivé aux lignes que le passage n'a pas mises au panier (refusées par le drive, indisponibles, passées, déjà à la maison, en erreur) : leur issue est gardée sur la ligne pour comprendre la liste après coup (ADR 0041), elles restent décochées")]
     #[OA\Tag(name: 'Drive')]
     #[OA\Parameter(name: 'shoppingListId', in: 'path', required: true, description: 'Identifiant de la liste de courses (statut `SENT`)', schema: new OA\Schema(type: 'string'), example: '0b0a8c4e-6b0e-4e0a-9d52-2c3f7a1d9e10')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: MarkLinesInBasketPayload::class)))]
@@ -37,14 +38,19 @@ final class MarkLinesInBasketApiController extends AbstractController
     #[OA\Response(response: 403, description: "La liste appartient à un autre utilisateur, administrateur compris (message `SHOPPING_LIST_FORBIDDEN`)")]
     #[OA\Response(response: 404, description: 'Fonction drive coupée (message `DRIVE_DISABLED`), ou liste inconnue')]
     #[OA\Response(response: 409, description: "La liste n'est pas envoyée au drive : rouverte ou terminée entre-temps (message `SHOPPING_LIST_NOT_SENT`)")]
-    #[OA\Response(response: 422, description: 'Corps invalide : `ingredientSlugs` absent, vide, de plus de 1 000 éléments, avec un doublon ou un slug mal formé')]
+    #[OA\Response(response: 422, description: 'Corps invalide : aucune ligne (ni `ingredientSlugs` ni `notAdded`), plus de 1 000 éléments dans l\'un des deux, un doublon, un slug mal formé, une issue inconnue ou une raison qui n\'est pas un code')]
     #[OA\Response(response: 429, ref: '#/components/responses/DriveWriteRateLimited')]
     public function __invoke(
         #[CurrentUser] AuthenticatedUser $user,
         string $shoppingListId,
         #[MapRequestPayload] MarkLinesInBasketPayload $payload,
     ): Response {
-        $this->commandBus->dispatch(new MarkLinesInBasketCommand($user->getId(), $shoppingListId, array_values($payload->ingredientSlugs)));
+        $this->commandBus->dispatch(new MarkLinesInBasketCommand(
+            $user->getId(),
+            $shoppingListId,
+            array_values($payload->ingredientSlugs),
+            array_map(static fn(NotAddedLinePayload $line): NotAddedLine => $line->toLine(), array_values($payload->notAdded)),
+        ));
 
         return new Response(status: Response::HTTP_NO_CONTENT);
     }

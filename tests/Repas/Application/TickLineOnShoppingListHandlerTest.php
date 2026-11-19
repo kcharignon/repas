@@ -12,15 +12,19 @@ use Repas\Repas\Domain\Exception\ShoppingListRowException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Repas\Domain\Model\RowCheckSource;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListRowBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListRowInMemoryRepository;
+use Repas\Tests\Helper\FrozenClock;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 use Repas\Tests\Helper\RepasAssert;
 
 class TickLineOnShoppingListHandlerTest extends TestCase
 {
+    private const string NOW = '2026-11-19 10:30:00';
+
     private readonly TickLineOnShoppingListHandler $handler;
     private readonly ShoppingListRowRepository $shoppingListRowRepository;
     private readonly ShoppingListRepository $shoppingListRepository;
@@ -36,6 +40,7 @@ class TickLineOnShoppingListHandlerTest extends TestCase
             $this->shoppingListRowRepository,
             $this->shoppingListRepository,
             $this->eventDispatcher,
+            new FrozenClock(new \DateTimeImmutable(self::NOW)),
         );
 
         $shoppingListRow = new ShoppingListRowBuilder()
@@ -65,6 +70,17 @@ class TickLineOnShoppingListHandlerTest extends TestCase
         $actualEvent = $this->eventDispatcher->getLastEventDispatched();
         $expectedEvent = new LineTickedEvent('shopping-list-id');
         $this->assertEquals($expectedEvent, $actualEvent);
+    }
+
+    public function testTheTickedLineRemembersItWasTickedByHandAndWhen(): void
+    {
+        // Act (ADR 0041)
+        ($this->handler)(new TickLineOnShoppingListCommand('shopping-list-row-id'));
+
+        // Assert : cochée à la main, à l'instant de l'horloge
+        $row = $this->shoppingListRowRepository->findOneById('shopping-list-row-id');
+        $this->assertSame(RowCheckSource::MANUAL, $row->getCheckedBy());
+        $this->assertEquals(new \DateTimeImmutable(self::NOW), $row->getCheckedAt());
     }
 
     public function testHandleFailedTickLineOnShoppingUnknownRow(): void

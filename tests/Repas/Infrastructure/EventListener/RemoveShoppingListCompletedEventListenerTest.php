@@ -6,6 +6,7 @@ namespace Repas\Tests\Repas\Infrastructure\EventListener;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\RemoveShoppingList\RemoveShoppingListCommand;
 use Repas\Repas\Domain\Event\NewShoppingListCreatedEvent;
+use Repas\Repas\Domain\Model\ShoppingListArchiveCause;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Infrastructure\EventListener\RemoveShoppingListCompletedEventListener;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -33,7 +34,7 @@ class RemoveShoppingListCompletedEventListenerTest extends TestCase
         new RemoveShoppingListCompletedEventListener($bus, $shoppingLists)(new NewShoppingListCreatedEvent('new', 'owner-id'));
 
         // Then
-        $this->assertEquals([new RemoveShoppingListCommand('completed')], $bus->dispatched());
+        $this->assertEquals([new RemoveShoppingListCommand('completed', ShoppingListArchiveCause::CLEANED_AFTER_COMPLETION)], $bus->dispatched());
     }
 
     public function testDoesNothingWhenNoListIsCompleted(): void

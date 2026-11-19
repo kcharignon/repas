@@ -218,6 +218,50 @@ class DriveBasketLinesApiFlowTest extends DatabaseTestCase
         }
     }
 
+    public function testTheJournalTellsWhoCheckedEachLineAndWhatTheDriveDidAndSurvivesTheDeletionOfTheList(): void
+    {
+        // Given (ADR 0041) : une liste active de lait et d'œufs, envoyée au drive
+        $user = $this->savedUser();
+        $listId = $this->savedList($user, ShoppingListStatus::ACTIVE);
+        $this->request('POST', "/api/v1/shopping-lists/$listId/send", $user);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+
+        // When : le drive met le lait au panier et refuse les œufs, puis la liste est rouverte et la personne coche les œufs elle-même
+        $this->request('POST', "/api/v1/drive/plans/$listId/basket-lines", $user, json_encode([
+            'ingredientSlugs' => ['lait'],
+            'notAdded' => [['ingredientSlug' => 'oeuf', 'outcome' => 'NOT_IN_CART']],
+        ], JSON_THROW_ON_ERROR));
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('POST', "/api/v1/shopping-lists/$listId/reopen", $user);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $eggRow = $this->connection()->fetchOne('SELECT id FROM shopping_list_row WHERE shopping_list = ? AND ingredient = ?', [$listId, 'oeuf']);
+        $this->request('POST', "/api/v1/shopping-list-rows/$eggRow/tick", $user);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+
+        // Then : sur la liste en cours, chaque ligne dit qui l'a cochée et ce que le drive en a fait
+        $journal = fn(): array => array_column($this->connection()->fetchAllAssociative(
+            'SELECT ingredient, checked_by, drive_outcome, checked_at IS NOT NULL AS has_checked_at, drive_attempted_at IS NOT NULL AS has_attempted_at FROM shopping_list_row WHERE shopping_list = ? ORDER BY ingredient',
+            [$listId],
+        ), null, 'ingredient');
+        $live = $journal();
+        $this->assertSame(['DRIVE', 'IN_CART'], [$live['lait']['checked_by'], $live['lait']['drive_outcome']]);
+        $this->assertSame(['MANUAL', 'NOT_IN_CART'], [$live['oeuf']['checked_by'], $live['oeuf']['drive_outcome']]);
+        $this->assertTrue($live['lait']['has_checked_at'] && $live['lait']['has_attempted_at'] && $live['oeuf']['has_checked_at'] && $live['oeuf']['has_attempted_at']);
+
+        // When : la liste est supprimée
+        $this->request('DELETE', "/api/v1/shopping-lists/$listId", $user);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+
+        // Then : plus de liste (cocher les œufs à la main a terminé la liste), mais son archive dit la même chose, sans jointure
+        $this->assertSame('0', (string) $this->connection()->fetchOne('SELECT count(*) FROM shopping_list WHERE id = ?', [$listId]));
+        $archive = $this->connection()->fetchAssociative('SELECT cause, owner_id, status, lines FROM shopping_list_archive WHERE shopping_list_id = ?', [$listId]);
+        $this->assertSame(['DELETED_BY_USER', $user->getId(), 'COMPLETED'], [$archive['cause'], $archive['owner_id'], $archive['status']]);
+        $lines = array_column(json_decode($archive['lines'], true, flags: JSON_THROW_ON_ERROR), null, 'ingredient_slug');
+        $this->assertSame(['DRIVE', 'IN_CART', true], [$lines['lait']['checked_by'], $lines['lait']['drive_outcome'], $lines['lait']['checked']]);
+        $this->assertSame(['MANUAL', 'NOT_IN_CART', true], [$lines['oeuf']['checked_by'], $lines['oeuf']['drive_outcome'], $lines['oeuf']['checked']]);
+        $this->assertSame(['Lait', 'Œuf'], [$lines['lait']['ingredient_name'], $lines['oeuf']['ingredient_name']]);
+    }
+
     public function testTheListOfAnotherUserIsRefusedEvenToAnAdministrator(): void
     {
         // Given : la liste envoyée d'Alice ; Bob, utilisateur, et Admin, administrateur
