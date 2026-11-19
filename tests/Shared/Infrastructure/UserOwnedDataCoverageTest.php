@@ -78,6 +78,11 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
             }
         }
         ksort($holders);
+        // L'ordre des métadonnées dépend de la machine : seules les entités comptent
+        foreach ($holders as &$entities) {
+            sort($entities);
+        }
+        unset($entities);
 
         // Then : aucune table à part, rien à ajouter à la purge d'un compte : le parent et le ratio sont sur la ligne de l'ingrédient, le registre sur la
         // ligne de la liste, deux entités que la suppression d'un compte efface déjà
