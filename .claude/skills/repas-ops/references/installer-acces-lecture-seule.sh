@@ -63,6 +63,7 @@ Demandes permises (lecture seule) :
   sauvegardes                dernières sauvegardes et fin du journal du cron
   rapport comptes|listes|migrations   comptes par statut, listes par statut, 5 dernières migrations
   rapport conversions|unites          conversions universelles et décomptes des conversions propres, unités et leur mesure (données de référence, aucun contenu d'utilisateur)
+  rapport journal                     journal des listes de courses (ADR 0041) : lignes cochées par origine, issues du drive, archives par cause (décomptes seulement)
   graine                     amorçage des ingrédients : rapport de santé (--check, lecture seule)
   conversions                santé des conversions : universelles de référence, conversions détournées, ingrédients et lignes de recettes non convertibles (lecture seule)
 AIDE
@@ -125,7 +126,23 @@ UNION ALL SELECT 'ingredients sans conversion propre', count(*)::text FROM ingre
 UNION ALL SELECT 'copies avec moins de conversions que leur original', count(*)::text FROM ingredient o JOIN ingredient c ON c.slug = o.adopted_from WHERE (SELECT count(*) FROM conversion v WHERE v.ingredient = o.slug) < (SELECT count(*) FROM conversion v WHERE v.ingredient = c.slug)
 UNION ALL SELECT 'ingredients dont les unites different', count(*)::text FROM ingredient WHERE default_cooking_unit <> default_purchase_unit" ;;
 			unites) SQL="SELECT 'unite' AS rubrique, slug || ' ' || coalesce(dimension, '-') || ' ' || coalesce(base_factor::text, '-') AS valeur FROM unit ORDER BY slug" ;;
-			*) refuse "rapport inconnu (comptes, listes, migrations, conversions, unites)" ;;
+			# Journal des listes de courses (ADR 0041, docs/listes/journal.md) : des DÉCOMPTES seulement, jamais un identifiant, un nom, une adresse ni un
+			# libellé d'article. Le texte ne contient ni guillemet double, ni dollar, ni apostrophe inverse : il vit dans une chaîne entre guillemets doubles.
+			journal) SQL="SELECT rubrique, valeur FROM (
+SELECT 1 AS o, 'lignes de listes en cours ou envoyees' AS rubrique, count(*)::text AS valeur FROM shopping_list_row
+UNION ALL SELECT 2, 'lignes cochees, origine ' || coalesce(checked_by, 'inconnue (avant le journal)'), count(*)::text FROM shopping_list_row WHERE checked GROUP BY checked_by
+UNION ALL SELECT 3, 'issue du dernier passage au drive : ' || drive_outcome, count(*)::text FROM shopping_list_row WHERE drive_outcome IS NOT NULL GROUP BY drive_outcome
+UNION ALL SELECT 4, 'raison donnee par l agent : ' || drive_outcome || ' ' || drive_reason, count(*)::text FROM shopping_list_row WHERE drive_reason IS NOT NULL GROUP BY drive_outcome, drive_reason
+UNION ALL SELECT 5, 'refusees par le drive et encore a acheter (listes non terminees)', count(*)::text FROM shopping_list_row r JOIN shopping_list l ON l.id = r.shopping_list WHERE r.drive_outcome = 'NOT_IN_CART' AND NOT r.checked AND l.status <> 'COMPLETED'
+UNION ALL SELECT 5, 'refusees par le drive puis cochees a la main', count(*)::text FROM shopping_list_row WHERE drive_outcome = 'NOT_IN_CART' AND checked_by = 'MANUAL'
+UNION ALL SELECT 5, 'au panier alors qu elles etaient deja cochees a la main', count(*)::text FROM shopping_list_row WHERE drive_outcome = 'IN_CART' AND checked_by = 'MANUAL'
+UNION ALL SELECT 6, 'dernier passage au drive enregistre', coalesce(max(drive_attempted_at)::text, 'aucun') FROM shopping_list_row
+UNION ALL SELECT 7, 'archives, cause ' || cause, count(*)::text FROM shopping_list_archive GROUP BY cause
+UNION ALL SELECT 8, 'archives : lignes au total', coalesce(sum(line_count), 0)::text FROM shopping_list_archive
+UNION ALL SELECT 8, 'archives qui portent une ligne refusee par le drive', count(*)::text FROM shopping_list_archive a WHERE EXISTS (SELECT 1 FROM jsonb_array_elements(a.lines) AS line WHERE line->>'drive_outcome' = 'NOT_IN_CART')
+UNION ALL SELECT 9, 'derniere archive', coalesce(max(archived_at)::text, 'aucune') FROM shopping_list_archive
+) AS rapport ORDER BY o, rubrique" ;;
+			*) refuse "rapport inconnu (comptes, listes, migrations, conversions, unites, journal)" ;;
 		esac
 		# Transaction en lecture seule imposée côté serveur, quel que soit le texte de la requête
 		docker compose exec -T -e PGOPTIONS='-c default_transaction_read_only=on' database \

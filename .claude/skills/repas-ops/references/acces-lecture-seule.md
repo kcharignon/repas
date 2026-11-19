@@ -1,6 +1,6 @@
 # Accès SSH de l'assistant : lecture seule, imposée par le serveur
 
-**Statut : proposé (2026-10-25), non installé.** Tant que l'utilisateur ne l'a pas installé, les règles de `SKILL.md` § 1 s'appliquent.
+**Statut : installé** (vérifié le 2026-11-19 : l'enveloppe `~/repas-outils/lecture.sh` répond, `etat` et `rapport migrations` lus). Après tout ajout d'un `case` au programme, l'utilisateur relit le script et relance l'étape 2 de « Installer » (idempotente : elle remplace le programme et ne duplique pas la clé).
 
 ## Pourquoi
 
@@ -17,6 +17,7 @@ La règle de permission `Bash(ssh * root@64.227.124.100 *)` laisse l'assistant l
 | `sauvegardes` | vérifier la sauvegarde de la nuit | `ls backups`, fin de `cron.log` |
 | `rapport comptes\|listes\|migrations` | recette : comptes par statut, listes par statut, dernières migrations | une requête SQL fixe, base ouverte **en lecture seule** |
 | `rapport conversions\|unites` | les conversions universelles (données de référence), des décomptes de conversions propres, les unités et leur mesure | une requête SQL fixe, aucun contenu d'utilisateur |
+| `rapport journal` | journal des listes de courses (ADR 0041) : lignes cochées par origine, issues du dernier passage au drive, refus encore à acheter, archives par cause | une requête SQL fixe, des **décomptes** seulement (jamais d'identifiant, de nom, d'adresse ni de libellé d'article) ; gardée par `DocsListJournalQueriesTest` |
 | `graine` | santé de l'amorçage des ingrédients | `repas:ingredients:seed --check` (lecture seule) |
 | `conversions` | santé des conversions : les 13 universelles de référence présentes ou manquantes, les conversions propres qui répètent une paire universelle (détournées), par compte les ingrédients et lignes de recettes non convertibles ; verdict VERT / À REGARDER | `repas:conversions:check` (lecture seule, aucun e-mail, aucun identifiant, aucun nom) |
 
