@@ -420,11 +420,11 @@ class MarmitonPageReaderTest extends TestCase
     public function testABodyOverTwoMebibytesIsAbandonedWithoutReadingItAll(): void
     {
         // Given : un corps de 6,4 Mio en morceaux de 64 Kio ; on compte les morceaux que le client « reçoit »
-        $received = 0;
+        $received = new \ArrayObject([0]);
         $chunk = str_repeat('a', 65536);
-        $body = (static function () use ($chunk, &$received): \Generator {
+        $body = (static function () use ($chunk, $received): \Generator {
             for ($i = 0; $i < 100; ++$i) {
-                ++$received;
+                ++$received[0];
                 yield $chunk;
             }
         })();
@@ -432,8 +432,8 @@ class MarmitonPageReaderTest extends TestCase
 
         // When / Then : le transfert est abandonné au morceau qui dépasse 2 Mio (le 33e est le dernier qui tient), le reste n'est jamais reçu
         $this->assertFailure(MarmitonImportException::UNAVAILABLE, fn () => $this->read());
-        $this->assertGreaterThan(32, $received);
-        $this->assertLessThanOrEqual(34, $received);
+        $this->assertGreaterThan(32, $received[0]);
+        $this->assertLessThanOrEqual(34, $received[0]);
     }
 
     public function testABodyDeclaredOverTwoMebibytesIsRefusedFromItsHeaders(): void
