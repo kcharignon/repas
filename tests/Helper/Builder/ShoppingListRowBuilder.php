@@ -5,7 +5,6 @@ namespace Repas\Tests\Helper\Builder;
 
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\ShoppingListRow;
-use Repas\Repas\Domain\Model\Unit;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 
 class ShoppingListRowBuilder implements Builder
@@ -14,7 +13,7 @@ class ShoppingListRowBuilder implements Builder
     private string $shoppingListId;
     private Ingredient|IngredientBuilder $ingredient;
     private float $quantity;
-    private Unit|UnitBuilder $unit;
+    private UnitBuilder $unit;
     private bool $checked;
 
     public function build(): ShoppingListRow
@@ -25,7 +24,7 @@ class ShoppingListRowBuilder implements Builder
             'shopping_list_id' => $this->shoppingListId,
             'ingredient_slug' => ($this->ingredient instanceof IngredientBuilder ? $this->ingredient->build() : $this->ingredient)->getSlug(),
             'quantity' => $this->quantity,
-            'unit_slug' => ($this->unit instanceof UnitBuilder ? $this->unit->build() : $this->unit)->getSlug(),
+            'unit_slug' => $this->unit->build()->getSlug(),
             'checked' => $this->checked,
         ]);
     }

@@ -162,7 +162,7 @@ class SpokenIngredientRankerTest extends TestCase
 
     public function testTheThresholdOfATypoIsStricterThanTheOneOfTheSearchButNotTheFloorOfTheProposals(): void
     {
-        $this->assertGreaterThan(SearchRelevance::MINIMUM, SpokenIngredientRanker::TYPO_THRESHOLD);
+        $this->assertGreaterThan(SearchRelevance::MINIMUM, SpokenIngredientRanker::TYPO_THRESHOLD);  // @phpstan-ignore method.alreadyNarrowedType (garde-fou : ce test échoue si on modifie les constantes)
         $this->assertGreaterThan(SpokenIngredientRanker::SUGGESTION_FLOOR, SearchRelevance::MINIMUM);
     }
 
@@ -440,7 +440,7 @@ class SpokenIngredientRankerTest extends TestCase
 
     public function testTheFloorIsBelowTheThresholdOfTheAutomaticChoice(): void
     {
-        $this->assertLessThan(SearchRelevance::MINIMUM, SpokenIngredientRanker::SUGGESTION_FLOOR);
+        $this->assertLessThan(SearchRelevance::MINIMUM, SpokenIngredientRanker::SUGGESTION_FLOOR);  // @phpstan-ignore method.alreadyNarrowedType (garde-fou : ce test échoue si on modifie les constantes)
     }
 
     #[DataProvider('phraseKeys')]

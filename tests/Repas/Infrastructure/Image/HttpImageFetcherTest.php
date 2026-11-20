@@ -289,11 +289,11 @@ class HttpImageFetcherTest extends TestCase
     public function testAnEndlessBodyIsAbandonedAsSoonAsItOverflows(): void
     {
         // Given : un corps infini, par morceaux de 1 Mio
-        $received = 0;
+        $received = new \ArrayObject([0]);
         $chunk = str_repeat('a', 1024 * 1024);
-        $body = (static function () use ($chunk, &$received): Generator {
+        $body = (static function () use ($chunk, $received): Generator {
             for ($i = 0; $i < 100; ++$i) {
-                ++$received;
+                ++$received[0];
                 yield $chunk;
             }
         })();
@@ -301,8 +301,8 @@ class HttpImageFetcherTest extends TestCase
 
         // When / Then : le transfert est abandonné au morceau qui dépasse 3 Mio, le reste n'est jamais reçu
         $this->assertFailure(ImageException::TOO_LARGE, fn () => $this->fetch());
-        $this->assertGreaterThan(3, $received);
-        $this->assertLessThanOrEqual(5, $received);
+        $this->assertGreaterThan(3, $received[0]);
+        $this->assertLessThanOrEqual(5, $received[0]);
     }
 
     // ---------------------------------------------------------------- les adresses non publiques (SSRF)
