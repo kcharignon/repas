@@ -419,11 +419,11 @@ class AddSpokenItemHandlerTest extends TestCase
         $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'sirop de menthe', sessionIsOpen: true));
 
         // Then : « de quoi tu parles ? », les trois propositions dans l'ordre du classeur, l'état porte les slugs, la phrase et le nom à créer
-        $this->assertSame('Je ne connais pas sirop de menthe. Tu veux dire sirop grenadine, sirop fraise vanille ou sirop fruit rouge ? Ou un nouveau produit, ou une recette ?', $result->speech);
+        $this->assertSame('Je ne connais pas sirop de menthe. Option 1, sirop grenadine. Option 2, sirop fraise vanille. Option 3, sirop fruit rouge. Option 4, un nouveau produit. Option 5, une recette.', $result->speech);
         $this->assertTrue($result->keepSessionOpen);
         $this->assertFalse($result->added);
         $this->assertSame([], $this->repas->added());
-        $this->assertSame('Tu veux dire sirop grenadine, sirop fraise vanille ou sirop fruit rouge ? Ou un nouveau produit, ou une recette ?', $result->reprompt);
+        $this->assertSame('Option 1, sirop grenadine. Option 2, sirop fraise vanille. Option 3, sirop fruit rouge. Option 4, un nouveau produit. Option 5, une recette.', $result->reprompt);
         $this->assertSame(DialogueStep::CHOOSE, $result->nextState?->step);
         $this->assertEquals(
             [new DialogueOption('sirop-grenadine-u', 'Sirop grenadine'), new DialogueOption('sirop-fraise-u', 'Sirop fraise vanille'), new DialogueOption('sirop-rouge-u', 'Sirop fruit rouge')],

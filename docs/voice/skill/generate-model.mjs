@@ -148,11 +148,19 @@ function kindValues() {
   return KINDS.map((kind) => ({ id: kind.id, name: { value: kind.name, synonyms: kind.synonyms } }));
 }
 
-/** Un rang parlé, de 1 à 3 : l'identifiant est le rang. Les articles sont dans les phrases d'exemple, pas dans les valeurs. */
+/**
+ * Un rang parlé, de 1 à 5 : l'identifiant est le rang. Alexa numérote chaque choix qu'elle propose (« Option 1, hachis. Option 2, un nouveau produit.
+ * Option 3, une recette. », jusqu'à trois propositions et deux issues) : on répond « option 2 », « choix deux », « le deuxième » ou la lettre du choix
+ * (« option b »). « Le dernier » est le dernier choix dit, quel que soit leur nombre (identifiant `last`). Les articles sont dans les phrases d'exemple,
+ * pas dans les valeurs.
+ */
 const RANKS = [
-  { id: '1', name: 'premier', synonyms: ['première', 'un', 'une'] },
-  { id: '2', name: 'deuxième', synonyms: ['second', 'seconde', 'deux'] },
-  { id: '3', name: 'troisième', synonyms: ['dernier', 'dernière', 'trois'] },
+  { id: '1', name: 'premier', synonyms: ['première', 'un', 'une', 'a'] },
+  { id: '2', name: 'deuxième', synonyms: ['second', 'seconde', 'deux', 'b', 'bé'] },
+  { id: '3', name: 'troisième', synonyms: ['trois', 'c', 'cé'] },
+  { id: '4', name: 'quatrième', synonyms: ['quatre', 'd', 'dé'] },
+  { id: '5', name: 'cinquième', synonyms: ['cinq', 'e'] },
+  { id: 'last', name: 'dernier', synonyms: ['dernière'] },
 ];
 
 /** « fruit & légume » se dit « fruit et légume ». */
@@ -424,7 +432,12 @@ function intents() {
       name: 'ChooseOptionIntent',
       slots: [{ name: 'rank', type: 'OPTION_RANK' }],
       samples: withBare(
-        ['le {rank}', 'la {rank}', 'je veux le {rank}', 'je veux la {rank}', 'prends le {rank}', 'prends la {rank}', 'choisis le {rank}', 'ce sera le {rank}', 'numéro {rank}'],
+        [
+          'le {rank}', 'la {rank}', 'je veux le {rank}', 'je veux la {rank}', 'prends le {rank}', 'prends la {rank}', 'choisis le {rank}', 'ce sera le {rank}', 'numéro {rank}',
+          // « Option 2 », « choix b » : Alexa numérote ce qu'elle propose (essai réel du 2026-11-26 : « oui » ne disait pas à quoi il répondait)
+          'option {rank}', "l'option {rank}", 'choix {rank}', 'le choix {rank}', 'option numéro {rank}', 'choix numéro {rank}',
+          "je prends l'option {rank}", "je choisis l'option {rank}", 'je prends le choix {rank}', 'je choisis le choix {rank}',
+        ],
         '{rank}',
       ),
     },
@@ -433,6 +446,19 @@ function intents() {
       samples: [
         'nouveau', 'nouveau produit', 'un nouveau produit', 'un nouveau', 'aucun', 'aucune', 'aucun des trois', 'crée le',
         'crée un nouveau produit', "ni l'un ni l'autre",
+        // Le même refus, dit avec le mot « ingrédient » ou « nouvel » (essai réel du 2026-11-26 : « head and shoulders » mal compris, l'utilisateur
+        // cherchait comment dire « crée-le » sans répéter le nom)
+        'nouvel ingrédient', 'un nouvel ingrédient', 'crée un nouvel ingrédient', 'crée un ingrédient', 'crée un produit',
+        "c'est un nouveau produit", "c'est un nouvel ingrédient", 'pas celui là',
+      ],
+    },
+    {
+      // « Oui ajoute le produit » : la proposition est la bonne, sans en répéter le nom. Sans créneau : le webhook lit cette intention comme « oui » et
+      // l'ÉTAT de la séance dit à quoi (propositions, « Je le crée ? »). Toutes commencent par « oui », « c'est » ou « celui » pour ne jamais se confondre avec « ajoute {item} ».
+      name: 'AcceptOptionIntent',
+      samples: [
+        'oui ajoute le produit', "oui ajoute l'ingrédient", 'oui ajoute le', 'oui ajoute celui là', 'oui prends le', "oui c'est ça", "oui c'est lui",
+        "c'est ça", "c'est lui", "c'est celui là", 'celui là', 'ajoute celui là', 'ajoute ce produit', 'ajoute cet ingrédient',
       ],
     },
     {

@@ -25,8 +25,10 @@ enum AlexaIntent: string
     case REMOVE_MEAL = 'RemoveMealIntent';
     /** « le deuxième », « la première » : le créneau `rank` porte le rang (1 à 3) parmi les propositions. */
     case CHOOSE_OPTION = 'ChooseOptionIntent';
-    /** « un nouveau produit », « aucun des trois » : aucune proposition ne convient. */
+    /** « un nouveau produit », « un nouvel ingrédient », « aucun des trois » : aucune proposition ne convient. */
     case CREATE_ITEM = 'CreateItemIntent';
+    /** « oui ajoute le produit », « c'est celui là » : la proposition faite est la bonne, sans en répéter le nom (se lit comme « oui », dans tout dialogue). */
+    case ACCEPT_OPTION = 'AcceptOptionIntent';
     /** « fruits et légumes » : le créneau `department` porte le rayon. */
     case ANSWER_DEPARTMENT = 'AnswerDepartmentIntent';
     /** « pièces », « kilos » : le créneau `unit` porte l'unité. */

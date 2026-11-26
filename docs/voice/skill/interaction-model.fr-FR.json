@@ -773,7 +773,17 @@
             "prends la {rank}",
             "choisis le {rank}",
             "ce sera le {rank}",
-            "numéro {rank}"
+            "numéro {rank}",
+            "option {rank}",
+            "l'option {rank}",
+            "choix {rank}",
+            "le choix {rank}",
+            "option numéro {rank}",
+            "choix numéro {rank}",
+            "je prends l'option {rank}",
+            "je choisis l'option {rank}",
+            "je prends le choix {rank}",
+            "je choisis le choix {rank}"
           ]
         },
         {
@@ -788,7 +798,34 @@
             "aucun des trois",
             "crée le",
             "crée un nouveau produit",
-            "ni l'un ni l'autre"
+            "ni l'un ni l'autre",
+            "nouvel ingrédient",
+            "un nouvel ingrédient",
+            "crée un nouvel ingrédient",
+            "crée un ingrédient",
+            "crée un produit",
+            "c'est un nouveau produit",
+            "c'est un nouvel ingrédient",
+            "pas celui là"
+          ]
+        },
+        {
+          "name": "AcceptOptionIntent",
+          "samples": [
+            "oui ajoute le produit",
+            "oui ajoute l'ingrédient",
+            "oui ajoute le",
+            "oui ajoute celui là",
+            "oui prends le",
+            "oui c'est ça",
+            "oui c'est lui",
+            "c'est ça",
+            "c'est lui",
+            "c'est celui là",
+            "celui là",
+            "ajoute celui là",
+            "ajoute ce produit",
+            "ajoute cet ingrédient"
           ]
         },
         {
@@ -3494,7 +3531,8 @@
                 "synonyms": [
                   "première",
                   "un",
-                  "une"
+                  "une",
+                  "a"
                 ]
               }
             },
@@ -3505,7 +3543,9 @@
                 "synonyms": [
                   "second",
                   "seconde",
-                  "deux"
+                  "deux",
+                  "b",
+                  "bé"
                 ]
               }
             },
@@ -3514,9 +3554,39 @@
               "name": {
                 "value": "troisième",
                 "synonyms": [
-                  "dernier",
-                  "dernière",
-                  "trois"
+                  "trois",
+                  "c",
+                  "cé"
+                ]
+              }
+            },
+            {
+              "id": "4",
+              "name": {
+                "value": "quatrième",
+                "synonyms": [
+                  "quatre",
+                  "d",
+                  "dé"
+                ]
+              }
+            },
+            {
+              "id": "5",
+              "name": {
+                "value": "cinquième",
+                "synonyms": [
+                  "cinq",
+                  "e"
+                ]
+              }
+            },
+            {
+              "id": "last",
+              "name": {
+                "value": "dernier",
+                "synonyms": [
+                  "dernière"
                 ]
               }
             }

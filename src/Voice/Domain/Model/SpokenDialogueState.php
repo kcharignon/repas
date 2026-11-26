@@ -207,6 +207,29 @@ final readonly class SpokenDialogueState
         return $this->isRemoval() && $this->step === DialogueStep::CHOOSE && !$this->isTieBreak();
     }
 
+    /**
+     * Les issues que la question de l'étape `choose` offre APRÈS les propositions, dans l'ordre où Alexa les numérote : « Option 1, hachis. Option 2, un
+     * nouveau produit. Option 3, une recette. » Une seule source pour ce qu'Alexa DIT (`VoiceReplies`) et ce qu'elle COMPREND (`SpokenAnswerInterpreter`,
+     * « option 3 » = la troisième chose entendue, proposition ou issue). Aucune hors de l'étape `choose`, ni au départage par le rayon (le produit existe).
+     *
+     * @return list<SpokenAnswerKind> `START_CREATION` (un nouveau produit), `SWITCH_TO_MEAL` (une recette ou un repas), `SWITCH_TO_ITEM` (un produit)
+     */
+    public function exits(): array
+    {
+        if ($this->step !== DialogueStep::CHOOSE || $this->isTieBreak()) {
+            return [];
+        }
+        if ($this->isRemovalProposal()) {
+            // Jamais de création : seulement l'autre recherche, une fois
+            return $this->otherSideTried ? [] : [$this->isMeal() ? SpokenAnswerKind::SWITCH_TO_ITEM : SpokenAnswerKind::SWITCH_TO_MEAL];
+        }
+        if ($this->isMeal()) {
+            return $this->otherSideTried ? [] : [SpokenAnswerKind::SWITCH_TO_ITEM];
+        }
+
+        return $this->otherSideTried ? [SpokenAnswerKind::START_CREATION] : [SpokenAnswerKind::START_CREATION, SpokenAnswerKind::SWITCH_TO_MEAL];
+    }
+
     /** Le dialogue cherche une recette (ADR 0029 décision 13). */
     public function isMeal(): bool
     {
