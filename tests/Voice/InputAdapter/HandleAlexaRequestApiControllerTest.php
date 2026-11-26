@@ -182,11 +182,11 @@ class HandleAlexaRequestApiControllerTest extends QueryBusWebTestCase
         $this->linkedAccount();
         $state = SpokenDialogueState::choose('de la ciboulette', [new DialogueOption('persil-u', 'persil')], 'ciboulette');
         $this->commandBus->willReturn(AddSpokenItemCommand::class, new AddSpokenItemResult(
-            'Je ne connais pas ciboulette. Tu veux dire persil ? Ou un nouveau produit ?',
+            'Je ne connais pas ciboulette. Option 1, persil. Option 2, un nouveau produit.',
             keepSessionOpen: true,
             added: false,
             nextState: $state,
-            reprompt: 'Tu veux dire persil ? Ou un nouveau produit ?',
+            reprompt: 'Option 1, persil. Option 2, un nouveau produit.',
         ));
 
         // When : un appel direct, la séance reste pourtant ouverte pour la réponse
@@ -198,8 +198,8 @@ class HandleAlexaRequestApiControllerTest extends QueryBusWebTestCase
             'version' => '1.0',
             'sessionAttributes' => ['dialogue' => $state->toArray()],
             'response' => [
-                'outputSpeech' => ['type' => 'PlainText', 'text' => 'Je ne connais pas ciboulette. Tu veux dire persil ? Ou un nouveau produit ?'],
-                'reprompt' => ['outputSpeech' => ['type' => 'PlainText', 'text' => 'Tu veux dire persil ? Ou un nouveau produit ?']],
+                'outputSpeech' => ['type' => 'PlainText', 'text' => 'Je ne connais pas ciboulette. Option 1, persil. Option 2, un nouveau produit.'],
+                'reprompt' => ['outputSpeech' => ['type' => 'PlainText', 'text' => 'Option 1, persil. Option 2, un nouveau produit.']],
                 'shouldEndSession' => false,
             ],
         ], $this->jsonBody());

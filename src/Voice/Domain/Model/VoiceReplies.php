@@ -12,12 +12,14 @@ use Repas\Voice\Domain\Service\SpokenUnits;
  * avertissement, aucun mot technique (« ingrédient » n'apparaît que dans « tes ingrédients »). Un proche doit pouvoir dire chaque phrase à voix
  * haute ; `VoiceRepliesTest` impose la longueur et le vocabulaire.
  *
- * Une seule exception à « deux phrases » : la question « de quoi tu parles ? » d'un produit inconnu (`ASK_WHICH`, `ASK_WHICH_AGAIN`), trois
- * phrases, parce qu'elle dit ce qui n'est pas connu, les propositions et l'issue « un nouveau produit » (ADR 0029 décision 11).
+ * Une exception à « deux phrases » : une question À CHOIX (ADR 0029 décision 11, amendée le 2026-11-26 à la demande du propriétaire : « oui » ne disait pas
+ * à quelle proposition il répondait). Quand Alexa propose plusieurs choses (les propositions et les issues « un nouveau produit », « une recette », « un
+ * produit », « un repas »), chacune est NUMÉROTÉE dans sa propre phrase courte : « Je ne connais pas X. Option 1, A. Option 2, un nouveau produit.
+ * Option 3, une recette. » ; on répond « option 2 », « choix 2 » ou « b » (`SpokenDialogueState::exits()` : une seule source pour ce qui est dit et
+ * ce qui est compris). Une proposition SEULE, sans issue, reste une question à oui ou non (`ASK_MEAN`). Chaque phrase fait 15 mots au plus ; il y en a
+ * une de plus que de choix (`choose()`).
  *
- * La planification d'un repas (ADR 0029 décision 13) ajoute trois autres questions de trois phrases : l'issue « ou une recette ? » d'un produit inconnu
- * (`ASK_WHICH_OR_MEAL`, `ASK_WHICH_AGAIN_OR_MEAL`, `ASK_CREATE_OR_MEAL`) et les propositions d'une recette inconnue avec l'issue « ou un produit ? »
- * (`ASK_MEAL_WHICH_OR_ITEM`, `ASK_MEAL_WHICH_AGAIN_OR_ITEM`).
+ * La question de l'unité fait aussi trois phrases (`ASK_UNIT`) ; « je le crée ? ou c'est une recette ? » (`ASK_CREATE_OR_MEAL`) aussi.
  *
  * Deux autres écarts, voulus par le propriétaire après le premier essai réel (2026-10-25) : la question de l'unité fait trois phrases (elle dit
  * aussi qu'on peut demander la liste), et la réponse à « lesquels ? » (`choices()`) lit tout le catalogue des rayons ou des unités, jusqu'à
@@ -148,22 +150,27 @@ final class VoiceReplies
     public const string LIST_STARTED_GUESSED = "J'ai commencé une nouvelle liste avec %s, %s.";
     public const string PREVIOUS_LIST_SENT = 'Ta liste précédente est partie au drive.';
 
-    /** Le produit dit est inconnu et des ingrédients de l'utilisateur lui ressemblent : « de quoi tu parles ? » (trois phrases). */
-    public const string ASK_WHICH = 'Je ne connais pas %s. Tu veux dire %s ? Ou un nouveau produit ?';
-    /** La même question, sans rappeler le produit (aide, silence). */
-    public const string ASK_WHICH_SHORT = 'Tu veux dire %s ? Ou un nouveau produit ?';
-    /** « Oui » alors qu'il y a plusieurs propositions. */
-    public const string ASK_WHICH_AGAIN = 'Lequel ? %s. Ou un nouveau produit ?';
+    /** Le produit dit est inconnu et des ingrédients de l'utilisateur lui ressemblent : « de quoi tu parles ? », puis chaque choix numéroté. */
+    public const string UNKNOWN_ITEM = 'Je ne connais pas %s.';
+    /** Un choix numéroté : « option 2 », « choix 2 » ou « b » le choisit. Les propositions d'abord, puis les issues (`SpokenDialogueState::exits()`). */
+    public const string OPTION = 'Option %d, %s.';
+    /** Une seule proposition et aucune issue : une question à « oui » ou « non ». */
+    public const string ASK_MEAN = 'Tu veux dire %s ?';
+    /** « Oui » alors qu'il y a plusieurs propositions : laquelle ? (puis les choix numérotés) */
+    public const string WHICH_ONE = 'Lequel ?';
+    public const string WHICH_ONE_FEMININE = 'Laquelle ?';
+    /** Les issues, dites comme des choix de plus. */
+    public const string EXIT_NEW_ITEM = 'un nouveau produit';
+    public const string EXIT_MEAL = 'une recette';
+    public const string EXIT_ITEM = 'un produit';
+    public const string EXIT_MEAL_IN_LIST = 'un repas';
     /** Plusieurs ingrédients de l'utilisateur ont le même nom, dans des rayons différents : on demande le rayon (jamais « un nouveau produit »). */
     public const string ASK_TIE_SAME_NAME = '%s : %s ?';
     /** Plusieurs ingrédients se valent par des noms voisins : on cite le nom ET le rayon. */
     public const string ASK_TIE_NAMES = 'Tu veux dire %s ?';
     /** Le produit dit est inconnu et rien ne lui ressemble. */
     public const string ASK_CREATE = 'Je ne connais pas %s. Je le crée ?';
-    /** Les mêmes questions quand les recettes n'ont pas encore été cherchées : l'issue « ou une recette ? » aiguille l'utilisateur (décision 13). */
-    public const string ASK_WHICH_OR_MEAL = 'Je ne connais pas %s. Tu veux dire %s ? Ou un nouveau produit, ou une recette ?';
-    public const string ASK_WHICH_SHORT_OR_MEAL = 'Tu veux dire %s ? Ou un nouveau produit, ou une recette ?';
-    public const string ASK_WHICH_AGAIN_OR_MEAL = 'Lequel ? %s. Ou un nouveau produit, ou une recette ?';
+    /** Quand les recettes n'ont pas encore été cherchées, l'issue « ou une recette ? » aiguille l'utilisateur (décision 13). */
     public const string ASK_CREATE_OR_MEAL = "Je ne connais pas %s. Je le crée ? Ou c'est une recette ?";
     public const string ASK_DEPARTMENT = 'Dans quel rayon ? Dis lesquels pour les entendre.';
     public const string ASK_UNIT = 'Quelle unité ? Par exemple pièce, kilo ou litre. Dis lesquelles pour les entendre.';
@@ -217,12 +224,7 @@ final class VoiceReplies
     /** Il refuse de choisir une recette : rien n'est planifié. */
     public const string DECLINED_MEAL = "D'accord, je ne planifie rien.";
     /** La recette dite est inconnue : jamais de création de recette à la voix. Les propositions, puis l'issue « ou un produit ? » tant que les produits n'ont pas été cherchés. */
-    public const string ASK_MEAL_WHICH = 'Je ne trouve pas la recette %s. Tu veux dire %s ?';
-    public const string ASK_MEAL_WHICH_OR_ITEM = 'Je ne trouve pas la recette %s. Tu veux dire %s ? Ou un produit ?';
-    public const string ASK_MEAL_WHICH_SHORT = 'Tu veux dire %s ?';
-    public const string ASK_MEAL_WHICH_SHORT_OR_ITEM = 'Tu veux dire %s ? Ou un produit ?';
-    public const string ASK_MEAL_WHICH_AGAIN = 'Laquelle ? %s.';
-    public const string ASK_MEAL_WHICH_AGAIN_OR_ITEM = 'Laquelle ? %s. Ou un produit ?';
+    public const string UNKNOWN_RECIPE = 'Je ne trouve pas la recette %s.';
     /** Aucune recette ne ressemble à la phrase : on demande si c'est un produit. */
     public const string ASK_MEAL_ITEM = "Je ne trouve pas la recette %s. C'est un produit ?";
     /** L'utilisateur n'a AUCUNE recette : on le lui dit, au lieu d'un « je ne trouve pas » qui ne l'aide pas (2026-10-26). */
@@ -247,17 +249,11 @@ final class VoiceReplies
     /** Le repas quitte la liste (X : « hachis parmentier »). Si seul un nombre de personnes baisse : `MEAL_SERVINGS_CHANGED`. */
     public const string MEAL_REMOVED = "C'est retiré : le repas %s.";
     /** Le repas à retirer n'est pas dans la liste : les repas planifiés qui lui ressemblent, puis l'issue « ou un produit ? » tant que les produits n'ont pas été cherchés. */
-    public const string ASK_REMOVE_MEAL_WHICH = 'Je ne trouve pas le repas %s dans ta liste. Tu veux dire %s ?';
-    public const string ASK_REMOVE_MEAL_WHICH_OR_ITEM = 'Je ne trouve pas le repas %s dans ta liste. Tu veux dire %s ? Ou un produit ?';
+    public const string UNKNOWN_MEAL_IN_LIST = 'Je ne trouve pas le repas %s dans ta liste.';
     /** Aucun repas de la liste ne ressemble à la phrase : on demande si c'est un produit. */
     public const string ASK_REMOVE_MEAL_ITEM = "Je ne trouve pas le repas %s dans ta liste. C'est un produit ?";
     /** Le produit à retirer n'est pas dans la liste et la phrase ne désigne aucun de tes produits : les lignes qui lui ressemblent, puis l'issue « ou un repas ? ». */
-    public const string ASK_REMOVE_ITEM_WHICH = "Il n'y a pas %s dans ta liste. Tu veux dire %s ?";
-    public const string ASK_REMOVE_ITEM_WHICH_OR_MEAL = "Il n'y a pas %s dans ta liste. Tu veux dire %s ? Ou un repas ?";
-    public const string ASK_REMOVE_ITEM_WHICH_SHORT = 'Tu veux dire %s ?';
-    public const string ASK_REMOVE_ITEM_WHICH_SHORT_OR_MEAL = 'Tu veux dire %s ? Ou un repas ?';
-    public const string ASK_REMOVE_ITEM_WHICH_AGAIN = 'Lequel ? %s.';
-    public const string ASK_REMOVE_ITEM_WHICH_AGAIN_OR_MEAL = 'Lequel ? %s. Ou un repas ?';
+    public const string UNKNOWN_ITEM_IN_LIST = "Il n'y a pas %s dans ta liste.";
     /** Aucune ligne de la liste ne ressemble à la phrase : on demande si c'est un repas. */
     public const string ASK_REMOVE_ITEM_MEAL = "Il n'y a pas %s dans ta liste. C'est un repas ?";
     /** Ni produit ni repas de la liste ne portent ce nom : plus d'issue. */
@@ -271,19 +267,6 @@ final class VoiceReplies
 
     private function __construct()
     {
-    }
-
-    /**
-     * @param list<string> $names
-     *
-     * @return string « a », « a ou b », « a, b ou c » (trois au plus : le dialogue n'en propose pas davantage)
-     */
-    private static function joinNames(array $names): string
-    {
-        $spoken = array_map(self::speakable(...), $names);
-        $last = array_pop($spoken);
-
-        return $spoken === [] ? (string) $last : implode(', ', $spoken) . ' ou ' . $last;
     }
 
     /**
@@ -371,7 +354,48 @@ final class VoiceReplies
             return sprintf($offerMeal ? self::ASK_CREATE_OR_MEAL : self::ASK_CREATE, self::speakable($name));
         }
 
-        return sprintf($offerMeal ? self::ASK_WHICH_OR_MEAL : self::ASK_WHICH, self::speakable($name), self::joinNames($optionNames));
+        return self::choose(
+            sprintf(self::UNKNOWN_ITEM, self::speakable($name)),
+            $optionNames,
+            $offerMeal ? [self::EXIT_NEW_ITEM, self::EXIT_MEAL] : [self::EXIT_NEW_ITEM],
+        );
+    }
+
+    /**
+     * Une question à choix : `$lead` (« Je ne connais pas X. », ou rien), puis chaque proposition et chaque issue dans sa phrase numérotée,
+     * « Option 1, A. Option 2, un nouveau produit. » (de quoi répondre « option 2 » sans répéter un nom qu'Amazon comprend mal). Une proposition seule,
+     * sans issue, reste « Tu veux dire A ? » (`$yesNoWhenAlone`) : oui ou non suffit, et « oui » est alors sans ambiguïté.
+     *
+     * @param list<string> $optionNames les propositions, dans l'ordre où l'état les garde (le rang qu'on dit est leur place)
+     * @param list<string> $exitLabels  les issues, dans l'ordre de `SpokenDialogueState::exits()`
+     */
+    private static function choose(string $lead, array $optionNames, array $exitLabels, bool $yesNoWhenAlone = true): string
+    {
+        $labels = [...array_map(self::speakable(...), $optionNames), ...$exitLabels];
+        if ($yesNoWhenAlone && count($optionNames) === 1 && $exitLabels === []) {
+            return trim($lead . ' ' . sprintf(self::ASK_MEAN, $labels[0]));
+        }
+
+        $options = [];
+        foreach ($labels as $index => $label) {
+            $options[] = sprintf(self::OPTION, $index + 1, $label);
+        }
+
+        return trim($lead . ' ' . implode(' ', $options));
+    }
+
+    /**
+     * Les issues de l'état, dites : la même liste que `SpokenDialogueState::exits()`, que l'interpréteur lit dans le même ordre.
+     *
+     * @return list<string>
+     */
+    private static function exitLabels(SpokenDialogueState $state): array
+    {
+        return array_map(static fn(SpokenAnswerKind $exit): string => match ($exit) {
+            SpokenAnswerKind::START_CREATION => self::EXIT_NEW_ITEM,
+            SpokenAnswerKind::SWITCH_TO_MEAL => $state->isRemovalProposal() ? self::EXIT_MEAL_IN_LIST : self::EXIT_MEAL,
+            default => self::EXIT_ITEM,
+        }, $state->exits());
     }
 
     /**
@@ -385,7 +409,7 @@ final class VoiceReplies
                 $state->isMeal() => self::mealQuestion($state),
                 $state->isTieBreak() => self::tieQuestion($state->options),
                 $state->options === [] => sprintf($state->otherSideTried ? self::ASK_CREATE : self::ASK_CREATE_OR_MEAL, self::speakable($state->name)),
-                default => sprintf($state->otherSideTried ? self::ASK_WHICH_SHORT : self::ASK_WHICH_SHORT_OR_MEAL, self::joinNames(self::namesOf($state->options))),
+                default => self::choose('', self::namesOf($state->options), self::exitLabels($state)),
             },
             DialogueStep::SERVINGS => self::mealAlreadyPlanned($state->name, $state->plannedServings ?? 1),
             DialogueStep::DEPARTMENT => self::ASK_DEPARTMENT,
@@ -430,21 +454,17 @@ final class VoiceReplies
     /** « Oui », mais plusieurs propositions : laquelle ? */
     public static function whichAgain(SpokenDialogueState $state): string
     {
-        if ($state->isRemovalProposal()) {
-            $names = self::joinNames(self::namesOf($state->options));
-
-            return $state->isMeal()
-                ? sprintf($state->otherSideTried ? self::ASK_MEAL_WHICH_AGAIN : self::ASK_MEAL_WHICH_AGAIN_OR_ITEM, $names)
-                : sprintf($state->otherSideTried ? self::ASK_REMOVE_ITEM_WHICH_AGAIN : self::ASK_REMOVE_ITEM_WHICH_AGAIN_OR_MEAL, $names);
-        }
-        if ($state->isMeal()) {
-            return sprintf($state->otherSideTried ? self::ASK_MEAL_WHICH_AGAIN : self::ASK_MEAL_WHICH_AGAIN_OR_ITEM, self::joinNames(self::namesOf($state->options)));
-        }
         if ($state->isTieBreak()) {
             return self::tieQuestion($state->options);
         }
 
-        return sprintf($state->otherSideTried ? self::ASK_WHICH_AGAIN : self::ASK_WHICH_AGAIN_OR_MEAL, self::joinNames(self::namesOf($state->options)));
+        // Une recette ou un repas : « laquelle ? » ; un produit : « lequel ? »
+        return self::choose(
+            $state->isMeal() ? self::WHICH_ONE_FEMININE : self::WHICH_ONE,
+            self::namesOf($state->options),
+            self::exitLabels($state),
+            yesNoWhenAlone: false,
+        );
     }
 
     /**
@@ -617,7 +637,7 @@ final class VoiceReplies
             return sprintf($offerItem ? self::ASK_MEAL_ITEM : self::NOTHING_FOUND, self::speakable($name));
         }
 
-        return sprintf($offerItem ? self::ASK_MEAL_WHICH_OR_ITEM : self::ASK_MEAL_WHICH, self::speakable($name), self::joinNames($optionNames));
+        return self::choose(sprintf(self::UNKNOWN_RECIPE, self::speakable($name)), $optionNames, $offerItem ? [self::EXIT_ITEM] : []);
     }
 
     /**
@@ -655,7 +675,7 @@ final class VoiceReplies
             return sprintf($state->otherSideTried ? self::NOTHING_FOUND : self::ASK_MEAL_ITEM, self::speakable($state->name));
         }
 
-        return sprintf($state->otherSideTried ? self::ASK_MEAL_WHICH_SHORT : self::ASK_MEAL_WHICH_SHORT_OR_ITEM, self::joinNames(self::namesOf($state->options)));
+        return self::choose('', self::namesOf($state->options), self::exitLabels($state));
     }
 
     /** Le repas quitte la liste. */
@@ -677,7 +697,7 @@ final class VoiceReplies
             return sprintf($offerItem ? self::ASK_REMOVE_MEAL_ITEM : self::NOTHING_FOUND_IN_LIST, self::speakable($name));
         }
 
-        return sprintf($offerItem ? self::ASK_REMOVE_MEAL_WHICH_OR_ITEM : self::ASK_REMOVE_MEAL_WHICH, self::speakable($name), self::joinNames($optionNames));
+        return self::choose(sprintf(self::UNKNOWN_MEAL_IN_LIST, self::speakable($name)), $optionNames, $offerItem ? [self::EXIT_ITEM] : []);
     }
 
     /**
@@ -693,7 +713,7 @@ final class VoiceReplies
             return $offerMeal ? sprintf(self::ASK_REMOVE_ITEM_MEAL, self::of(self::speakable($name))) : self::nothingFoundInList($name);
         }
 
-        return sprintf($offerMeal ? self::ASK_REMOVE_ITEM_WHICH_OR_MEAL : self::ASK_REMOVE_ITEM_WHICH, self::of(self::speakable($name)), self::joinNames($optionNames));
+        return self::choose(sprintf(self::UNKNOWN_ITEM_IN_LIST, self::of(self::speakable($name))), $optionNames, $offerMeal ? [self::EXIT_MEAL_IN_LIST] : []);
     }
 
     /** Ni produit ni repas de la liste ne portent ce nom. */
@@ -709,7 +729,7 @@ final class VoiceReplies
             return sprintf($state->otherSideTried ? self::NOTHING_FOUND_IN_LIST : self::ASK_REMOVE_MEAL_ITEM, self::speakable($state->name));
         }
 
-        return sprintf($state->otherSideTried ? self::ASK_MEAL_WHICH_SHORT : self::ASK_MEAL_WHICH_SHORT_OR_ITEM, self::joinNames(self::namesOf($state->options)));
+        return self::choose('', self::namesOf($state->options), self::exitLabels($state));
     }
 
     /** La question de l'étape « quel produit retirer ? » (à répéter après un silence ou une réponse incomprise). */
@@ -719,7 +739,7 @@ final class VoiceReplies
             return $state->otherSideTried ? self::nothingFoundInList($state->name) : sprintf(self::ASK_REMOVE_ITEM_MEAL, self::of(self::speakable($state->name)));
         }
 
-        return sprintf($state->otherSideTried ? self::ASK_REMOVE_ITEM_WHICH_SHORT : self::ASK_REMOVE_ITEM_WHICH_SHORT_OR_MEAL, self::joinNames(self::namesOf($state->options)));
+        return self::choose('', self::namesOf($state->options), self::exitLabels($state));
     }
 
     /** « 1 personne », « 4 personnes ». */

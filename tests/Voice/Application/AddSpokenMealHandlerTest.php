@@ -122,10 +122,10 @@ class AddSpokenMealHandlerTest extends TestCase
 
         // Then : aucune création de recette, aucune écriture ; l'état garde la phrase, les propositions et le nombre de personnes dit
         $this->assertSame([], $this->repas->mealsPlanned());
-        $this->assertSame('Je ne trouve pas la recette gratin. Tu veux dire gratin de pâtes ou gratin dauphinois ? Ou un produit ?', $result->speech);
+        $this->assertSame('Je ne trouve pas la recette gratin. Option 1, gratin de pâtes. Option 2, gratin dauphinois. Option 3, un produit.', $result->speech);
         $this->assertTrue($result->keepSessionOpen);
         $this->assertFalse($result->added);
-        $this->assertSame('Tu veux dire gratin de pâtes ou gratin dauphinois ? Ou un produit ?', $result->reprompt);
+        $this->assertSame('Option 1, gratin de pâtes. Option 2, gratin dauphinois. Option 3, un produit.', $result->reprompt);
         $this->assertEquals(
             SpokenDialogueState::chooseRecipe('gratin', [new DialogueOption('r2', 'gratin de pâtes'), new DialogueOption('r1', 'gratin dauphinois')], 'gratin', 6),
             $result->nextState,
@@ -141,7 +141,7 @@ class AddSpokenMealHandlerTest extends TestCase
         $result = ($this->handler)(new AddSpokenMealCommand('user-1', 'xyz', sessionIsOpen: true));
 
         // Then
-        $this->assertSame('Je ne trouve pas la recette xyz. Tu veux dire gratin ? Ou un produit ?', $result->speech);
+        $this->assertSame('Je ne trouve pas la recette xyz. Option 1, gratin. Option 2, un produit.', $result->speech);
         $this->assertSame(DialogueStep::CHOOSE, $result->nextState?->step);
         $this->assertEquals([new DialogueOption('r1', 'Gratin')], $result->nextState->options);
         $this->assertTrue($result->keepSessionOpen, 'une question garde la séance ouverte, même en appel direct');
