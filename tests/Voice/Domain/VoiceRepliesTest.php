@@ -29,18 +29,13 @@ class VoiceRepliesTest extends TestCase
     ];
 
     /**
-     * La seule exception à « deux phrases » (ADR 0029 décision 11) : la question « de quoi tu parles ? » d'un produit inconnu dit ce qui n'est pas
-     * connu, les propositions et l'issue « un nouveau produit » ; la question de l'unité (exemples, puis « Dis lesquelles pour les entendre »).
-     * Trois phrases, chacune de 15 mots au plus ; pas une de plus. La réponse à « lesquels ? » a son propre test
+     * Les exceptions à « deux phrases » (ADR 0029 décision 11) : la question de l'unité (exemples, puis « Dis lesquelles pour les entendre ») et « je le
+     * crée ? ou c'est une recette ? ». Trois phrases, chacune de 15 mots au plus ; pas une de plus. Les questions À CHOIX (« Option 1, A. Option 2, un
+     * nouveau produit. ») sont construites par `VoiceReplies::choose()` : une phrase par choix, elles ont leur propre test
+     * (`testAQuestionWithSeveralChoicesNumbersEachOfThemInItsOwnShortSentence`). La réponse à « lesquels ? » a le sien aussi
      * (`testTheAnswerToWhichOnesEnumeratesTheWholeCatalogueInTwoSentences`).
      */
-    private const array THREE_SENTENCES = [
-        'ASK_WHICH', 'ASK_WHICH_AGAIN', 'ASK_UNIT',
-        // L'issue « ou une recette ? » d'un produit inconnu et « ou un produit ? » d'une recette inconnue (ADR 0029 décision 13)
-        'ASK_WHICH_OR_MEAL', 'ASK_WHICH_AGAIN_OR_MEAL', 'ASK_CREATE_OR_MEAL', 'ASK_MEAL_WHICH_OR_ITEM', 'ASK_MEAL_WHICH_AGAIN_OR_ITEM',
-        // Retirer ce que la liste ne porte pas (VOX-306) : « il n'y a pas X dans ta liste », les propositions de la liste, et l'issue vers l'autre type
-        'ASK_REMOVE_MEAL_WHICH_OR_ITEM', 'ASK_REMOVE_ITEM_WHICH_OR_MEAL', 'ASK_REMOVE_ITEM_WHICH_AGAIN_OR_MEAL',
-    ];
+    private const array THREE_SENTENCES = ['ASK_UNIT', 'ASK_CREATE_OR_MEAL'];
 
     public function testEveryReplyOfTheCatalogueIsAtMostTwoShortSentences(): void
     {
@@ -112,10 +107,53 @@ class VoiceRepliesTest extends TestCase
         $this->assertSame('Quelle unité ? Par exemple pièce, kilo ou litre. Dis lesquelles pour les entendre.', $this->said('ASK_UNIT'));
         $this->assertSame("D'accord, je ne crée rien.", $this->said('DECLINED'));
         $this->assertSame("C'est noté : persil. Je m'en souviendrai.", VoiceReplies::remembered('persil', false, false));
-        $this->assertSame('Je ne connais pas ciboulette. Tu veux dire persil, basilic ou coriandre ? Ou un nouveau produit ?', VoiceReplies::unknown('ciboulette', ['persil', 'basilic', 'coriandre']));
-        $this->assertSame('Je ne connais pas ciboulette. Tu veux dire persil ou basilic ? Ou un nouveau produit ?', VoiceReplies::unknown('ciboulette', ['persil', 'basilic']));
-        $this->assertSame('Je ne connais pas ciboulette. Tu veux dire persil ? Ou un nouveau produit ?', VoiceReplies::unknown('ciboulette', ['persil']));
+        // Chaque choix est numéroté, de sorte qu'on répond « option 2 » sans répéter un nom qu'Amazon comprend mal (essai réel du 2026-11-26)
+        $this->assertSame('Je ne connais pas ciboulette. Option 1, persil. Option 2, basilic. Option 3, coriandre. Option 4, un nouveau produit.', VoiceReplies::unknown('ciboulette', ['persil', 'basilic', 'coriandre']));
+        $this->assertSame('Je ne connais pas ciboulette. Option 1, persil. Option 2, basilic. Option 3, un nouveau produit.', VoiceReplies::unknown('ciboulette', ['persil', 'basilic']));
+        $this->assertSame('Je ne connais pas ciboulette. Option 1, persil. Option 2, un nouveau produit.', VoiceReplies::unknown('ciboulette', ['persil']));
+        $this->assertSame('Je ne connais pas head and shoulders. Option 1, head et shoulders. Option 2, un nouveau produit. Option 3, une recette.', VoiceReplies::unknown('head and shoulders', ['Head & Shoulders'], true));
         $this->assertSame('Je ne connais pas ciboulette. Je le crée ?', VoiceReplies::unknown('ciboulette', []));
+    }
+
+    public function testAQuestionWithSeveralChoicesNumbersEachOfThemInItsOwnShortSentence(): void
+    {
+        // Given : le pire cas, trois propositions de trois mots, puis les deux issues
+        $names = ['tomates cerises pelées', 'crème fraîche épaisse', 'pâte feuilletée maison'];
+
+        // When
+        $question = VoiceReplies::unknown('ciboulette fraîche', $names, true);
+
+        // Then : une phrase pour dire ce qui n'est pas connu, une par choix, dans l'ordre où l'interpréteur les lit
+        $this->assertSame(
+            'Je ne connais pas ciboulette fraîche. Option 1, tomates cerises pelées. Option 2, crème fraîche épaisse. Option 3, pâte feuilletée maison. Option 4, un nouveau produit. Option 5, une recette.',
+            $question,
+        );
+        $this->assertCount(6, $this->sentences($question));
+        foreach ($this->sentences($question) as $sentence) {
+            $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $sentence)), $sentence);
+        }
+    }
+
+    public function testTheNumberedIssuesAreTheOnesTheInterpreterReads(): void
+    {
+        // Given : chaque état de choix, avec et sans l'autre recherche déjà essayée
+        $options = [new DialogueOption('a', 'persil'), new DialogueOption('b', 'basilic')];
+        $states = [
+            'produit' => SpokenDialogueState::choose('gratin', $options, 'gratin'),
+            'produit, recette déjà cherchée' => SpokenDialogueState::choose('gratin', $options, 'gratin', otherSideTried: true),
+            'recette' => SpokenDialogueState::chooseRecipe('gratin', $options, 'gratin'),
+            'recette, produit déjà cherché' => SpokenDialogueState::chooseRecipe('gratin', $options, 'gratin', null, true),
+            'repas à retirer' => SpokenDialogueState::chooseMealToRemove('gratin', $options),
+            'produit à retirer' => SpokenDialogueState::proposeToRemove('du gratin', $options, 'gratin'),
+        ];
+
+        foreach ($states as $label => $state) {
+            // When
+            $question = VoiceReplies::question($state);
+
+            // Then : autant de « Option N » que de propositions et d'issues, ni plus ni moins
+            $this->assertSame(count($state->options) + count($state->exits()), substr_count($question, 'Option '), "$label : « $question »");
+        }
     }
 
     public function testTheAnswerToWhichOnesEnumeratesTheWholeCatalogueInTwoSentences(): void
@@ -226,13 +264,13 @@ class VoiceRepliesTest extends TestCase
         $confirm = $unit->withUnit(new DialogueOption('unite', 'unité'));
 
         // Then
-        $this->assertSame('Tu veux dire persil ou basilic ? Ou un nouveau produit, ou une recette ?', VoiceReplies::question($choose));
+        $this->assertSame('Option 1, persil. Option 2, basilic. Option 3, un nouveau produit. Option 4, une recette.', VoiceReplies::question($choose));
         $this->assertSame('Je ne connais pas ciboulette. Je le crée ? Ou c\'est une recette ?', VoiceReplies::question($none));
         $this->assertSame('Dans quel rayon ? Dis lesquels pour les entendre.', VoiceReplies::question($department));
         $this->assertSame('Quelle unité ? Par exemple pièce, kilo ou litre. Dis lesquelles pour les entendre.', VoiceReplies::question($unit));
         $this->assertSame("Je crée ciboulette, fruit et légume, unité. C'est bon ?", VoiceReplies::question($confirm), '« & » se dit « et », les majuscules du catalogue tombent');
         $this->assertSame("Je n'ai pas compris. Dans quel rayon ? Dis lesquels pour les entendre.", VoiceReplies::notUnderstood($department));
-        $this->assertSame('Lequel ? persil ou basilic. Ou un nouveau produit, ou une recette ?', VoiceReplies::whichAgain($choose));
+        $this->assertSame('Lequel ? Option 1, persil. Option 2, basilic. Option 3, un nouveau produit. Option 4, une recette.', VoiceReplies::whichAgain($choose));
     }
 
     public function testEveryAssembledReplyOfTheDialogueStaysShortWithRealisticNames(): void
@@ -266,9 +304,9 @@ class VoiceRepliesTest extends TestCase
         }
 
         foreach ($replies as $label => $reply) {
-            // Then : phrases de 15 mots au plus, trois phrases au plus, tutoiement
+            // Then : phrases de 15 mots au plus, trois phrases au plus (une de plus que de choix quand ils sont numérotés), tutoiement
             $sentences = $this->sentences($reply);
-            $this->assertLessThanOrEqual(3, count($sentences), "$label : « $reply »");
+            $this->assertLessThanOrEqual(str_contains($reply, 'Option 1,') ? 6 : 3, count($sentences), "$label : « $reply »");
             foreach ($sentences as $sentence) {
                 $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $sentence)), "$label : « $sentence »");
             }
@@ -327,7 +365,7 @@ class VoiceRepliesTest extends TestCase
     public function testAnUnknownMealAsksWhatToDoWhateverTheUserHas(): void
     {
         // Then : des propositions lointaines (jamais un silence), puis « ou un produit ? » ; aucune recette du tout : on le dit
-        $this->assertSame('Je ne trouve pas la recette blanquette de veaux. Tu veux dire lasagnes, hachis parmentier ou quiche ? Ou un produit ?', VoiceReplies::unknownMeal('blanquette de veaux', ['lasagnes', 'hachis parmentier', 'quiche'], offerItem: true));
+        $this->assertSame('Je ne trouve pas la recette blanquette de veaux. Option 1, lasagnes. Option 2, hachis parmentier. Option 3, quiche. Option 4, un produit.', VoiceReplies::unknownMeal('blanquette de veaux', ['lasagnes', 'hachis parmentier', 'quiche'], offerItem: true));
         $this->assertSame("Tu n'as encore aucune recette dans Repas. C'est un produit ?", VoiceReplies::unknownMeal('xyz', [], offerItem: true, hasRecipes: false));
         $this->assertSame("Je ne trouve rien qui s'appelle xyz.", VoiceReplies::unknownMeal('xyz', [], offerItem: false, hasRecipes: false));
     }
@@ -701,21 +739,24 @@ class VoiceRepliesTest extends TestCase
     public function testTheQuestionsOfAnUnknownRecipeOfferTheProductOnlyUntilItWasTried(): void
     {
         // Les produits n'ont pas encore été cherchés
-        $this->assertSame('Je ne trouve pas la recette gratin. Tu veux dire gratin dauphinois, gratin de pâtes ou gratin de courgettes ? Ou un produit ?', VoiceReplies::unknownMeal('gratin', ['gratin dauphinois', 'gratin de pâtes', 'gratin de courgettes'], true));
+        $this->assertSame('Je ne trouve pas la recette gratin. Option 1, gratin dauphinois. Option 2, gratin de pâtes. Option 3, gratin de courgettes. Option 4, un produit.', VoiceReplies::unknownMeal('gratin', ['gratin dauphinois', 'gratin de pâtes', 'gratin de courgettes'], true));
+        // Une seule proposition et une issue : toujours numérotées ; une seule proposition et rien d'autre : oui ou non suffit
+        $this->assertSame('Je ne trouve pas la recette gratin. Option 1, gratin dauphinois. Option 2, un produit.', VoiceReplies::unknownMeal('gratin', ['gratin dauphinois'], true));
+        $this->assertSame('Je ne trouve pas la recette gratin. Tu veux dire gratin dauphinois ?', VoiceReplies::unknownMeal('gratin', ['gratin dauphinois'], false));
         $this->assertSame("Je ne trouve pas la recette gratin. C'est un produit ?", VoiceReplies::unknownMeal('gratin', [], true));
         // Les produits ont déjà été cherchés : plus d'issue
-        $this->assertSame('Je ne trouve pas la recette gratin. Tu veux dire gratin dauphinois ou gratin de pâtes ?', VoiceReplies::unknownMeal('gratin', ['gratin dauphinois', 'gratin de pâtes'], false));
+        $this->assertSame('Je ne trouve pas la recette gratin. Option 1, gratin dauphinois. Option 2, gratin de pâtes.', VoiceReplies::unknownMeal('gratin', ['gratin dauphinois', 'gratin de pâtes'], false));
         $this->assertSame("Je ne trouve rien qui s'appelle gratin.", VoiceReplies::unknownMeal('gratin', [], false));
         $this->assertSame("Je ne trouve rien qui s'appelle gratin.", VoiceReplies::nothingFound('Gratin'));
 
         $options = [new DialogueOption('r1', 'gratin dauphinois'), new DialogueOption('r2', 'gratin de pâtes')];
         $open = SpokenDialogueState::chooseRecipe('gratin', $options, 'gratin');
         $closed = SpokenDialogueState::chooseRecipe('gratin', $options, 'gratin', null, true);
-        $this->assertSame('Tu veux dire gratin dauphinois ou gratin de pâtes ? Ou un produit ?', VoiceReplies::question($open));
-        $this->assertSame('Tu veux dire gratin dauphinois ou gratin de pâtes ?', VoiceReplies::question($closed));
+        $this->assertSame('Option 1, gratin dauphinois. Option 2, gratin de pâtes. Option 3, un produit.', VoiceReplies::question($open));
+        $this->assertSame('Option 1, gratin dauphinois. Option 2, gratin de pâtes.', VoiceReplies::question($closed));
         $this->assertSame("Je ne trouve pas la recette gratin. C'est un produit ?", VoiceReplies::question(SpokenDialogueState::chooseRecipe('gratin', [], 'gratin')));
-        $this->assertSame('Laquelle ? gratin dauphinois ou gratin de pâtes. Ou un produit ?', VoiceReplies::whichAgain($open));
-        $this->assertSame('Laquelle ? gratin dauphinois ou gratin de pâtes.', VoiceReplies::whichAgain($closed));
+        $this->assertSame('Laquelle ? Option 1, gratin dauphinois. Option 2, gratin de pâtes. Option 3, un produit.', VoiceReplies::whichAgain($open));
+        $this->assertSame('Laquelle ? Option 1, gratin dauphinois. Option 2, gratin de pâtes.', VoiceReplies::whichAgain($closed));
     }
 
     public function testTheQuestionsOfAnUnknownProductOfferARecipeOnlyUntilItWasTried(): void
@@ -724,9 +765,9 @@ class VoiceRepliesTest extends TestCase
 
         $this->assertSame('Je ne connais pas gratin. Je le crée ? Ou c\'est une recette ?', VoiceReplies::unknown('gratin', [], true));
         $this->assertSame('Je ne connais pas gratin. Je le crée ?', VoiceReplies::unknown('gratin', []));
-        $this->assertSame('Tu veux dire persil ou basilic ? Ou un nouveau produit ?', VoiceReplies::question(SpokenDialogueState::choose('gratin', $options, 'gratin', otherSideTried: true)));
-        $this->assertSame('Tu veux dire persil ou basilic ? Ou un nouveau produit, ou une recette ?', VoiceReplies::question(SpokenDialogueState::choose('gratin', $options, 'gratin')));
-        $this->assertSame('Lequel ? persil ou basilic. Ou un nouveau produit ?', VoiceReplies::whichAgain(SpokenDialogueState::choose('gratin', $options, 'gratin', otherSideTried: true)));
+        $this->assertSame('Option 1, persil. Option 2, basilic. Option 3, un nouveau produit.', VoiceReplies::question(SpokenDialogueState::choose('gratin', $options, 'gratin', otherSideTried: true)));
+        $this->assertSame('Option 1, persil. Option 2, basilic. Option 3, un nouveau produit. Option 4, une recette.', VoiceReplies::question(SpokenDialogueState::choose('gratin', $options, 'gratin')));
+        $this->assertSame('Lequel ? Option 1, persil. Option 2, basilic. Option 3, un nouveau produit.', VoiceReplies::whichAgain(SpokenDialogueState::choose('gratin', $options, 'gratin', otherSideTried: true)));
     }
 
     public function testNoMealReplyIsLongOrDoesTheJargonEvenWithRealisticNames(): void
@@ -820,28 +861,29 @@ class VoiceRepliesTest extends TestCase
     public function testTheQuestionsOfAMealToRemoveOfferTheProductOnlyUntilItWasTried(): void
     {
         // Les produits n'ont pas encore été cherchés
-        $this->assertSame('Je ne trouve pas le repas gratin dans ta liste. Tu veux dire gratin dauphinois, gratin de pâtes ou gratin de courgettes ? Ou un produit ?', VoiceReplies::unknownMealToRemove('gratin', ['gratin dauphinois', 'gratin de pâtes', 'gratin de courgettes'], true));
+        $this->assertSame('Je ne trouve pas le repas gratin dans ta liste. Option 1, gratin dauphinois. Option 2, gratin de pâtes. Option 3, gratin de courgettes. Option 4, un produit.', VoiceReplies::unknownMealToRemove('gratin', ['gratin dauphinois', 'gratin de pâtes', 'gratin de courgettes'], true));
         $this->assertSame("Je ne trouve pas le repas gratin dans ta liste. C'est un produit ?", VoiceReplies::unknownMealToRemove('gratin', [], true));
         // Les produits ont déjà été cherchés : plus d'issue
-        $this->assertSame('Je ne trouve pas le repas gratin dans ta liste. Tu veux dire gratin dauphinois ou gratin de pâtes ?', VoiceReplies::unknownMealToRemove('gratin', ['gratin dauphinois', 'gratin de pâtes'], false));
+        $this->assertSame('Je ne trouve pas le repas gratin dans ta liste. Option 1, gratin dauphinois. Option 2, gratin de pâtes.', VoiceReplies::unknownMealToRemove('gratin', ['gratin dauphinois', 'gratin de pâtes'], false));
+        $this->assertSame('Je ne trouve pas le repas gratin dans ta liste. Tu veux dire gratin dauphinois ?', VoiceReplies::unknownMealToRemove('gratin', ['gratin dauphinois'], false));
         $this->assertSame("Je ne trouve rien qui s'appelle gratin dans ta liste.", VoiceReplies::unknownMealToRemove('gratin', [], false));
         $this->assertSame("Je ne trouve rien qui s'appelle gratin dans ta liste.", VoiceReplies::nothingFoundInList('Gratin'));
 
         $options = [new DialogueOption('r1', 'gratin dauphinois'), new DialogueOption('r2', 'gratin de pâtes')];
         $open = SpokenDialogueState::chooseMealToRemove('gratin', $options);
         $closed = SpokenDialogueState::chooseMealToRemove('gratin', $options, otherSideTried: true);
-        $this->assertSame('Tu veux dire gratin dauphinois ou gratin de pâtes ? Ou un produit ?', VoiceReplies::question($open));
-        $this->assertSame('Tu veux dire gratin dauphinois ou gratin de pâtes ?', VoiceReplies::question($closed));
+        $this->assertSame('Option 1, gratin dauphinois. Option 2, gratin de pâtes. Option 3, un produit.', VoiceReplies::question($open));
+        $this->assertSame('Option 1, gratin dauphinois. Option 2, gratin de pâtes.', VoiceReplies::question($closed));
         $this->assertSame("Je ne trouve pas le repas gratin dans ta liste. C'est un produit ?", VoiceReplies::question(SpokenDialogueState::chooseMealToRemove('gratin', [])));
         $this->assertSame("Je ne trouve rien qui s'appelle gratin dans ta liste.", VoiceReplies::question(SpokenDialogueState::chooseMealToRemove('gratin', [], otherSideTried: true)));
-        $this->assertSame('Laquelle ? gratin dauphinois ou gratin de pâtes. Ou un produit ?', VoiceReplies::whichAgain($open));
-        $this->assertSame('Laquelle ? gratin dauphinois ou gratin de pâtes.', VoiceReplies::whichAgain($closed));
+        $this->assertSame('Laquelle ? Option 1, gratin dauphinois. Option 2, gratin de pâtes. Option 3, un produit.', VoiceReplies::whichAgain($open));
+        $this->assertSame('Laquelle ? Option 1, gratin dauphinois. Option 2, gratin de pâtes.', VoiceReplies::whichAgain($closed));
     }
 
     public function testTheQuestionsOfAProductToRemoveOfferAMealOnlyUntilItWasTried(): void
     {
         // Les repas n'ont pas encore été cherchés
-        $this->assertSame("Il n'y a pas de pâtes à pizza dans ta liste. Tu veux dire pâte brisée ou pâte sablée ? Ou un repas ?", VoiceReplies::unknownItemToRemove('pâtes à pizza', ['pâte brisée', 'pâte sablée'], true));
+        $this->assertSame("Il n'y a pas de pâtes à pizza dans ta liste. Option 1, pâte brisée. Option 2, pâte sablée. Option 3, un repas.", VoiceReplies::unknownItemToRemove('pâtes à pizza', ['pâte brisée', 'pâte sablée'], true));
         $this->assertSame("Il n'y a pas de ciboulette dans ta liste. C'est un repas ?", VoiceReplies::unknownItemToRemove('ciboulette', [], true));
         $this->assertSame("Il n'y a pas d'ail dans ta liste. C'est un repas ?", VoiceReplies::unknownItemToRemove('ail', [], true));
         // Les repas ont déjà été cherchés : plus d'issue
@@ -851,11 +893,11 @@ class VoiceRepliesTest extends TestCase
         $options = [new DialogueOption('p1', 'pâte brisée'), new DialogueOption('p2', 'pâte sablée')];
         $open = SpokenDialogueState::proposeToRemove('des pâtes', $options, 'pâtes');
         $closed = SpokenDialogueState::proposeToRemove('des pâtes', $options, 'pâtes', otherSideTried: true);
-        $this->assertSame('Tu veux dire pâte brisée ou pâte sablée ? Ou un repas ?', VoiceReplies::question($open));
-        $this->assertSame('Tu veux dire pâte brisée ou pâte sablée ?', VoiceReplies::question($closed));
+        $this->assertSame('Option 1, pâte brisée. Option 2, pâte sablée. Option 3, un repas.', VoiceReplies::question($open));
+        $this->assertSame('Option 1, pâte brisée. Option 2, pâte sablée.', VoiceReplies::question($closed));
         $this->assertSame("Il n'y a pas de pâtes dans ta liste. C'est un repas ?", VoiceReplies::question(SpokenDialogueState::proposeToRemove('des pâtes', [], 'pâtes')));
-        $this->assertSame('Lequel ? pâte brisée ou pâte sablée. Ou un repas ?', VoiceReplies::whichAgain($open));
-        $this->assertSame('Lequel ? pâte brisée ou pâte sablée.', VoiceReplies::whichAgain($closed));
+        $this->assertSame('Lequel ? Option 1, pâte brisée. Option 2, pâte sablée. Option 3, un repas.', VoiceReplies::whichAgain($open));
+        $this->assertSame('Lequel ? Option 1, pâte brisée. Option 2, pâte sablée.', VoiceReplies::whichAgain($closed));
     }
 
     public function testNoRemovalReplyIsLongOrDoesTheJargonEvenWithRealisticNames(): void

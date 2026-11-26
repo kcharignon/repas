@@ -316,7 +316,7 @@ class DocsVoiceSkillTest extends KernelTestCase
      */
     public static function dialogueIntents(): iterable
     {
-        yield 'ChooseOptionIntent' => ['ChooseOptionIntent', 'rank', 'OPTION_RANK', 10];
+        yield 'ChooseOptionIntent' => ['ChooseOptionIntent', 'rank', 'OPTION_RANK', 20];
         // Les formulations d'un refus sont plus nombreuses : « un nouveau produit », « un nouvel ingrédient », « aucun » (essai réel du 2026-11-26)
         yield 'CreateItemIntent' => ['CreateItemIntent', null, null, 20];
         // « Oui ajoute le produit » : la proposition est la bonne, sans en répéter le nom (essai réel du 2026-11-26)
@@ -523,7 +523,7 @@ class DocsVoiceSkillTest extends KernelTestCase
     public function testTheRankValuesAreTheRanksOneToThree(): void
     {
         // Then : l'identifiant est le rang (les identifiants peuvent être des chiffres, pas les valeurs)
-        $this->assertSame(['1', '2', '3'], array_map(static fn(array $value): string => $value['id'], $this->type('OPTION_RANK')['values']));
+        $this->assertSame(['1', '2', '3', '4', '5', 'last'], array_map(static fn(array $value): string => $value['id'], $this->type('OPTION_RANK')['values']));
     }
 
     public function testUnitsAreSaidInTheWordsOfEverydayLife(): void

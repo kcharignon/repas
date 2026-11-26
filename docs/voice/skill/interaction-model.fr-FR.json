@@ -773,7 +773,17 @@
             "prends la {rank}",
             "choisis le {rank}",
             "ce sera le {rank}",
-            "numéro {rank}"
+            "numéro {rank}",
+            "option {rank}",
+            "l'option {rank}",
+            "choix {rank}",
+            "le choix {rank}",
+            "option numéro {rank}",
+            "choix numéro {rank}",
+            "je prends l'option {rank}",
+            "je choisis l'option {rank}",
+            "je prends le choix {rank}",
+            "je choisis le choix {rank}"
           ]
         },
         {
@@ -3521,7 +3531,8 @@
                 "synonyms": [
                   "première",
                   "un",
-                  "une"
+                  "une",
+                  "a"
                 ]
               }
             },
@@ -3532,7 +3543,9 @@
                 "synonyms": [
                   "second",
                   "seconde",
-                  "deux"
+                  "deux",
+                  "b",
+                  "bé"
                 ]
               }
             },
@@ -3541,9 +3554,39 @@
               "name": {
                 "value": "troisième",
                 "synonyms": [
-                  "dernier",
-                  "dernière",
-                  "trois"
+                  "trois",
+                  "c",
+                  "cé"
+                ]
+              }
+            },
+            {
+              "id": "4",
+              "name": {
+                "value": "quatrième",
+                "synonyms": [
+                  "quatre",
+                  "d",
+                  "dé"
+                ]
+              }
+            },
+            {
+              "id": "5",
+              "name": {
+                "value": "cinquième",
+                "synonyms": [
+                  "cinq",
+                  "e"
+                ]
+              }
+            },
+            {
+              "id": "last",
+              "name": {
+                "value": "dernier",
+                "synonyms": [
+                  "dernière"
                 ]
               }
             }

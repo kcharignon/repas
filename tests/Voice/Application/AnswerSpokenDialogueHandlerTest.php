@@ -335,6 +335,31 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertSame([[2, 'kilo']], $this->repas->addedWith());
     }
 
+    public function testOptionsAreAnsweredByTheirNumberOrLetterTheProposalsFirstThenTheIssues(): void
+    {
+        // Given : « Option 1, persil. Option 2, basilic. Option 3, un nouveau produit. Option 4, une recette. »
+        $state = self::choose(['persil', 'basilic']);
+
+        // When / Then : « option 2 » est la deuxième proposition, ajoutée ET retenue pour la phrase
+        $second = $this->answer(AlexaTestRequest::chooseOption('option 2', '2'), $state);
+        $this->assertSame("C'est noté : basilic. Je m'en souviendrai.", $second->speech);
+        $this->assertSame([[self::USER, 'basilic-u']], $this->repas->added());
+
+        // When / Then : « choix c » est le nouveau produit : on pose la question du rayon, rien n'est ajouté
+        $creation = $this->answer(AlexaTestRequest::chooseOption('choix c', '3'), $state);
+        $this->assertSame(['Dans quel rayon ? Dis lesquels pour les entendre.', DialogueStep::DEPARTMENT], [$creation->speech, $creation->nextState?->step]);
+
+        // When / Then : « option 4 » est « une recette » : les recettes sont cherchées avec la phrase d'origine, rien de plus n'est ajouté
+        $this->answer(AlexaTestRequest::chooseOption('option quatre', '4'), $state);
+        $this->assertSame([[self::USER, 'ciboulette']], $this->repas->askedRecipes);
+        $this->assertCount(1, $this->repas->added());
+
+        // When / Then : « option 5 » ne désigne rien : réponse incomprise, la question est répétée
+        $nothing = $this->answer(AlexaTestRequest::chooseOption('option cinq', '5'), $state);
+        $this->assertSame(1, $nothing->nextState?->misses);
+        $this->assertStringStartsWith("Je n'ai pas compris. Option 1, persil.", $nothing->speech);
+    }
+
     public function testTheWholeCreationFromTheProposalsToTheShoppingList(): void
     {
         // When : « un nouveau produit » -> « les fruits et légumes » -> « des pièces » -> « oui »
@@ -555,7 +580,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $second = $this->answer(AlexaTestRequest::yes(), $first->nextState);
 
         // Then
-        $this->assertSame(['Lequel ? persil ou basilic. Ou un nouveau produit, ou une recette ?', 1], [$first->speech, $first->nextState?->misses]);
+        $this->assertSame(['Lequel ? Option 1, persil. Option 2, basilic. Option 3, un nouveau produit. Option 4, une recette.', 1], [$first->speech, $first->nextState?->misses]);
         $this->assertSame("Je n'ai pas compris. On laisse tomber.", $second->speech);
         $this->assertNull($second->nextState);
         $this->assertSame([], $this->repas->added());
@@ -570,7 +595,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $result = $this->answer(AlexaTestRequest::intent('AMAZON.HelpIntent'), $state);
 
         // Then
-        $this->assertSame('Tu veux dire persil ou basilic ? Ou un nouveau produit, ou une recette ?', $result->speech);
+        $this->assertSame('Option 1, persil. Option 2, basilic. Option 3, un nouveau produit. Option 4, une recette.', $result->speech);
         $this->assertEquals($state, $result->nextState);
         $this->assertTrue($result->keepSessionOpen);
     }
@@ -631,7 +656,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
 
         // Then : la question de l'étape, pas de liste, l'état intact
         $this->assertSame("Je crée ciboulette, boucherie, kilo. C'est bon ?", $onConfirm->speech);
-        $this->assertSame('Tu veux dire persil ou basilic ? Ou un nouveau produit, ou une recette ?', $onChoose->speech);
+        $this->assertSame('Option 1, persil. Option 2, basilic. Option 3, un nouveau produit. Option 4, une recette.', $onChoose->speech);
         $this->assertEquals($confirm, $onConfirm->nextState);
         $this->assertEquals($choose, $onChoose->nextState);
     }
@@ -869,7 +894,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->repas->listHas(new ListedLine('croquette', 'croquette', 'animal', 'animal', 3.0, 'unite', 'unité'));
         $this->repas->willRemove(new RemovedItem(found: true, remaining: 2.0, removed: 1.0));
 
-        // When : « enlève des croquettes » à « Tu veux dire persil ou basilic ? »
+        // When : « enlève des croquettes » à « Option 1, persil. Option 2, basilic. … »
         $result = $this->answer(AlexaTestRequest::removeItem('croquettes'), self::choose(['persil', 'basilic']));
 
         // Then : la demande est faite (retirer un), le dialogue est abandonné, la séance se ferme, rien n'est ajouté ni retenu
@@ -1099,7 +1124,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->repas->ownsRecipe('lasagnes-id', 'Lasagnes');
         $this->repas->willPlanMeal($this->plannedMeal('Lasagnes', 4));
 
-        // When : « Tu veux dire persil ou basilic ? » -> « planifie le repas lasagnes »
+        // When : « Option 1, persil. Option 2, basilic. … » -> « planifie le repas lasagnes »
         $result = $this->answer(AlexaTestRequest::addMeal('lasagnes'), self::choose(['persil', 'basilic']));
 
         // Then : une nouvelle demande, jamais une correction
@@ -1321,7 +1346,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $help = $this->answer(AlexaTestRequest::intent('AMAZON.HelpIntent'), $state);
 
         // Then
-        $this->assertSame('Tu veux dire persil ? Ou un nouveau produit, ou une recette ?', $help->speech);
+        $this->assertSame('Option 1, persil. Option 2, un nouveau produit. Option 3, une recette.', $help->speech);
     }
 
     // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
@@ -1520,7 +1545,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertNotNull($first->nextState);
         $this->assertTrue($first->nextState->isRemovalProposal());
         $this->assertTrue($first->nextState->isMeal());
-        $this->assertSame("Je n'ai pas compris. Tu veux dire gratin dauphinois ou gratin de pâtes ? Ou un produit ?", $first->speech);
+        $this->assertSame("Je n'ai pas compris. Option 1, gratin dauphinois. Option 2, gratin de pâtes. Option 3, un produit.", $first->speech);
         $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. On laisse tomber.", keepSessionOpen: false, added: false), $second);
         $this->assertSame([], $this->repas->mealsRemoved());
     }

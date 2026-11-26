@@ -229,7 +229,7 @@ class RemoveSpokenItemHandlerTest extends TestCase
         $result = ($this->handler)(new RemoveSpokenItemCommand('user-1', 'des pâtes à pizza', sessionIsOpen: false, quantity: 2, unitSlug: 'paquet'));
 
         // Then : les lignes DE LA LISTE, sans rayon (ce n'est pas un départage), l'issue vers les repas ; la quantité et l'unité dites voyagent
-        $this->assertSame("Il n'y a pas de pâtes à pizza dans ta liste. Tu veux dire pâte brisée ou pâte sablée ? Ou un repas ?", $result->speech);
+        $this->assertSame("Il n'y a pas de pâtes à pizza dans ta liste. Option 1, pâte brisée. Option 2, pâte sablée. Option 3, un repas.", $result->speech);
         $state = $result->nextState;
         $this->assertNotNull($state);
         $this->assertEquals([new DialogueOption('pate-brisee', 'Pâte brisée'), new DialogueOption('pate-sablee', 'Pâte sablée')], $state->options);
