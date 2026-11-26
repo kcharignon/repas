@@ -530,9 +530,9 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->say(AlexaTestRequest::addItem('du sirop de menthe'));
 
         // Then : Alexa propose le sirop et « un nouveau produit », la séance reste ouverte, l'état voyage, rien n'est écrit
-        $this->assertSame('Je ne connais pas sirop de menthe. Tu veux dire sirop fruit rouge ? Ou un nouveau produit, ou une recette ?', $this->speech());
+        $this->assertSame('Je ne connais pas sirop de menthe. Option 1, sirop fruit rouge. Option 2, un nouveau produit. Option 3, une recette.', $this->speech());
         $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
-        $this->assertSame('Tu veux dire sirop fruit rouge ? Ou un nouveau produit, ou une recette ?', $this->jsonBody()['response']['reprompt']['outputSpeech']['text']);
+        $this->assertSame('Option 1, sirop fruit rouge. Option 2, un nouveau produit. Option 3, une recette.', $this->jsonBody()['response']['reprompt']['outputSpeech']['text']);
         $this->assertSame('choose', $this->attributes()['dialogue']['step']);
         $this->assertSame(0, $this->rowCount('shopping_list_row'));
         $this->assertSame(0, $this->rowCount('spoken_phrase_choice'));
@@ -564,6 +564,42 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->assertSame(2.0, $rows->reset()->getQuantity());
     }
 
+    public function testTheOptionNumberIsAnsweredWithoutRepeatingTheHardToUnderstandName(): void
+    {
+        // Given : essai réel du 2026-11-26 : « Head & Shoulders » existe, Amazon le comprend mal ; Alexa entend « hair and shoulders »
+        $user = $this->linkedUser();
+        $shampoo = new IngredientBuilder()->withName('Head & Shoulders')->withCreator($user, true)->build();
+        $this->persister->saveIngredient($shampoo);
+        $this->savedActiveList($user);
+        $this->say(AlexaTestRequest::addItem('des hair and shoulders'));
+        $this->assertSame('Je ne connais pas hair and shoulders. Option 1, head et shoulders. Option 2, un nouveau produit. Option 3, une recette.', $this->speech());
+
+        // When : « option un », sans répéter le nom
+        $this->converse(AlexaTestRequest::chooseOption('option un', '1'), $this->attributes());
+
+        // Then : l'ingrédient est ajouté et la phrase retenue
+        $this->assertSame("C'est noté : head et shoulders. Je m'en souviendrai.", $this->speech());
+        $this->assertSame(1, $this->rowCount('shopping_list_row'));
+        $this->assertSame(1, $this->rowCount('spoken_phrase_choice'));
+    }
+
+    public function testTheOptionNumberOfTheNewProductStartsTheCreationWithoutRepeatingTheName(): void
+    {
+        // Given : le même cas ; cette fois c'est un nouveau produit (« option 2 », ou « choix b »)
+        $user = $this->linkedUser();
+        $this->persister->saveIngredient(new IngredientBuilder()->withName('Head & Shoulders')->withCreator($user, true)->build());
+        $this->savedActiveList($user);
+        $this->say(AlexaTestRequest::addItem('des hair and shoulders'));
+
+        // When
+        $this->converse(AlexaTestRequest::chooseOption('choix b', '2'), $this->attributes());
+
+        // Then : la question du rayon, rien n'est encore écrit
+        $this->assertSame('Dans quel rayon ? Dis lesquels pour les entendre.', $this->speech());
+        $this->assertSame('department', $this->attributes()['dialogue']['step']);
+        $this->assertSame(0, $this->rowCount('shopping_list_row'));
+    }
+
     public function testTheRankOfAProposalChoosesItWhenSeveralAreProposed(): void
     {
         // Given : trois pâtes qui ressemblent à « pâtes à pizza », dont aucune ne s'appelle ainsi
@@ -577,12 +613,12 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->say(AlexaTestRequest::addItem('des pâtes à pizza')->inOpenSession());
 
         // Then : les trois, du plus au moins proche
-        $this->assertSame('Je ne connais pas pâtes à pizza. Tu veux dire pâte ramen, pâte brisée ou pâte sablée ? Ou un nouveau produit, ou une recette ?', $this->speech() . '');
+        $this->assertSame('Je ne connais pas pâtes à pizza. Option 1, pâte ramen. Option 2, pâte brisée. Option 3, pâte sablée. Option 4, un nouveau produit. Option 5, une recette.', $this->speech() . '');
         $this->assertCount(3, $this->attributes()['dialogue']['options']);
 
         // When : « oui » seul ne suffit pas, il y en a trois
         $this->converse(AlexaTestRequest::yes(), $this->attributes());
-        $this->assertSame('Lequel ? pâte ramen, pâte brisée ou pâte sablée. Ou un nouveau produit, ou une recette ?', $this->speech());
+        $this->assertSame('Lequel ? Option 1, pâte ramen. Option 2, pâte brisée. Option 3, pâte sablée. Option 4, un nouveau produit. Option 5, une recette.', $this->speech());
 
         // When : « le deuxième »
         $this->converse(AlexaTestRequest::chooseOption('le deuxième', '2'), $this->attributes());
@@ -1931,7 +1967,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->say(AlexaTestRequest::addMeal('gratin'));
 
         // Then : les deux recettes de l'utilisateur et l'issue « un produit », l'état voyage, rien n'est écrit, aucune recette n'est créée
-        $this->assertSame('Je ne trouve pas la recette gratin. Tu veux dire gratin de pâtes ou gratin dauphinois ? Ou un produit ?', $this->speech());
+        $this->assertSame('Je ne trouve pas la recette gratin. Option 1, gratin de pâtes. Option 2, gratin dauphinois. Option 3, un produit.', $this->speech());
         $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
         $this->assertSame('meal', $this->attributes()['dialogue']['target']);
         $this->assertSame(0, $this->rowCount('shopping_list'));
@@ -2599,7 +2635,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->say(AlexaTestRequest::removeMeal('gratin'));
 
         // Then : les deux repas DE LA LISTE et l'issue « un produit », l'état voyage, rien n'est retiré
-        $this->assertSame('Je ne trouve pas le repas gratin dans ta liste. Tu veux dire gratin de pâtes ou gratin dauphinois ? Ou un produit ?', $this->speech());
+        $this->assertSame('Je ne trouve pas le repas gratin dans ta liste. Option 1, gratin de pâtes. Option 2, gratin dauphinois. Option 3, un produit.', $this->speech());
         $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
         $this->assertSame(['remove', 'meal'], [$this->attributes()['dialogue']['action'], $this->attributes()['dialogue']['target']]);
         $this->assertSame(4, $this->mealOf($user, $dauphinois)?->getServing());
@@ -2821,7 +2857,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
 
         // Then : aucun des deux n'est retiré au hasard, la question les distingue par le nombre de personnes
         // (l'ordre des deux propositions suit les identifiants des recettes, tirés au hasard : l'état dit lequel est lequel)
-        $this->assertContains($this->speech(), ['Tu veux dire hachis parmentier pour 4 ou hachis parmentier pour 2 ? Ou un produit ?', 'Tu veux dire hachis parmentier pour 2 ou hachis parmentier pour 4 ? Ou un produit ?']);
+        $this->assertContains($this->speech(), ['Option 1, hachis parmentier pour 4. Option 2, hachis parmentier pour 2. Option 3, un produit.', 'Option 1, hachis parmentier pour 2. Option 2, hachis parmentier pour 4. Option 3, un produit.']);
         $this->assertSame(4, $this->mealOf($user, $big)?->getServing());
         $this->assertSame(2, $this->mealOf($user, $small)?->getServing());
         $options = $this->attributes()['dialogue']['options'];
@@ -2912,7 +2948,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->say(AlexaTestRequest::addMeal('blanquette de veaux'));
 
         // Then : trois recettes (jamais un silence), la séance reste ouverte, « ou un produit ? », rien d'écrit
-        $this->assertMatchesRegularExpression("/^Je ne trouve pas la recette blanquette de veaux\. Tu veux dire [^,]+, [^,]+ ou [^,?]+ \? Ou un produit \?$/u", $this->speech());
+        $this->assertMatchesRegularExpression("/^Je ne trouve pas la recette blanquette de veaux\. Option 1, [^.]+\. Option 2, [^.]+\. Option 3, [^.]+\. Option 4, un produit\.$/u", $this->speech());
         $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
         $this->assertCount(3, $this->attributes()['dialogue']['options']);
         $this->assertSame(0, $this->rowCount('meal'));
@@ -2927,7 +2963,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $dinde = $this->savedRecipe($user, 'Blanquette de dinde');
         $this->savedActiveList($user);
         $this->say(AlexaTestRequest::addMeal('blanquette de veaux'));
-        $this->assertStringStartsWith('Je ne trouve pas la recette blanquette de veaux. Tu veux dire blanquette de dinde ou lasagnes ?', $this->speech());
+        $this->assertStringStartsWith('Je ne trouve pas la recette blanquette de veaux. Option 1, blanquette de dinde. Option 2, lasagnes. Option 3, un produit.', $this->speech());
 
         // When : « la première »
         $this->converse(AlexaTestRequest::chooseOption('la première', '1'), $this->attributes());

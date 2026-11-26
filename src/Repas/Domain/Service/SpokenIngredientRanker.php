@@ -64,6 +64,12 @@ final readonly class SpokenIngredientRanker
     /** Longueur de la clé de la mémoire de phrase (`spoken_phrase_choice.phrase`). */
     public const int MAX_KEY_LENGTH = 100;
 
+    /**
+     * Le « & » d'un nom (« Head & Shoulders ») s'écrit « et » dans son slug, un mot vide ; mais Amazon l'entend en anglais, « head AND shoulders »
+     * (essai réel du 2026-11-26). Dit « and », il ne compte pas plus que « et » : sinon le nom n'est jamais identique à la phrase et Alexa demande.
+     */
+    private const string SPOKEN_AMPERSAND = 'and';
+
     /** Tolérance des comparaisons de scores à virgule flottante (l'écart de 0,03 compte, même avec l'arrondi des flottants). */
     private const float EPSILON = 1e-9;
 
@@ -363,13 +369,13 @@ final readonly class SpokenIngredientRanker
     }
 
     /**
-     * @return list<string> les mots qui comptent (pluriels repliés, mots vides retirés)
+     * @return list<string> les mots qui comptent (pluriels repliés, mots vides retirés, « and » compris : voir `SPOKEN_AMPERSAND`)
      */
     private static function words(string $text): array
     {
         return array_values(array_filter(
             IngredientNameMatcher::tokens($text),
-            static fn(string $word): bool => !in_array($word, IngredientNameMatcher::STOP_WORDS, true),
+            static fn(string $word): bool => !in_array($word, IngredientNameMatcher::STOP_WORDS, true) && $word !== self::SPOKEN_AMPERSAND,
         ));
     }
 
