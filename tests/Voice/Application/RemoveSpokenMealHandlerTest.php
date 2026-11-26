@@ -129,9 +129,9 @@ class RemoveSpokenMealHandlerTest extends TestCase
 
         // Then : rien n'est retiré, une question, la séance reste ouverte avec son reprompt
         $this->assertSame([], $this->repas->mealsRemoved());
-        $this->assertSame('Je ne trouve pas le repas gratin dans ta liste. Tu veux dire gratin de pâtes ou gratin dauphinois ? Ou un produit ?', $result->speech);
+        $this->assertSame('Je ne trouve pas le repas gratin dans ta liste. Option 1, gratin de pâtes. Option 2, gratin dauphinois. Option 3, un produit.', $result->speech);
         $this->assertTrue($result->keepSessionOpen);
-        $this->assertSame('Tu veux dire gratin de pâtes ou gratin dauphinois ? Ou un produit ?', $result->reprompt);
+        $this->assertSame('Option 1, gratin de pâtes. Option 2, gratin dauphinois. Option 3, un produit.', $result->reprompt);
         $state = $result->nextState;
         $this->assertNotNull($state);
         $this->assertTrue($state->isRemovalProposal());
@@ -231,12 +231,12 @@ class RemoveSpokenMealHandlerTest extends TestCase
 
         // Then : rien n'est retiré ; la question distingue les deux par le nombre de personnes et ne dit pas « je ne trouve pas » (ils y sont)
         $this->assertSame([], $this->repas->mealsRemoved());
-        $this->assertSame('Tu veux dire hachis parmentier pour 4 ou hachis parmentier pour 2 ? Ou un produit ?', $result->speech);
+        $this->assertSame('Option 1, hachis parmentier pour 4. Option 2, hachis parmentier pour 2. Option 3, un produit.', $result->speech);
         $this->assertTrue($result->keepSessionOpen);
         $state = $result->nextState;
         $this->assertNotNull($state);
         $this->assertEquals([new DialogueOption('recipe-1', 'Hachis parmentier pour 4'), new DialogueOption('recipe-2', 'Hachis parmentier pour 2')], $state->options);
-        $this->assertSame('Tu veux dire hachis parmentier pour 4 ou hachis parmentier pour 2 ? Ou un produit ?', $result->reprompt);
+        $this->assertSame('Option 1, hachis parmentier pour 4. Option 2, hachis parmentier pour 2. Option 3, un produit.', $result->reprompt);
     }
 
     public function testHomonymsWithTheSameServingsAreOnlyAskedOnce(): void
@@ -249,7 +249,7 @@ class RemoveSpokenMealHandlerTest extends TestCase
 
         // Then
         $this->assertCount(1, $result->nextState->options);
-        $this->assertSame('Tu veux dire hachis parmentier pour 4 ? Ou un produit ?', $result->speech);
+        $this->assertSame('Option 1, hachis parmentier pour 4. Option 2, un produit.', $result->speech);
     }
 
     public function testOnlyTheMealsThatShareANameGetTheirServingsAddedToTheirLabel(): void

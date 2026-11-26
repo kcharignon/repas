@@ -22,7 +22,7 @@ use Repas\Voice\Domain\Model\SpokenDialogueState;
  *
  * | étape        | comprend                                                                                                               |
  * |--------------|------------------------------------------------------------------------------------------------------------------------|
- * | `choose`     | un rang (1 à n) ; un nom proche d'une proposition dit en entier (quelle que soit l'intention) ; « nouveau produit »,   |
+ * | `choose`     | un rang (« option 2 », « choix b », « le deuxième » : les propositions, puis les issues numérotées à la suite) ; un nom proche d'une proposition dit en entier (quelle que soit l'intention) ; « nouveau produit »,   |
  * |              | « non » (avec propositions) = créer ; « oui » = la proposition s'il n'y en a qu'une, la création s'il n'y en a aucune, |
  * |              | sinon « laquelle ? » ; « non » sans proposition = on abandonne ; un autre article (`AddItemIntent`, `RemoveItemIntent`, `CheckItemIntent`) = nouvelle demande |
  * | `department` | le rayon (id de la résolution d'entité, à défaut le texte entendu rapproché des rayons) ; « non » = on abandonne        |
@@ -65,13 +65,21 @@ final readonly class SpokenAnswerInterpreter
     private const array STOP_WORDS = ['de', 'du', 'des', 'd', 'l', 'la', 'le', 'les', 'un', 'une', 'a', 'au', 'aux'];
 
     /** Les mots qui accompagnent un rang dit seul (« le premier », « numéro trois ») sans le changer. */
-    private const array RANK_ARTICLES = ['le', 'la', 'les', 'l', 'numero'];
+    private const array RANK_ARTICLES = ['le', 'la', 'les', 'l', 'numero', 'option', 'choix'];
+
+    /** « Le dernier » : la dernière chose qu'Alexa a dite, propositions et issues comprises (identifiant `last` du type `OPTION_RANK`). */
+    private const int LAST_RANK = 99;
 
     /** Le rang dit en mots, quand la résolution d'entité n'a pas rendu son identifiant. */
     private const array RANK_WORDS = [
         'un' => 1, 'une' => 1, 'premier' => 1, 'premiere' => 1,
         'deux' => 2, 'deuxieme' => 2, 'second' => 2, 'seconde' => 2,
         'trois' => 3, 'troisieme' => 3,
+        'dernier' => self::LAST_RANK, 'derniere' => self::LAST_RANK,
+        'quatre' => 4, 'quatrieme' => 4,
+        'cinq' => 5, 'cinquieme' => 5,
+        // « Option B » : la lettre du choix (« bé » s'écrit « be » une fois sans accent ; « ce » et « de » sont des articles, jamais lus comme un rang)
+        'a' => 1, 'b' => 2, 'be' => 2, 'c' => 3, 'd' => 4, 'e' => 5,
     ];
 
     /**
@@ -79,7 +87,8 @@ final readonly class SpokenAnswerInterpreter
      */
     public function interpret(AlexaRequest $request, SpokenDialogueState $state, array $catalogue = []): SpokenAnswer
     {
-        $intent = $request->intent();
+        // « Oui ajoute le produit » est un « oui » : la proposition faite, sans en répéter le nom (qu'Amazon comprend mal, « head and shoulders »)
+        $intent = $request->intent() === AlexaIntent::ACCEPT_OPTION ? AlexaIntent::YES : $request->intent();
         // « Lesquels ? » et « aide » sont la même demande ; la réponse dépend de l'étape, pas de l'intention
         if ($intent === AlexaIntent::HELP || $intent === AlexaIntent::LIST_CHOICES) {
             return SpokenAnswer::of(match ($state->step) {
@@ -123,6 +132,7 @@ final readonly class SpokenAnswerInterpreter
         switch ($intent) {
             case AlexaIntent::CHOOSE_OPTION:
                 $rank = $this->rankOf($request->rank);
+                $rank = $rank === self::LAST_RANK ? count($options) : $rank;
 
                 return $rank !== null && $rank >= 1 && $rank <= count($options)
                     ? SpokenAnswer::pickOption($options[$rank - 1])
@@ -192,18 +202,14 @@ final readonly class SpokenAnswerInterpreter
         }
 
         // « Deux » nu, qu'Amazon a rangé dans un autre créneau que `rank` : c'est tout de même le deuxième choix
-        $number = $this->numberAsRank($request, $count);
+        $number = $this->numberAsRank($request, $count + count($state->exits()));
         if ($number !== null) {
-            return SpokenAnswer::pickOption($options[$number - 1]);
+            return $this->pickByRank($number, $state);
         }
 
         switch ($intent) {
             case AlexaIntent::CHOOSE_OPTION:
-                $rank = $this->rankOf($request->rank);
-
-                return $rank !== null && $rank >= 1 && $rank <= $count
-                    ? SpokenAnswer::pickOption($options[$rank - 1])
-                    : SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
+                return $this->pickByRank($this->rankOf($request->rank), $state);
             case AlexaIntent::CREATE_ITEM:
                 return SpokenAnswer::of(SpokenAnswerKind::START_CREATION);
             case AlexaIntent::NO:
@@ -285,18 +291,14 @@ final readonly class SpokenAnswerInterpreter
         }
 
         // « Deux » nu, qu'Amazon a rangé dans un autre créneau que `rank` : c'est tout de même le deuxième choix
-        $number = $this->numberAsRank($request, $count);
+        $number = $this->numberAsRank($request, $count + count($state->exits()));
         if ($number !== null) {
-            return SpokenAnswer::pickOption($options[$number - 1]);
+            return $this->pickByRank($number, $state);
         }
 
         switch ($intent) {
             case AlexaIntent::CHOOSE_OPTION:
-                $rank = $this->rankOf($request->rank);
-
-                return $rank !== null && $rank >= 1 && $rank <= $count
-                    ? SpokenAnswer::pickOption($options[$rank - 1])
-                    : SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
+                return $this->pickByRank($this->rankOf($request->rank), $state);
             case AlexaIntent::NO:
                 return SpokenAnswer::of(SpokenAnswerKind::ABANDON);
             case AlexaIntent::YES:
@@ -337,18 +339,14 @@ final readonly class SpokenAnswerInterpreter
         }
 
         // « Deux » nu, qu'Amazon a rangé dans un autre créneau que `rank` : c'est tout de même le deuxième choix
-        $number = $this->numberAsRank($request, $count);
+        $number = $this->numberAsRank($request, $count + count($state->exits()));
         if ($number !== null) {
-            return SpokenAnswer::pickOption($options[$number - 1]);
+            return $this->pickByRank($number, $state);
         }
 
         switch ($intent) {
             case AlexaIntent::CHOOSE_OPTION:
-                $rank = $this->rankOf($request->rank);
-
-                return $rank !== null && $rank >= 1 && $rank <= $count
-                    ? SpokenAnswer::pickOption($options[$rank - 1])
-                    : SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
+                return $this->pickByRank($this->rankOf($request->rank), $state);
             case AlexaIntent::NO:
                 return SpokenAnswer::of(SpokenAnswerKind::ABANDON);
             case AlexaIntent::YES:
@@ -430,6 +428,9 @@ final readonly class SpokenAnswerInterpreter
 
         foreach ([$request->phrase, $request->recipePhrase] as $text) {
             $rank = $text === null ? null : $this->bareRank($text);
+            if ($rank === self::LAST_RANK) {
+                return $count;
+            }
             if ($rank !== null && $rank >= 1 && $rank <= $count) {
                 return $rank;
             }
@@ -443,7 +444,28 @@ final readonly class SpokenAnswerInterpreter
         return $number !== null && $number >= 1 && $number <= $count ? $number : null;
     }
 
-    /** Le rang que ce texte dit à lui seul (« deux », « 2 », « le premier »), `null` s'il dit autre chose ou davantage. */
+    /**
+     * « Option 2 », « choix b », « le troisième » : la N-ième chose qu'Alexa a dite, d'abord les propositions, puis les issues (« un nouveau produit »,
+     * « une recette » : `SpokenDialogueState::exits()`, numérotées à la suite). Un rang qui ne désigne rien n'est pas compris.
+     */
+    private function pickByRank(?int $rank, SpokenDialogueState $state): SpokenAnswer
+    {
+        if ($rank === null || $rank < 1) {
+            return SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
+        }
+        $count = count($state->options);
+        $exits = $state->exits();
+        if ($rank === self::LAST_RANK) {
+            $rank = $count + count($exits);
+        }
+        if ($rank <= $count) {
+            return SpokenAnswer::pickOption($state->options[$rank - 1]);
+        }
+
+        return SpokenAnswer::of($exits[$rank - $count - 1] ?? SpokenAnswerKind::UNCLEAR);
+    }
+
+    /** Le rang que ce texte dit à lui seul (« deux », « 2 », « le premier », « option b »), `null` s'il dit autre chose ou davantage. */
     private function bareRank(string $text): ?int
     {
         $words = array_values(array_filter($this->tokens($text), static fn(string $word): bool => !in_array($word, self::RANK_ARTICLES, true)));
@@ -546,6 +568,9 @@ final readonly class SpokenAnswerInterpreter
     {
         if ($slot === null) {
             return null;
+        }
+        if ($slot->id === 'last') {
+            return self::LAST_RANK;
         }
         if ($slot->id !== null && ctype_digit($slot->id)) {
             return (int) $slot->id;
