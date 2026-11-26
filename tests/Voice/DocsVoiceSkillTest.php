@@ -312,22 +312,25 @@ class DocsVoiceSkillTest extends KernelTestCase
     // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 
     /**
-     * @return iterable<string, array{string, ?string, ?string}> l'intention, son créneau, le type du créneau
+     * @return iterable<string, array{string, ?string, ?string, int}> l'intention, son créneau, le type du créneau, son nombre maximal de phrases (dix par défaut)
      */
     public static function dialogueIntents(): iterable
     {
-        yield 'ChooseOptionIntent' => ['ChooseOptionIntent', 'rank', 'OPTION_RANK'];
-        yield 'CreateItemIntent' => ['CreateItemIntent', null, null];
-        yield 'AnswerDepartmentIntent' => ['AnswerDepartmentIntent', 'department', 'DEPARTMENT'];
-        yield 'AnswerUnitIntent' => ['AnswerUnitIntent', 'unit', 'UNIT'];
+        yield 'ChooseOptionIntent' => ['ChooseOptionIntent', 'rank', 'OPTION_RANK', 10];
+        // Les formulations d'un refus sont plus nombreuses : « un nouveau produit », « un nouvel ingrédient », « aucun » (essai réel du 2026-11-26)
+        yield 'CreateItemIntent' => ['CreateItemIntent', null, null, 20];
+        // « Oui ajoute le produit » : la proposition est la bonne, sans en répéter le nom (essai réel du 2026-11-26)
+        yield 'AcceptOptionIntent' => ['AcceptOptionIntent', null, null, 14];
+        yield 'AnswerDepartmentIntent' => ['AnswerDepartmentIntent', 'department', 'DEPARTMENT', 10];
+        yield 'AnswerUnitIntent' => ['AnswerUnitIntent', 'unit', 'UNIT', 10];
         // Le repas (ADR 0029 décision 13, VOX-305) : aiguiller un produit ou une recette non compris, nouveau total de personnes, ne rien changer
-        yield 'ChooseKindIntent' => ['ChooseKindIntent', 'kind', 'KIND'];
-        yield 'AnswerServingsIntent' => ['AnswerServingsIntent', 'servings', 'QUANTITY'];
-        yield 'KeepMealIntent' => ['KeepMealIntent', null, null];
+        yield 'ChooseKindIntent' => ['ChooseKindIntent', 'kind', 'KIND', 10];
+        yield 'AnswerServingsIntent' => ['AnswerServingsIntent', 'servings', 'QUANTITY', 10];
+        yield 'KeepMealIntent' => ['KeepMealIntent', null, null, 10];
     }
 
     #[DataProvider('dialogueIntents')]
-    public function testEachIntentOfTheDialogueHasItsSlotAndSixToTenWellFormedSamplesWithTheBareFormOfItsSlot(string $name, ?string $slot, ?string $type): void
+    public function testEachIntentOfTheDialogueHasItsSlotAndSixToItsMaximumWellFormedSamplesWithTheBareFormOfItsSlot(string $name, ?string $slot, ?string $type, int $maximum): void
     {
         // Given
         $intent = $this->intent($name);
@@ -337,7 +340,7 @@ class DocsVoiceSkillTest extends KernelTestCase
         $samples = $intent['samples'];
         $this->assertSame(array_values(array_unique($samples)), $samples, "$name : aucune phrase en double");
         $this->assertGreaterThanOrEqual(6, count($samples), $name);
-        $this->assertLessThanOrEqual(10, count($samples), $name);
+        $this->assertLessThanOrEqual($maximum, count($samples), $name);
         foreach ($samples as $sample) {
             $this->assertSame($sample, trim($sample), $name);
             $this->assertSame(mb_strtolower($sample), $sample, "$name : « $sample » en minuscules");
