@@ -433,6 +433,19 @@ function intents() {
       samples: [
         'nouveau', 'nouveau produit', 'un nouveau produit', 'un nouveau', 'aucun', 'aucune', 'aucun des trois', 'crée le',
         'crée un nouveau produit', "ni l'un ni l'autre",
+        // Le même refus, dit avec le mot « ingrédient » ou « nouvel » (essai réel du 2026-11-26 : « head and shoulders » mal compris, l'utilisateur
+        // cherchait comment dire « crée-le » sans répéter le nom)
+        'nouvel ingrédient', 'un nouvel ingrédient', 'crée un nouvel ingrédient', 'crée un ingrédient', 'crée un produit',
+        "c'est un nouveau produit", "c'est un nouvel ingrédient", 'pas celui là',
+      ],
+    },
+    {
+      // « Oui ajoute le produit » : la proposition est la bonne, sans en répéter le nom. Sans créneau : le webhook lit cette intention comme « oui » et
+      // l'ÉTAT de la séance dit à quoi (propositions, « Je le crée ? »). Toutes commencent par « oui », « c'est » ou « celui » pour ne jamais se confondre avec « ajoute {item} ».
+      name: 'AcceptOptionIntent',
+      samples: [
+        'oui ajoute le produit', "oui ajoute l'ingrédient", 'oui ajoute le', 'oui ajoute celui là', 'oui prends le', "oui c'est ça", "oui c'est lui",
+        "c'est ça", "c'est lui", "c'est celui là", 'celui là', 'ajoute celui là', 'ajoute ce produit', 'ajoute cet ingrédient',
       ],
     },
     {

@@ -788,7 +788,34 @@
             "aucun des trois",
             "crée le",
             "crée un nouveau produit",
-            "ni l'un ni l'autre"
+            "ni l'un ni l'autre",
+            "nouvel ingrédient",
+            "un nouvel ingrédient",
+            "crée un nouvel ingrédient",
+            "crée un ingrédient",
+            "crée un produit",
+            "c'est un nouveau produit",
+            "c'est un nouvel ingrédient",
+            "pas celui là"
+          ]
+        },
+        {
+          "name": "AcceptOptionIntent",
+          "samples": [
+            "oui ajoute le produit",
+            "oui ajoute l'ingrédient",
+            "oui ajoute le",
+            "oui ajoute celui là",
+            "oui prends le",
+            "oui c'est ça",
+            "oui c'est lui",
+            "c'est ça",
+            "c'est lui",
+            "c'est celui là",
+            "celui là",
+            "ajoute celui là",
+            "ajoute ce produit",
+            "ajoute cet ingrédient"
           ]
         },
         {

@@ -131,6 +131,11 @@ class SpokenAnswerInterpreterTest extends TestCase
         yield '« oui » avec plusieurs propositions : laquelle ?' => [AlexaTestRequest::yes(), $three, SpokenAnswerKind::WHICH_ONE, null, null];
         yield '« oui » sans proposition : on crée' => [AlexaTestRequest::yes(), [], SpokenAnswerKind::START_CREATION, null, null];
 
+        // « Oui ajoute le produit », « c'est celui là » : la proposition, sans en répéter le nom (essai réel du 2026-11-26, « head and shoulders » mal entendu)
+        yield '« oui ajoute le produit » avec une seule proposition' => [AlexaTestRequest::intent('AcceptOptionIntent'), ['persil'], SpokenAnswerKind::PICK_OPTION, 'persil', null];
+        yield '« oui ajoute le produit » avec plusieurs propositions : laquelle ?' => [AlexaTestRequest::intent('AcceptOptionIntent'), $three, SpokenAnswerKind::WHICH_ONE, null, null];
+        yield '« oui ajoute le produit » sans proposition : on crée' => [AlexaTestRequest::intent('AcceptOptionIntent'), [], SpokenAnswerKind::START_CREATION, null, null];
+
         // Un autre article : nouvelle demande
         yield 'un autre article sans rapport' => [AlexaTestRequest::addItem('du lait'), $three, SpokenAnswerKind::NEW_REQUEST, null, 'du lait'];
         yield 'un autre article sans proposition' => [AlexaTestRequest::addItem('du lait'), [], SpokenAnswerKind::NEW_REQUEST, null, 'du lait'];
@@ -391,6 +396,30 @@ class SpokenAnswerInterpreterTest extends TestCase
     public function testAnswerToTheConfirmation(AlexaTestRequest $request, SpokenAnswerKind $kind): void
     {
         $this->assertSame([$kind, null, null], $this->interpret($request, self::confirm()));
+    }
+
+    public function testAcceptingTheProposalMeansYesAtEveryStepOfTheDialogue(): void
+    {
+        // Given : « oui ajoute le produit » est un « oui » : l'ÉTAT de la séance dit à quoi, jamais l'intention
+        $states = [
+            'propositions' => self::choose(['persil']),
+            'plusieurs propositions' => self::choose(['persil', 'basilic']),
+            'aucune proposition' => self::choose([]),
+            'rayon' => self::department(),
+            'unité' => self::unit(),
+            'confirmation' => self::confirm(),
+            'recette proposée' => self::recipes(['gratin dauphinois']),
+            'repas déjà planifié' => self::planned(),
+        ];
+
+        foreach ($states as $label => $state) {
+            // When
+            $accepted = $this->interpret(AlexaTestRequest::intent('AcceptOptionIntent'), $state, self::departments());
+            $yes = $this->interpret(AlexaTestRequest::yes(), $state, self::departments());
+
+            // Then
+            $this->assertSame($yes, $accepted, $label);
+        }
     }
 
     public function testStopAndCancelAreNotUnderstoodHereBecauseTheDialogueClosesTheSessionBefore(): void

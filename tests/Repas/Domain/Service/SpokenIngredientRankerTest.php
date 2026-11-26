@@ -65,6 +65,10 @@ class SpokenIngredientRankerTest extends TestCase
             => ['du lait', [self::own('Lait de coco', 20), self::own('Lait', 5), self::own('Laitue', 9)], 'Lait', Confidence::SURE];
         yield '« pâtes » : accent et pluriel'
             => ['pâtes', [self::own('Pâtes', 8), self::own('Pâtes complètes', 3), self::own('Pâte feuilletée', 4)], 'Pâtes', Confidence::SURE];
+        yield '« head and shoulders » : Amazon entend le « & » en anglais, le nom est tout de même identique (essai réel du 2026-11-26)'
+            => ['head and shoulders', [self::own('Head & Shoulders', 0), self::own('Head', 4)], 'Head & Shoulders', Confidence::SURE];
+        yield '« head et shoulders » : le même nom dit en français'
+            => ['head et shoulders', [self::own('Head & Shoulders', 0)], 'Head & Shoulders', Confidence::SURE];
         yield 'une majuscule et un accent de plus ne changent rien'
             => ['Crème Fraîche', [self::own('Crème fraîche', 1), self::own('Crème liquide', 9)], 'Crème fraîche', Confidence::SURE];
         yield '« un oeuf » : un article retiré'

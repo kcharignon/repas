@@ -79,7 +79,8 @@ final readonly class SpokenAnswerInterpreter
      */
     public function interpret(AlexaRequest $request, SpokenDialogueState $state, array $catalogue = []): SpokenAnswer
     {
-        $intent = $request->intent();
+        // « Oui ajoute le produit » est un « oui » : la proposition faite, sans en répéter le nom (qu'Amazon comprend mal, « head and shoulders »)
+        $intent = $request->intent() === AlexaIntent::ACCEPT_OPTION ? AlexaIntent::YES : $request->intent();
         // « Lesquels ? » et « aide » sont la même demande ; la réponse dépend de l'étape, pas de l'intention
         if ($intent === AlexaIntent::HELP || $intent === AlexaIntent::LIST_CHOICES) {
             return SpokenAnswer::of(match ($state->step) {
